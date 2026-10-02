@@ -4,8 +4,8 @@ import { placementError } from '../src/sim/placement';
 import { DAY_SECONDS } from '../src/sim/query';
 import { stepWorld, TICKS_PER_SECOND, type World } from '../src/sim/world';
 
-/** Nearest valid spot to the hearth. Gatherers also need at least 10 nodes in range, like a player would choose. */
-export function findSpot(world: World, type: BuildingType, minDist = 0): { x: number; y: number } | null {
+/** Nearest valid spot to the hearth. Gatherers also need some nodes in range, like a player would choose. */
+export function findSpot(world: World, type: BuildingType, minDist = 0, minNodes = 10): { x: number; y: number } | null {
   const [w, h] = BUILDINGS[type].size;
   const gather = RECIPES[type]?.gather;
   const spots: { x: number; y: number; d: number }[] = [];
@@ -18,7 +18,7 @@ export function findSpot(world: World, type: BuildingType, minDist = 0): { x: nu
   spots.sort((a, b) => a.d - b.d);
   for (const s of spots) {
     if (placementError(world, type, s.x, s.y, false)) continue;
-    if (gather && nodesInRange(world, s.x + (w - 1) / 2, s.y + (h - 1) / 2, gather.tile, gather.radius - 1) < 10) continue;
+    if (gather && nodesInRange(world, s.x + (w - 1) / 2, s.y + (h - 1) / 2, gather.tile, gather.radius - 1) < minNodes) continue;
     return s;
   }
   return null;
@@ -57,6 +57,7 @@ export const count = (world: World, type: BuildingType) => world.buildings.filte
 
 /**
  * A simple player. It builds in plan order, runs the kiln only when fuel is low, the kitchen only when meals are low,
+ * the forager only when raw food is low,
  * stops the quarry once the kiln exists, and replaces gatherers that run out of nodes.
  */
 export function makePlayer(plan: BuildingType[]) {
@@ -67,6 +68,7 @@ export function makePlayer(plan: BuildingType[]) {
       if (b.type === 'quarry' && kiln && b.workers > 0) setWorkers(world, b.id, 0);
       if (b.type === 'charcoalKiln') setWorkers(world, b.id, world.stock.fuel < 60 ? 1 : 0);
       if (b.type === 'kitchen') setWorkers(world, b.id, world.stock.meals < 30 ? 2 : 0);
+      if (b.type === 'foragerHut') setWorkers(world, b.id, world.stock.rawFood < 40 ? 2 : 0);
       if (b.type === 'woodcutterCamp' && b.status === 'noResource' && b.workers > 0) {
         setWorkers(world, b.id, 0);
         build(world, 'woodcutterCamp');

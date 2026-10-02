@@ -41,7 +41,7 @@ export const BALANCE = {
     /** Baseline tile warmth at 0 degrees outdoor temperature. */
     baselineAtZero: 30,
     /** Baseline warmth lost per degree below zero. */
-    perDegree: 1.5,
+    perDegree: 1,
     /** Tiles at or above this are warm. */
     warmThreshold: 50,
     /** Tiles below this are freezing. Between the two thresholds is cold. */
@@ -51,10 +51,11 @@ export const BALANCE = {
   },
   hearth: {
     /** Radius in tiles per hearth level, from section 5.2. */
+    /** Section 5.2. Cost is what it takes to reach that level. */
     levels: [
-      { radius: 8, fuelPerMinute: 3 },
-      { radius: 12, fuelPerMinute: 5 },
-      { radius: 16, fuelPerMinute: 8 },
+      { radius: 8, fuelPerMinute: 3, cost: {} },
+      { radius: 12, fuelPerMinute: 5, cost: { planks: 40, metal: 20 } },
+      { radius: 16, fuelPerMinute: 8, cost: { planks: 80, metal: 60, parts: 10 } },
     ],
     /** The run is lost after the hearth is out this long. */
     outLossSeconds: 60,
@@ -102,13 +103,13 @@ export const BALANCE = {
     runnerGate: 10,
   },
   defense: {
-    hearthHp: 1000,
+    hearthHp: 4000,
     colonistHp: 100,
     attackInterval: 1,
     /** Enemies hit colonists within this many tiles. */
     reach: 0.7,
     towerRange: 6,
-    towerDamage: 12,
+    towerDamage: 15,
     towerInterval: 0.8,
     trapDps: 20,
     trapWearPerSecond: 3,
@@ -131,6 +132,18 @@ export const BALANCE = {
     rareChance: 0.15,
     /** Loot from a POI is multiplied by this for each full search already done there. */
     revisitLoot: 0.5,
+  },
+  /** Section 6.5. */
+  hope: {
+    start: 60,
+    nightWithoutDeaths: 5,
+    fedDawn: 2,
+    death: -10,
+    buildingDestroyed: -1,
+    hungryDawn: -5,
+    frozenDawn: -3,
+    lowBelow: 30,
+    lowWorkSpeed: 0.8,
   },
   production: {
     /** Work speed on cold tiles. Freezing tiles stop work. */

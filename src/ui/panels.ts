@@ -1,23 +1,26 @@
-// Right side panel with tabs: colonists and expeditions (section 14).
+// Right side panel with tabs: colonists, expeditions, and the airship (section 14).
 import { BUILDINGS } from '../data/buildings';
 import { ITEMS, POIS } from '../data/pois';
+import { COMPONENT_IDS, COMPONENTS, LAST_NIGHT } from '../data/vehicle';
 import { RESOURCE_NAMES, type Resource } from '../data/resources';
-import { expeditionError } from '../sim/commands';
+import { componentError, expeditionError, launchError } from '../sim/commands';
 import { currentPhase } from '../sim/query';
 import { expeditionRisk } from '../sim/systems/expeditions';
 import type { World } from '../sim/world';
 import type { UiState } from './hud';
 
-export type Tab = 'colonists' | 'expeditions';
+export type Tab = 'colonists' | 'expeditions' | 'airship';
+const TAB_NAMES: Record<Tab, string> = { colonists: 'Colonists', expeditions: 'Expeditions', airship: 'Airship' };
 
 const bar = (v: number, label: string) => `<i class="bar" title="${label}"><b style="width:${Math.round(v * 100)}%"></b></i>`;
 const loot = (a: Partial<Record<Resource, number>>) => Object.entries(a).map(([r, n]) => `${n} ${RESOURCE_NAMES[r as Resource].toLowerCase()}`).join(', ');
 
 export function rightPanel(w: World, state: UiState): string {
-  const tabs = (['colonists', 'expeditions'] as const)
-    .map((t) => `<button data-act="tab:${t}" class="${state.tab === t ? 'on' : ''}">${t === 'colonists' ? 'Colonists' : 'Expeditions'}</button>`)
+  const tabs = (Object.keys(TAB_NAMES) as Tab[])
+    .map((t) => `<button data-act="tab:${t}" class="${state.tab === t ? 'on' : ''}">${TAB_NAMES[t]}</button>`)
     .join('');
-  return `<div class="tabs">${tabs}</div>${state.tab === 'colonists' ? colonists(w) : expeditions(w, state)}`;
+  const body = state.tab === 'colonists' ? colonists(w) : state.tab === 'expeditions' ? expeditions(w, state) : airship(w);
+  return `<div class="tabs">${tabs}</div>${body}`;
 }
 
 function colonists(w: World): string {
@@ -63,6 +66,34 @@ function expeditions(w: World, state: UiState): string {
       .join('')}</div>
       <p>Danger chance per search roll: ${Math.round(risk * 100)}%. Bigger squads lower it. Night triples it.</p>
       ${error ? `<p class="alert">${error}</p>` : `<button data-act="send">Send squad</button>`}`);
+  }
+  return out.join('');
+}
+
+function airship(w: World): string {
+  const air = w.airship;
+  const out = [`<p>Built ${air.built.length} of ${COMPONENT_IDS.length} components.</p>`];
+  for (const id of COMPONENT_IDS) {
+    const def = COMPONENTS[id];
+    const needs = [loot(def.cost), def.item ? `the ${ITEMS[def.item]}${w.items[def.item] ? '' : ' (not found yet)'}` : ''].filter(Boolean).join(', ');
+    const error = componentError(w, id);
+    const state = air.built.includes(id)
+      ? '<small>Built</small>'
+      : air.building === id
+        ? `<small>Building, ${Math.floor((air.progress / def.seconds) * 100)}%</small>`
+        : error
+          ? `<small class="alert">${error}</small>`
+          : `<button data-act="component:${id}">Build</button>`;
+    const info = air.built.includes(id) ? '' : `<small>Needs ${needs}</small>${def.hope ? `<small>Hope plus ${def.hope}</small>` : ''}`;
+    out.push(`<div class="card"><b>${def.name}</b>${info}${state}</div>`);
+  }
+  const launch = air.launch;
+  out.push(`<h4>The Last Night</h4><p>Load ${LAST_NIGHT.fuel} fuel over ${LAST_NIGHT.seconds} seconds while the final horde attacks.
+    Colonists board in the last ${LAST_NIGHT.boardSeconds} seconds. Defenders on night duty stay at their post and are left behind.</p>`);
+  if (launch) out.push(`<p>Fuel loaded ${Math.floor(launch.fuel)}/${LAST_NIGHT.fuel}. ${Math.max(0, Math.ceil(LAST_NIGHT.seconds - launch.elapsed))}s left.</p>`);
+  else {
+    const error = launchError(w);
+    out.push(error ? `<p class="alert">${error}</p>` : '<button data-act="launch">Begin the launch</button>');
   }
   return out.join('');
 }

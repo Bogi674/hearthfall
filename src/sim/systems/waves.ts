@@ -6,12 +6,14 @@ import { ENEMIES, ENEMY_TYPES, type EnemyType } from '../../data/enemies';
 import { currentPhase, nightThreat } from '../query';
 import { nextFloat, nextInt } from '../rng';
 import { BLOCKED } from './pathfinding';
+import { LAST_NIGHT } from '../../data/vehicle';
 import { addLog, type Wave, type World } from '../world';
 
 const W = BALANCE.waves;
 
 export function wavesSystem(world: World, _dt: number): void {
   if (world.wave.night !== world.day) world.wave = planWave(world, world.day);
+  if (world.airship.launch && !world.wave.final) world.wave = planWave(world, world.day, true);
   const phase = currentPhase(world);
 
   for (const b of world.buildings) {
@@ -29,6 +31,12 @@ export function wavesSystem(world: World, _dt: number): void {
   if (phase.name === 'Night') {
     const due = Math.min(wave.plan.length, Math.ceil(((phase.seconds - phase.left) / W.spawnSeconds) * wave.plan.length));
     while (wave.spawned < due) spawn(world, wave.plan[wave.spawned++], wave.edges);
+    for (const e of world.enemies) {
+      const brood = ENEMIES[e.type].spawns;
+      if (brood && world.tick % Math.round(brood.every / BALANCE_TICK) === 0) {
+        world.enemies.push({ id: world.nextId++, type: brood.type, x: e.x, y: e.y, px: e.x, py: e.y, hp: ENEMIES[brood.type].hp, cooldown: 0 });
+      }
+    }
   }
   if (phase.name === 'Dawn' && world.enemies.length > 0) {
     world.enemies = [];
@@ -36,14 +44,17 @@ export function wavesSystem(world: World, _dt: number): void {
   }
 }
 
-function planWave(world: World, night: number): Wave {
-  const threat = nightThreat(night);
+/** Seconds per tick, for spawn timers. */
+const BALANCE_TICK = 0.1;
+
+function planWave(world: World, night: number, final = false): Wave {
+  const threat = nightThreat(night) * (final ? LAST_NIGHT.threatMultiplier : 1);
   const edges = [0, 1, 2, 3];
   for (let i = 3; i > 0; i--) {
     const j = nextInt(world.rng, 0, i);
     [edges[i], edges[j]] = [edges[j], edges[i]];
   }
-  const plan: EnemyType[] = [];
+  const plan: EnemyType[] = final ? ['hordeMother'] : [];
   for (let points = threat; ; ) {
     const options = ENEMY_TYPES.filter((t) => ENEMIES[t].fromNight <= night && ENEMIES[t].threat <= points);
     if (!options.length) break;
@@ -52,8 +63,9 @@ function planWave(world: World, night: number): Wave {
     points -= ENEMIES[t].threat;
   }
   const bloodMoon = threat > 0 && night % W.bloodMoonEvery === 0;
-  if (bloodMoon) addLog(world, 'A Blood Moon will rise tonight.');
-  return { night, threat, bloodMoon, edges: edges.slice(0, Math.min(4, 1 + Math.floor((night - 1) / W.nightsPerEdge))), plan, spawned: 0 };
+  if (bloodMoon && !final) addLog(world, 'A Blood Moon will rise tonight.');
+  const edgeCount = final ? 4 : Math.min(4, 1 + Math.floor((night - 1) / W.nightsPerEdge));
+  return { night, threat, bloodMoon, edges: edges.slice(0, edgeCount), plan, spawned: 0, final };
 }
 
 /** Spawns on a random reachable tile of one of the active edges. */

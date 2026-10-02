@@ -78,3 +78,17 @@ Design and architecture decisions that are not already in `docs/GAME_DESIGN.md`.
 - **Revisits.** Each full search of a POI halves its loot. A recalled squad does not count as a full search.
 - **Sent colonists lose their job and night duty.** Their slots refill from idle colonists at once. They get new jobs as idle colonists after they return.
 - **Survivors join on return.** A survivor found at the Clinic becomes a new colonist when the squad gets home.
+
+## 2026-10-02 (M5)
+
+- **"About 45 minutes" means at 2x speed.** The new daily cycle makes a day 570 seconds, so 45 minutes at 1x is under 5 days. The scripted full run launches on day 9, which is about 85 minutes at 1x and about 43 minutes at 2x. Launching later runs into the night 10 Blood Moon, and The Last Night triples it.
+- **Hope is built in M5.** The Envelope and Engine raise hope, so hope from section 6.5 had to exist. Values are in `src/data/balance.ts`.
+- **Desertion is checked first at dawn,** before the dawn hope changes. Hope at 0 when the night ends means a colonist leaves.
+- **The hearth upgrade is built in M5.** Section 5.2 defines it but no milestone lists it. Outside tiles freeze around day 10, so the late game needs it.
+- **Colonists skip jobs on freezing tiles.** Work there stops anyway, and standing in the cold only killed them.
+- **The hearth is not a wall.** The Brute and Horde Mother wall multiplier applies to buildings, not to the hearth.
+- **Defenders hold their post during boarding.** Colonists on night duty keep defending and are left behind. The player chooses who stays by changing night duty. This keeps the towers firing in the last 30 seconds and makes people the cost.
+- **The launch starts a night.** Starting The Last Night jumps the clock to the start of the night phase, so the final horde and the loading time line up.
+- **Score.** Score is survivors aboard times 100 times the difficulty factor of 1, plus 20 per day left before day 30. The design gives the shape of the formula but not the numbers.
+- **Balance changes.** The full run test drove these: recipe outputs went up, trees hold 40, warmth drops 1 per degree below zero, Shamblers deal 4, the hearth has 4000 HP, towers deal 15, destroyed buildings cost 1 hope, and the Horde Mother deals 15 and spawns a Shambler every 12 seconds. The design's building and component costs did not change.
+- **The full run player lives in `tests/fullrun.ts`.** It plays one target at a time and is meant to show the run is possible, not to be optimal.

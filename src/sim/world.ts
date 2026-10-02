@@ -3,6 +3,7 @@ import type { BuildingType } from '../data/buildings';
 import type { EnemyType } from '../data/enemies';
 import { COLONIST_NAMES } from '../data/colonists';
 import type { ItemId, PoiType } from '../data/pois';
+import type { ComponentId } from '../data/vehicle';
 import { NODE_AMOUNTS } from '../data/recipes';
 import { RESOURCES, type Amounts, type Resource } from '../data/resources';
 import { applyCommands, type Command } from './commands';
@@ -13,9 +14,11 @@ import { jobsSystem } from './systems/jobs';
 import { needsSystem } from './systems/needs';
 import { combatSystem } from './systems/combat';
 import { expeditionsSystem } from './systems/expeditions';
+import { hopeSystem } from './systems/hope';
 import { pathfindingSystem } from './systems/pathfinding';
 import { productionSystem } from './systems/production';
 import { timeSystem } from './systems/time';
+import { vehicleSystem } from './systems/vehicle';
 import { warmthSystem } from './systems/warmth';
 import { wavesSystem } from './systems/waves';
 
@@ -109,6 +112,13 @@ export interface World {
   pois: Poi[];
   expeditions: Expedition[];
   items: Partial<Record<ItemId, number>>;
+  /** Colony morale from 0 to 100 (section 6.5). */
+  hope: number;
+  /** Deaths since dusk, so dawn can reward a night without losses. */
+  deathsTonight: number;
+  airship: Airship;
+  /** Set when the airship launches. The world stops advancing. */
+  won: { score: number; aboard: string[]; leftBehind: string[] } | null;
   /** Everyone who died, for the score screen. */
   dead: { name: string; cause: string; day: number }[];
   /** Event log. Entries with a position let the UI focus the camera there. */
@@ -138,6 +148,17 @@ export interface Wave {
   edges: number[];
   plan: EnemyType[];
   spawned: number;
+  /** The final horde of The Last Night. */
+  final: boolean;
+}
+
+export interface Airship {
+  built: ComponentId[];
+  building: ComponentId | null;
+  /** Seconds of dock work done on the component being built. */
+  progress: number;
+  /** The Last Night, once started: seconds elapsed and fuel loaded (section 11.1). */
+  launch: { elapsed: number; fuel: number } | null;
 }
 
 export interface Poi {
@@ -192,12 +213,16 @@ export function createWorld(seed: number): World {
     colonists: [],
     nextId: 1,
     enemies: [],
-    wave: { night: 0, threat: 0, bloodMoon: false, edges: [], plan: [], spawned: 0 },
+    wave: { night: 0, threat: 0, bloodMoon: false, edges: [], plan: [], spawned: 0, final: false },
     flow: { key: '', normal: [], runner: [] },
     buildRev: 0,
     pois,
     expeditions: [],
     items: {},
+    hope: BALANCE.hope.start,
+    deathsTonight: 0,
+    airship: { built: [], building: null, progress: 0, launch: null },
+    won: null,
     dead: [],
     log: [],
     lost: null,
@@ -230,12 +255,14 @@ export function addColonist(world: World, x: number, y: number): Colonist {
 /** Logs a death and records it for the score screen. The caller removes colonists with health at 0. */
 export function recordDeath(world: World, c: Colonist, cause: string): void {
   c.health = 0;
+  world.hope = Math.max(0, world.hope + BALANCE.hope.death);
+  world.deathsTonight++;
   world.dead.push({ name: c.name, cause, day: world.day });
   addLog(world, `${c.name} ${cause}.`, c);
 }
 
 export function stepWorld(world: World): void {
-  if (world.lost) return;
+  if (world.lost || world.won) return;
   applyCommands(world);
   timeSystem(world, TICK_SECONDS);
   wavesSystem(world, TICK_SECONDS);
@@ -246,6 +273,8 @@ export function stepWorld(world: World): void {
   expeditionsSystem(world, TICK_SECONDS);
   productionSystem(world, TICK_SECONDS);
   combatSystem(world, TICK_SECONDS);
+  vehicleSystem(world, TICK_SECONDS);
+  hopeSystem(world, TICK_SECONDS);
   if (world.hearth.hp <= 0) world.lost = 'The hearth was destroyed.';
   else if (world.hearth.outSeconds >= BALANCE.hearth.outLossSeconds) world.lost = 'The hearth went out.';
   else if (world.colonists.length === 0) world.lost = 'Everyone is dead.';

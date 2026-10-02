@@ -3,9 +3,11 @@ import type { Amounts } from './resources';
 // Buildings from section 8 and defenses from section 9.1 of docs/GAME_DESIGN.md.
 // Size is the footprint in tiles before rotation. HP is how much damage a building takes before it is destroyed.
 
+export type BuildingCategory = 'Shelter' | 'Production' | 'Defense' | 'Escape';
+
 export interface BuildingDef {
   name: string;
-  category: 'Shelter' | 'Production' | 'Defense';
+  category: BuildingCategory;
   cost: Amounts;
   size: [number, number];
   /** Day workers, or night defenders when nightDuty is set. */
@@ -20,6 +22,8 @@ export interface BuildingDef {
   gate?: boolean;
   /** Light radius in tiles, lit at night for the given fuel. */
   light?: { radius: number; fuel: number };
+  /** Warmth and light radius in tiles while it burns fuel. */
+  heat?: { radius: number; fuelPerMinute: number };
 }
 
 const DEFS = {
@@ -37,6 +41,10 @@ const DEFS = {
   gate: { name: 'Gate', category: 'Defense', cost: { planks: 15 }, size: [1, 1], workers: 0, hp: 200, gate: true },
   lanternPost: { name: 'Lantern Post', category: 'Defense', cost: { wood: 5 }, size: [1, 1], workers: 0, hp: 50, light: { radius: 4, fuel: 1 } },
   spikeTrap: { name: 'Spike Trap', category: 'Defense', cost: { wood: 10 }, size: [1, 1], workers: 0, hp: 80, walkable: true },
+  smelter: { name: 'Smelter', category: 'Production', cost: { planks: 30, stone: 20 }, size: [2, 2], workers: 2, hp: 200 },
+  workshop: { name: 'Workshop', category: 'Production', cost: { planks: 40, metal: 30 }, size: [2, 2], workers: 2, hp: 200 },
+  heater: { name: 'Heater', category: 'Shelter', cost: { metal: 10, parts: 5 }, size: [1, 1], workers: 0, hp: 80, heat: { radius: 4, fuelPerMinute: 1 } },
+  airshipDock: { name: 'Airship Dock', category: 'Escape', cost: { planks: 100, metal: 80, parts: 20 }, size: [4, 4], workers: 4, hp: 500 },
   watchtower: { name: 'Watchtower', category: 'Defense', cost: { planks: 25 }, size: [1, 1], workers: 1, hp: 150, nightDuty: true },
 } satisfies Record<string, BuildingDef>;
 

@@ -1,6 +1,8 @@
 html,
 body {
   margin: 0;
+  font: 13px/1.35 system-ui, sans-serif;
+  color: #e9dcc6;
   height: 100%;
   overflow: hidden;
   background: #0e1621;
@@ -18,7 +20,7 @@ body {
   inset: 0;
   z-index: 2;
   display: grid;
-  grid-template-columns: 250px minmax(0, 1fr) 240px;
+  grid-template-columns: 250px minmax(0, 1fr) 270px;
   grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 8px;
   padding: 8px;
@@ -99,8 +101,8 @@ body {
   grid-row: 3;
   justify-self: center;
   display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
+  flex-direction: column;
+  gap: 6px;
   max-width: 100%;
   box-sizing: border-box;
 }
@@ -112,9 +114,6 @@ body {
   align-items: flex-start;
 }
 
-#build h4 {
-  width: 100%;
-}
 
 h3,
 h4 {
@@ -206,6 +205,8 @@ small {
 #over {
   position: fixed;
   z-index: 3;
+  max-height: 80vh;
+  overflow: auto;
   left: 50%;
   top: 40%;
   transform: translate(-50%, -50%);
@@ -252,7 +253,9 @@ small {
 }
 
 .tabs button {
-  flex: 1;
+  flex: 1 1 auto;
+  white-space: nowrap;
+  padding: 3px 6px;
 }
 
 button.row {
@@ -292,4 +295,10 @@ button.row {
 
 .link:hover {
   color: #ffc56b;
+}
+
+#over ul {
+  text-align: left;
+  margin: 4px 0 12px;
+  padding-left: 20px;
 }

@@ -57,3 +57,14 @@ export function nightThreat(n: number): number {
   if (n < W.firstNight) return 0;
   return Math.round(W.base * W.growth ** (n - 1)) * (n % W.bloodMoonEvery === 0 ? 2 : 1);
 }
+
+/** True on the first tick of the named phase. */
+export function phaseStarted(world: World, name: string, dt: number): boolean {
+  const p = currentPhase(world);
+  return p.name === name && p.seconds - p.left < dt - 1e-9;
+}
+
+/** Work speed multiplier from hope (section 6.5). */
+export function hopeSpeed(world: World): number {
+  return world.hope < BALANCE.hope.lowBelow ? BALANCE.hope.lowWorkSpeed : 1;
+}

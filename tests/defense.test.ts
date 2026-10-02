@@ -87,7 +87,7 @@ describe('flow field', () => {
     world.enemies.push({ id: 999, type: 'shambler', x: world.hearth.x + 7, y: world.hearth.y, px: 0, py: 0, hp: 40, cooldown: 0 });
     stepSeconds(world, 30);
     expect(world.buildings.some((b) => b.hp < 100)).toBe(true);
-    expect(world.hearth.hp).toBe(1000);
+    expect(world.hearth.hp).toBe(4000);
   });
 });
 

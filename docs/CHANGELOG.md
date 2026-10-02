@@ -2,6 +2,20 @@
 
 Newest entries first. Each entry names the milestone it belongs to.
 
+## 2026-10-02 (M5: Airship and Win State)
+
+- Added the Smelter, Workshop, Heater, and Airship Dock. Heaters burn their own fuel and add a warm and lit radius of 4.
+- Added the five airship components with their materials and rare items. The Frame comes first. Dock workers build each one.
+- Added The Last Night. The launch starts a night with three times the threat and the Horde Mother, who spawns Shamblers. 200 fuel loads over 180 seconds and colonists board in the last 30. Anyone not aboard is left behind.
+- Added the score screen with the score, who was aboard, who was left behind, and every death with its cause. It also shows on a loss.
+- Added hope from section 6.5, because the Envelope and Engine raise it. Deaths, hunger, cold, and destroyed buildings lower it. Low hope slows work and zero hope makes a colonist desert at dawn.
+- Added the hearth upgrade from section 5.2 with its design costs.
+- Colonists no longer stand at a job that is too cold to work. They wait by the hearth.
+- Added the Airship tab, hope and airship progress in the top bar, an upgrade button in the hearth panel, and a build menu with one tab per category.
+- Balance changes from the full run test: faster recipes, trees hold 40, warmth drops 1 per degree, Shamblers deal 4, the hearth has 4000 HP, the hearth takes no wall multiplier, towers deal 15, and destroyed buildings cost 1 hope.
+- A scripted full run launches on day 9 on seeds 1 and 2. That is about 85 minutes at 1x or about 43 minutes at 2x.
+- Added `docs/screenshots/m5-airship.jpg` and `docs/screenshots/m5-launch.jpg`.
+
 ## 2026-10-02 (M4: Expeditions)
 
 - Added the six POIs from section 10.1 with danger, distance, loot, rare items, and survivors at the Clinic. Each map places one of each at its design distance, with a landmark and a name label.

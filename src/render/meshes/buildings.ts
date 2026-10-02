@@ -28,6 +28,8 @@ const LOOK: Partial<Record<BuildingType, { height: number; chimney?: boolean; st
   kitchen: { height: 1, chimney: true },
   sawmill: { height: 1 },
   charcoalKiln: { height: 0.9, chimney: true, stoneBody: true },
+  smelter: { height: 1.1, chimney: true, stoneBody: true },
+  workshop: { height: 1.2 },
 };
 
 function part(geo: THREE.BufferGeometry, mat: THREE.Material, x: number, y: number, z: number, sx: number, sy: number, sz: number, ry = 0, rz = 0) {
@@ -76,6 +78,17 @@ const DEFENSE: Partial<Record<BuildingType, (g: THREE.Group) => void>> = {
   spikeTrap: (g) => {
     g.add(part(box, body, 0, 0, 0, 0.9, 0.05, 0.9));
     for (const [x, z] of [[-0.25, -0.25], [0.25, -0.25], [-0.25, 0.25], [0.25, 0.25], [0, 0]]) g.add(part(spike, stone, x, 0.05, z, 1, 1, 1));
+  },
+  heater: (g) => {
+    g.add(part(box, stone, 0, 0, 0, 0.6, 0.7, 0.6));
+    g.add(part(box, ember, 0, 0.25, 0.31, 0.3, 0.25, 0.02));
+    g.add(part(box, stone, 0, 0.7, 0, 0.18, 0.6, 0.18));
+    g.add(lightPool(4));
+  },
+  airshipDock: (g) => {
+    g.add(part(box, stone, 0, 0, 0, 3.8, 0.3, 3.8));
+    for (const [x, z] of [[-1.7, -1.7], [1.7, -1.7], [-1.7, 1.7], [1.7, 1.7]]) g.add(part(box, body, x, 0.3, z, 0.18, 3.2, 0.18));
+    g.add(createAirship());
   },
   watchtower: (g) => {
     for (const [x, z] of [[-0.35, -0.35], [0.35, -0.35], [-0.35, 0.35], [0.35, 0.35]]) g.add(part(box, body, x, 0, z, 0.1, 2.2, 0.1));
@@ -133,4 +146,25 @@ export function createLandmark(): THREE.Group {
   g.add(part(box, body, 0.5, 0.4, 0.5, 0.12, 2.2, 0.12));
   g.add(part(box, new THREE.MeshBasicMaterial({ color: PALETTE.frost.clone().multiplyScalar(1.8), fog: false }), 0.5, 2.6, 0.5, 0.3, 0.3, 0.3));
   return g;
+}
+
+/** The airship above the dock. Each component is a named part the renderer shows once it is built. */
+function createAirship(): THREE.Group {
+  const ship = new THREE.Group();
+  ship.name = 'airship';
+  ship.position.y = 3.6;
+  const named = (name: string, ...parts: THREE.Object3D[]) => {
+    const g = new THREE.Group();
+    g.name = name;
+    g.add(...parts);
+    ship.add(g);
+  };
+  const ribs = [-1.2, -0.4, 0.4, 1.2].map((x) => part(box, body, x, -0.1, 0, 0.1, 0.5, 1));
+  named('frame', part(box, body, 0, 0, 0, 3.2, 0.15, 0.15), ...ribs);
+  const sphere = new THREE.SphereGeometry(1, 16, 12);
+  named('envelope', part(sphere, canvas, 0, 1.2, 0, 2, 0.9, 0.9));
+  named('engine', part(box, stone, -1.8, 0, 0, 0.5, 0.45, 0.45), part(box, ember, -2.06, 0, 0, 0.02, 0.3, 0.3));
+  named('fuelTank', part(new THREE.CylinderGeometry(0.22, 0.22, 1.4, 10).rotateZ(Math.PI / 2), stone, 0.2, -0.45, 0, 1, 1, 1));
+  named('navigation', part(box, glow, 1.75, 0.15, 0, 0.2, 0.2, 0.2));
+  return ship;
 }

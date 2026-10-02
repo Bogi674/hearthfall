@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { BALANCE } from '../data/balance';
 import { BUILDINGS } from '../data/buildings';
+import { COMPONENT_IDS } from '../data/vehicle';
 import { ENEMIES } from '../data/enemies';
 import { Tile } from '../sim/grid';
 import type { World } from '../sim/world';
@@ -57,6 +58,7 @@ export function createWorldView(world: World, scene: THREE.Scene, fog: THREE.Fog
   const colonists = createColonistMesh(64);
   scene.add(colonists);
   const m = new THREE.Matrix4();
+  let launchedAt = 0;
   for (const p of world.pois) {
     const g = createLandmark();
     g.position.set(p.x - width / 2, 0, p.y - height / 2);
@@ -121,8 +123,16 @@ export function createWorldView(world: World, scene: THREE.Scene, fog: THREE.Fog
       }
       const barList: Bar[] = [];
       for (const b of w.buildings) {
-        const light = buildingMeshes.get(b.id)!.getObjectByName('light');
+        const g = buildingMeshes.get(b.id)!;
+        const light = g.getObjectByName('light');
         if (light) light.visible = b.lit;
+        const ship = g.getObjectByName('airship');
+        if (ship) {
+          for (const id of COMPONENT_IDS) ship.getObjectByName(id)!.visible = w.airship.built.includes(id);
+          if (w.won && !launchedAt) launchedAt = time;
+          // The airship climbs away after launch.
+          ship.position.y = 3.6 + (launchedAt ? (time - launchedAt) ** 2 * 0.6 : 0);
+        }
         const max = BUILDINGS[b.type].hp;
         if (b.hp < max) barList.push({ x: b.x + (b.w - 1) / 2 - width / 2, z: b.y + (b.h - 1) / 2 - height / 2, y: 2, fraction: b.hp / max, enemy: false });
       }

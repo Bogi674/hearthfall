@@ -18,7 +18,8 @@ export function combatSystem(world: World, dt: number): void {
     const map = BUILDINGS[b.type].walkable ? traps : blocking;
     for (let y = b.y; y < b.y + b.h; y++) for (let x = b.x; x < b.x + b.w; x++) map.set(y * width + x, b);
   }
-  const lights = world.buildings.filter((b) => b.lit).map((b) => ({ ...center(b), r: BUILDINGS[b.type].light!.radius }));
+  const lightRadius = (b: Building) => BUILDINGS[b.type].light?.radius ?? BUILDINGS[b.type].heat?.radius ?? 0;
+  const lights = world.buildings.filter((b) => b.lit).map((b) => ({ ...center(b), r: lightRadius(b) }));
   if (world.hearth.lit) lights.push({ x: world.hearth.x, y: world.hearth.y, r: hearthRadius(world) });
   const isLit = (x: number, y: number) => lights.some((l) => Math.hypot(x - l.x, y - l.y) <= l.r);
 
@@ -41,7 +42,7 @@ export function combatSystem(world: World, dt: number): void {
     const wall = blocking.get(next);
     const victim = world.colonists.find((c) => !c.asleep && Math.hypot(c.x - e.x, c.y - e.y) < D.reach);
     if (field[next] === 0) {
-      if (hit) world.hearth.hp -= damage * def.wallDamage;
+      if (hit) world.hearth.hp -= damage;
     } else if (wall) {
       if (hit) wall.hp -= damage * def.wallDamage;
     } else if (victim) {
@@ -93,5 +94,6 @@ export function combatSystem(world: World, dt: number): void {
     for (const b of destroyed) addLog(world, `The ${BUILDINGS[b.type].name} was destroyed.`, center(b));
     world.buildings = world.buildings.filter((b) => b.hp > 0);
     world.buildRev++;
+    world.hope = Math.max(0, world.hope + BALANCE.hope.buildingDestroyed * destroyed.length);
   }
 }

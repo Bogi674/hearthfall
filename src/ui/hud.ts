@@ -1,11 +1,12 @@
 // DOM overlay: top bar, build menu, selection panel, colonist list, event log, and game over screen.
 // Reads world state and only changes the world through the command queue.
 import { BALANCE } from '../data/balance';
-import { BUILDING_TYPES, BUILDINGS, type BuildingType } from '../data/buildings';
+import { BUILDING_TYPES, BUILDINGS, type BuildingCategory, type BuildingType } from '../data/buildings';
 import { ENEMIES, ENEMY_TYPES } from '../data/enemies';
 import { RECIPES } from '../data/recipes';
 import { RESOURCE_NAMES, RESOURCES, type Amounts, type Resource } from '../data/resources';
-import { pushCommand } from '../sim/commands';
+import { COMPONENT_IDS, type ComponentId } from '../data/vehicle';
+import { hearthUpgradeError, pushCommand } from '../sim/commands';
 import { capacity, currentPhase, missing, stockTotal } from '../sim/query';
 import type { BuildingStatus, World } from '../sim/world';
 import { rightPanel, type Tab } from './panels';
@@ -17,6 +18,7 @@ export interface UiState {
   speed: number;
   paused: boolean;
   buildOpen: boolean;
+  buildCat: BuildingCategory;
   tab: Tab;
   /** POI picked in the expedition panel, and the colonists picked for the squad. */
   poi: number | null;
@@ -65,6 +67,7 @@ export function createHud(
     if (act === 'workers') pushCommand(world().commands, { type: 'setWorkers', id: Number(arg), count: Number(arg2) });
     if (act === 'restart') location.reload();
     if (act === 'tab') state.tab = arg as Tab;
+    if (act === 'cat') state.buildCat = arg as BuildingCategory;
     if (act === 'poi') state.poi = Number(arg);
     if (act === 'squad') state.squad = state.squad.includes(Number(arg)) ? state.squad.filter((id) => id !== Number(arg)) : [...state.squad, Number(arg)];
     if (act === 'send' && state.poi !== null) {
@@ -73,6 +76,9 @@ export function createHud(
     }
     if (act === 'recall') pushCommand(world().commands, { type: 'recall', id: Number(arg) });
     if (act === 'focus') focus(Number(arg), Number(arg2));
+    if (act === 'component') pushCommand(world().commands, { type: 'buildComponent', component: arg as ComponentId });
+    if (act === 'launch') pushCommand(world().commands, { type: 'launch' });
+    if (act === 'upgrade') pushCommand(world().commands, { type: 'upgradeHearth' });
     api.update();
   });
 
@@ -91,25 +97,23 @@ export function createHud(
       set(
         'top',
         `<span><b>Day ${w.day}</b> ${phase.name}, ${next.name} in ${clock(phase.left)}</span><span>${w.temperature}°</span>
-         <span>Colonists ${w.colonists.length}</span>${RESOURCES.map((r) => `<span>${RESOURCE_NAMES[r]} ${Math.floor(w.stock[r])}</span>`).join('')}
+         <span>Colonists ${w.colonists.length}</span><span class="${w.hope < BALANCE.hope.lowBelow ? 'alert' : ''}">Hope ${Math.round(w.hope)}</span>
+         <span>Airship ${w.airship.built.length}/${COMPONENT_IDS.length}</span>${RESOURCES.map((r) => `<span>${RESOURCE_NAMES[r]} ${Math.floor(w.stock[r])}</span>`).join('')}
          <span>Storage ${Math.floor(stockTotal(w))}/${capacity(w)}</span>${hearth}<span class="speeds">${speeds}</span>`,
       );
 
+      const cats: BuildingCategory[] = ['Shelter', 'Production', 'Defense', 'Escape'];
       set(
         'build',
         !state.buildOpen
           ? ''
-          : (['Shelter', 'Production', 'Defense'] as const)
-              .map(
-                (cat) =>
-                  `<div class="group"><h4>${cat}</h4>${BUILDING_TYPES.filter((t) => BUILDINGS[t].category === cat)
-                    .map(
-                      (t) =>
-                        `<button data-act="build:${t}" class="${state.placing === t ? 'on' : ''} ${missing(w, BUILDINGS[t].cost) ? 'poor' : ''}">${BUILDINGS[t].name}<small>${amounts(BUILDINGS[t].cost)}</small></button>`,
-                    )
-                    .join('')}</div>`,
-              )
-              .join(''),
+          : `<div class="tabs">${cats.map((c) => `<button data-act="cat:${c}" class="${state.buildCat === c ? 'on' : ''}">${c}</button>`).join('')}</div>
+             <div class="group">${BUILDING_TYPES.filter((t) => BUILDINGS[t].category === state.buildCat)
+               .map(
+                 (t) =>
+                   `<button data-act="build:${t}" class="${state.placing === t ? 'on' : ''} ${missing(w, BUILDINGS[t].cost) ? 'poor' : ''}">${BUILDINGS[t].name}<small>${amounts(BUILDINGS[t].cost)}</small></button>`,
+               )
+               .join('')}</div>`,
       );
 
       set('forecast', forecastHtml(w));
@@ -123,7 +127,7 @@ export function createHud(
           .map((l) => `<div ${l.x !== undefined ? `class="link" data-act="focus:${l.x}:${l.y}"` : ''}>Day ${l.day}: ${l.text}</div>`)
           .join(''),
       );
-      set('over', w.lost ? `<h2>${w.lost}</h2><p>The colony lasted ${w.day} days.</p><button data-act="restart">Try again</button>` : '');
+      set('over', scoreHtml(w));
     },
   };
   return api;
@@ -135,6 +139,7 @@ const EDGES = ['north', 'east', 'south', 'west'];
 function forecastHtml(w: World): string {
   const wave = w.wave;
   const phase = currentPhase(w);
+  if (wave.final) return `<b class="alert">The Last Night</b><span>Threat ${wave.threat} plus the Horde Mother from every edge</span><span>${w.enemies.length} monsters out, ${wave.plan.length - wave.spawned} still coming</span>`;
   if (wave.threat === 0) return `<b>Night ${wave.night}</b> No attack expected.`;
   const exact = phase.name === 'Dusk' || phase.name === 'Night';
   const kinds = ENEMY_TYPES.filter((t) => wave.plan.includes(t))
@@ -154,7 +159,7 @@ function selectionHtml(w: World, state: UiState): string {
   if (state.selected === 'hearth') {
     const lvl = BALANCE.hearth.levels[w.hearth.level - 1];
     return `<h3>Hearth</h3><p>Health ${Math.ceil(w.hearth.hp)}/${BALANCE.defense.hearthHp}</p><p>Level ${w.hearth.level}. Warms a radius of ${lvl.radius} tiles.</p><p>Burns ${lvl.fuelPerMinute} fuel per minute.</p>
-      <p class="${w.hearth.lit ? '' : 'alert'}">${w.hearth.lit ? 'Burning' : 'Out of fuel'}</p>`;
+      <p class="${w.hearth.lit ? '' : 'alert'}">${w.hearth.lit ? 'Burning' : 'Out of fuel'}</p>${upgradeHtml(w)}`;
   }
   const b = w.buildings.find((b) => b.id === state.selected);
   if (!b) return '';
@@ -177,4 +182,25 @@ function selectionHtml(w: World, state: UiState): string {
   if (def.walkable) lines.push('<p>Hurts monsters that walk over it</p>');
   if (def.nightDuty) lines.push(`<p>Shoots monsters within ${BALANCE.defense.towerRange} tiles at night</p>`);
   return lines.join('');
+}
+
+function upgradeHtml(w: World): string {
+  const next = BALANCE.hearth.levels[w.hearth.level];
+  if (!next) return '<p>Fully upgraded.</p>';
+  const error = hearthUpgradeError(w);
+  return `<p>Level ${w.hearth.level + 1}: radius ${next.radius}, ${next.fuelPerMinute} fuel per minute. Costs ${amounts(next.cost)}.</p>
+    ${error ? `<p class="alert">${error}</p>` : '<button data-act="upgrade">Upgrade the hearth</button>'}`;
+}
+
+/** Score screen (section 3.4 and M5): survivors, the left behind, and every death with its cause. */
+function scoreHtml(w: World): string {
+  if (!w.lost && !w.won) return '';
+  const dead = w.dead.length
+    ? `<h4>Lost along the way</h4><ul>${w.dead.map((d) => `<li>${d.name} ${d.cause}, day ${d.day}</li>`).join('')}</ul>`
+    : '<p>Nobody died.</p>';
+  const head = w.won
+    ? `<h2>The airship launched</h2><p>Score ${w.won.score}. Day ${w.day}.</p><p>Aboard: ${w.won.aboard.join(', ') || 'nobody'}.</p>
+       ${w.won.leftBehind.length ? `<p>Left behind: ${w.won.leftBehind.join(', ')}.</p>` : ''}`
+    : `<h2>${w.lost}</h2><p>The colony lasted ${w.day} days.</p>`;
+  return `${head}${dead}<button data-act="restart">Play again</button>`;
 }

@@ -18,7 +18,7 @@ Bugs, shortcuts, and loose ends that are known but not fixed yet.
 - Colonists walk in straight lines through trees and walls. There is no colonist pathfinding.
 - Buildings cannot be demolished or moved yet. A gatherer with nothing left nearby stays on the map.
 - The auto pause at dusk cannot be turned off yet. The setting arrives with the settings screen in M6.
-- Hope, cold snaps, hearth modes, hearth upgrades, and the hearth stoker slot are not in M2 and are not built yet.
+- Cold snaps, hearth modes, and the hearth stoker slot are not built yet.
 - The game over screen reloads the page to restart.
 - The HUD has been checked at 1440 by 900. Very small windows can squeeze the side panels.
 - Fog of war is not built yet, so the watchtower does not reveal anything.
@@ -33,3 +33,8 @@ Bugs, shortcuts, and loose ends that are known but not fixed yet.
 - Loot that does not fit in storage when a squad returns is lost. The return message only lists what was kept.
 - POIs are not hidden by fog of war, because fog of war is not built yet.
 - Colonists away on expeditions still eat from the stockpile, since hauling is abstracted.
+- **Design conflict.** The threat formula `10 * 1.32^(n - 1)` gives about 10000 threat on night 26, where the run arc in section 3.3 puts the late game. Only a launch around day 8 to 10 is survivable now. The full game arc needs a different curve or a cap.
+- The scripted full run launches on seeds 1 and 2 but loses on seed 3 around day 12. Some maps are harder for a simple player.
+- The Last Night always starts at the start of a night, even when launched by day.
+- The airship model is placeholder boxes and a sphere, and the launch climb is a simple render animation.
+- Desertion is recorded in the list of the dead with the cause "deserted the colony".

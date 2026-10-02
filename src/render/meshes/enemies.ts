@@ -10,6 +10,7 @@ const SIZE: Record<EnemyType, [number, number, number]> = {
   shambler: [0.45, 0.9, 0.35],
   runner: [0.3, 0.7, 0.3],
   brute: [0.9, 1.5, 0.7],
+  hordeMother: [1.6, 2.6, 1.3],
 };
 const MAX = 300;
 
