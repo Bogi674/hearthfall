@@ -38,17 +38,17 @@ Place buildings, assign workers, watch resources flow, react to shortages.
 ### 3.2 Daily cycle
 | Phase | Duration at 1x | What happens |
 |---|---|---|
-| Day | 240 seconds | Colonists work. Expeditions travel. Building and production run at full speed. |
-| Dusk | 30 seconds | Wave forecast becomes exact. Colonists not on night duty return to shelter. |
-| Night | 120 seconds | Wave attacks. Only defenders and night shift buildings work. |
-| Dawn | 10 seconds | Survivors return to work. Damage report and daily summary appear. |
+| Day | 300 seconds | Colonists work. Expeditions travel. Building and production run at full speed. |
+| Dusk | 60 seconds | Wave forecast becomes exact. Colonists not on night duty return to shelter. |
+| Night | 180 seconds | Wave attacks. Only defenders and night shift buildings work. |
+| Dawn | 30 seconds | Survivors return to work. Damage report and daily summary appear. |
 
 Time controls are pause, 1x, 2x, and 3x. The game auto pauses on dusk start in the prototype, with a setting to disable it.
 
 ### 3.3 Run arc
-1. **Early game, days 1 to 5.** Secure the hearth, food, fuel, and first walls.
-2. **Mid game, days 6 to 15.** Build production chains, run expeditions, unlock the Airship Dock.
-3. **Late game, days 16 onward.** Build airship components under heavy pressure.
+1. **Early game, days 1 to 10.** Secure the hearth, food, fuel, and first walls.
+2. **Mid game, days 11 to 25.** Build production chains, run expeditions, unlock the Airship Dock.
+3. **Late game, days 26 onward.** Build airship components under heavy pressure.
 4. **Finale.** The Last Night: fuel the airship while the final horde attacks, then launch.
 
 ### 3.4 Win and loss
