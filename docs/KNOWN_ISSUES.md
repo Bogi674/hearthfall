@@ -14,3 +14,6 @@ Bugs, shortcuts, and loose ends that are known but not fixed yet.
 - Snow flake positions use `Math.random` in the renderer, so the flake pattern differs per load. This is render only and does not affect the simulation.
 - No shadows yet. The ground shader fakes the light pool from the warmth map, so the ground does not receive real shadows.
 - Resource nodes have no amounts yet. Depletion arrives with gathering buildings in M2.
+- Every push to `main` creates a new GitHub Release named `build-<run number>`. Releases will pile up over time. Old ones can be deleted by hand or by a cleanup job later.
+- The release step needs the workflow token to have write access to contents. The workflow asks for it, but an organization or repository setting that forces read only tokens would make the release step fail.
+- The offline file is about 570 kB, almost all Three.js. It grows with every inlined asset because everything is base64 encoded into one file.

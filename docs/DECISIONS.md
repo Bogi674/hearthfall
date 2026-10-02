@@ -24,3 +24,12 @@ Design and architecture decisions that are not already in `docs/GAME_DESIGN.md`.
 - **Frost growth over days is a render constant.** It is visual only, so it lives in `src/render/sync.ts` and not in balance data.
 - **Camera.** The view is 32 world units tall at zoom 1. Zoom ranges from 0.5 to 3. The pan target is clamped to the map bounds.
 - **Seed from URL.** `?seed=` sets the map seed. This helps visual review and does not add a settings screen.
+
+## 2026-10-02 (Offline build)
+
+- **The game ships as one HTML file that runs from disk.** `npm run build:offline` uses `vite-plugin-singlefile` to inline all JavaScript and CSS into `dist-offline/index.html`. Players and reviewers can download one file and open it with no server and no install. The user asked for this plugin, so it is the one approved new dependency.
+- **The offline build is a separate Vite mode.** `vite build --mode offline` adds the plugin and writes to `dist-offline`. The normal `npm run build` output in `dist` stays unchanged, so a later web or Steam build is not tied to single file packaging.
+- **A check script guards the output.** `scripts/check-offline.mjs` fails the build if `dist-offline` holds anything besides `index.html` or if the HTML has a script, link, or image tag that points outside the file. This catches a future change that adds a runtime asset load or a code split chunk.
+- **Assets must be bundled through static imports.** Runtime loads by URL, dynamic `import()`, separate worker files, and CDN scripts all break when the file is opened from disk. This is now architecture rule 8 in `CLAUDE.md`.
+- **Every push to `main` publishes a GitHub Release.** The workflow runs `npm test` before building, so a broken commit does not publish. Each release gets a unique tag `build-<run number>` and is marked latest. This keeps a history of builds and gives a stable download link at `releases/latest/download/hearthfall.html`.
+- **The release asset is named `hearthfall.html`.** The build still writes `index.html`. The workflow copies it to `hearthfall.html` before upload, because a download named `index.html` does not say what it is.

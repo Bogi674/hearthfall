@@ -2,6 +2,13 @@
 
 Newest entries first. Each entry names the milestone it belongs to.
 
+## 2026-10-02 (Tooling, outside the milestone plan)
+
+- Added `npm run build:offline`. It uses `vite-plugin-singlefile` to write one self contained `dist-offline/index.html` that runs when opened directly from disk.
+- Added `scripts/check-offline.mjs`. It runs after the offline build and fails if the output is more than one file or references an external file.
+- Added the GitHub Action `.github/workflows/offline-build.yml`. On every push to `main` it runs the tests and the offline build, then publishes `hearthfall.html` as a GitHub Release asset.
+- Updated `CLAUDE.md` with the offline build command, the end of session check, and architecture rule 8.
+
 ## 2026-10-02 (M1: Visual Direction)
 
 - Added `src/data/balance.ts` with map generation, temperature, warmth, and hearth radius values.
