@@ -5,7 +5,6 @@ Bugs, shortcuts, and loose ends that are known but not fixed yet.
 ## Open
 
 - The production bundle is about 530 kB and Vite warns about chunk size. Almost all of it is Three.js. Code splitting can wait until load time matters.
-- `src/save` holds only a `.gitkeep` file until save and load arrive in M6.
 - Performance was only checked in headless Chromium with software WebGL. It has not been measured on a real GPU. Seed 1 has about 1700 trees, 230 rubble tiles, and 220 wall tiles. That is 4 instanced draw calls plus 9000 snow points.
 - The `Blocked` tile type exists but map generation does not place it yet.
 - The fog patch measures distance from the world origin. This works because the hearth is always at the map center. Sprite materials would fail to compile with the patched chunk because the sprite shader has no `transformed` variable. Nothing uses sprites yet.
@@ -17,9 +16,8 @@ Bugs, shortcuts, and loose ends that are known but not fixed yet.
 - The offline file is about 570 kB, almost all Three.js. It grows with every inlined asset because everything is base64 encoded into one file.
 - Colonists walk in straight lines through trees and walls. There is no colonist pathfinding.
 - Buildings cannot be demolished or moved yet. A gatherer with nothing left nearby stays on the map.
-- The auto pause at dusk cannot be turned off yet. The setting arrives with the settings screen in M6.
 - Cold snaps, hearth modes, and the hearth stoker slot are not built yet.
-- The game over screen reloads the page to restart.
+- The game over screen, new run, and load all reload the page.
 - The HUD has been checked at 1440 by 900. Very small windows can squeeze the side panels.
 - Fog of war is not built yet, so the watchtower does not reveal anything.
 - Monsters move on a 4 neighbor grid, so they walk in steps. They also stack on the same tile with no separation.
@@ -38,3 +36,8 @@ Bugs, shortcuts, and loose ends that are known but not fixed yet.
 - The Last Night always starts at the start of a night, even when launched by day.
 - The airship model is placeholder boxes and a sphere, and the launch climb is a simple render animation.
 - Desertion is recorded in the list of the dead with the cause "deserted the colony".
+- There is one save slot. Saving is unavailable when the browser blocks storage, and the menu says so.
+- Audio is synthesized placeholder sound. Volume is the only audio setting.
+- The F1 debug panel from section 15.7 is not built. Dev builds expose `window.world` instead.
+- Hints cover only the first two days. Later goals rely on the Airship and Expeditions tabs explaining what is missing.
+- No human playtest has confirmed the M6 done line. The hints, tab texts, and score screen were checked in headless Chromium only.

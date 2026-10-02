@@ -2,6 +2,19 @@
 
 Newest entries first. Each entry names the milestone it belongs to.
 
+## 2026-10-02 (M6: Prototype Polish)
+
+- Added save and load as versioned JSON (`src/save/save.ts`). The menu saves to one slot in browser storage, and the game also saves at every dawn. Loading reloads the page and starts from the save.
+- Added settings for auto pause at dusk, hints, and volume. They are kept in browser storage.
+- Added tutorial hints for the first two days (`src/data/hints.ts`). One goal shows at a time, from the first Woodcutter Camp to the first expedition.
+- Added placeholder audio synthesized with Web Audio, so the offline file still needs no assets. Fire crackle near the hearth and wind away from it follow the camera. Stingers sound at dusk, when the wave arrives, and when a building falls at night.
+- Added a pause menu with resume, save, load, new run, settings, and the controls list.
+- HUD buttons now act on press. Panels re-render often, and a click could be lost when a button was replaced between press and release.
+- The top bar keeps its speed and menu buttons in their own container so they do not re-render with the clock.
+- Balance pass: the M5 full run test drove the balance changes listed there. Tests now show a managed colony surviving 5 days, a defended base holding through night 8, and a full run launching on day 9.
+- Tests show that a loaded game continues tick for tick like the original, that old save versions are rejected, and that hints advance as goals are met.
+- Added `docs/screenshots/m6-hints.jpg` and `docs/screenshots/m6-menu.jpg`.
+
 ## 2026-10-02 (M5: Airship and Win State)
 
 - Added the Smelter, Workshop, Heater, and Airship Dock. Heaters burn their own fuel and add a warm and lit radius of 4.

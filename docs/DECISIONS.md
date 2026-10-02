@@ -92,3 +92,11 @@ Design and architecture decisions that are not already in `docs/GAME_DESIGN.md`.
 - **Score.** Score is survivors aboard times 100 times the difficulty factor of 1, plus 20 per day left before day 30. The design gives the shape of the formula but not the numbers.
 - **Balance changes.** The full run test drove these: recipe outputs went up, trees hold 40, warmth drops 1 per degree below zero, Shamblers deal 4, the hearth has 4000 HP, towers deal 15, destroyed buildings cost 1 hope, and the Horde Mother deals 15 and spawns a Shambler every 12 seconds. The design's building and component costs did not change.
 - **The full run player lives in `tests/fullrun.ts`.** It plays one target at a time and is meant to show the run is possible, not to be optimal.
+
+## 2026-10-02 (M6)
+
+- **One save slot plus an autosave at dawn.** Both use the same slot in browser storage. This keeps the menu simple and protects a run from a closed tab.
+- **Load reloads the page.** The map and meshes are built once from the world at start, so loading a save starts the page fresh from it. The save travels in session storage across the reload.
+- **Synthesized audio.** Section 13 allows placeholder audio. Web Audio noise and oscillators make fire, wind, and stingers without any sound files, which keeps the offline build to one file.
+- **Hints are data.** `src/data/hints.ts` lists each goal with its done condition. The HUD shows the first goal not yet met during days 1 and 2.
+- **Buttons act on pointer down.** The HUD re-renders panels when their text changes, up to five times a second. Acting on press means a click is never lost to a re-render.

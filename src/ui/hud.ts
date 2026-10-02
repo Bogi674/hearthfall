@@ -9,7 +9,10 @@ import { COMPONENT_IDS, type ComponentId } from '../data/vehicle';
 import { hearthUpgradeError, pushCommand } from '../sim/commands';
 import { capacity, currentPhase, missing, stockTotal } from '../sim/query';
 import type { BuildingStatus, World } from '../sim/world';
+import { currentHint } from '../data/hints';
+import { menuHtml } from './menu';
 import { rightPanel, type Tab } from './panels';
+import type { Settings } from './settings';
 
 export interface UiState {
   placing: BuildingType | null;
@@ -23,6 +26,19 @@ export interface UiState {
   /** POI picked in the expedition panel, and the colonists picked for the squad. */
   poi: number | null;
   squad: number[];
+  menu: boolean;
+}
+
+/** What the HUD asks the main loop to do. */
+export interface HudActions {
+  focus(x: number, y: number): void;
+  /** Saves and returns a short note for the menu. */
+  save(): string;
+  load(): void;
+  newRun(): void;
+  hasSave(): boolean;
+  settings: Settings;
+  settingsChanged(): void;
 }
 
 export const STATUS_TEXT: Partial<Record<BuildingStatus, string>> = {
@@ -38,19 +54,16 @@ export const STATUS_TEXT: Partial<Record<BuildingStatus, string>> = {
 const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 const amounts = (a: Amounts) => Object.entries(a).map(([r, n]) => `${n} ${RESOURCE_NAMES[r as Resource]}`).join(' + ');
 
-export function createHud(
-  root: HTMLElement,
-  state: UiState,
-  world: () => World,
-  focus: (x: number, y: number) => void,
-): { update(): void } {
+export function createHud(root: HTMLElement, state: UiState, world: () => World, actions: HudActions): { update(): void } {
   root.insertAdjacentHTML(
     'beforeend',
-    `<div id="hud"><div id="top" class="panel"></div><div id="left"><div id="selection" class="panel"></div><div id="log" class="panel"></div></div>
-     <div id="forecast" class="panel"></div><div id="right" class="panel"></div><div id="build" class="panel"></div></div><div id="over" class="panel"></div>`,
+    `<div id="hud"><div id="topbar" class="panel"><div id="top"></div><div id="controls"></div></div><div id="left"><div id="selection" class="panel"></div><div id="log" class="panel"></div></div>
+     <div id="center"><div id="forecast" class="panel"></div><div id="hint" class="panel"></div></div>
+     <div id="right" class="panel"></div><div id="build" class="panel"></div></div><div id="over" class="panel"></div><div id="menu" class="panel"></div>`,
   );
   const el = (id: string) => document.getElementById(id)!;
   const last = new Map<string, string>();
+  let note = '';
   const set = (id: string, html: string) => {
     if (last.get(id) === html) return;
     last.set(id, html);
@@ -58,9 +71,12 @@ export function createHud(
     el(id).style.display = html ? '' : 'none';
   };
 
-  root.addEventListener('click', (e) => {
+  // Act on press, not on click. Panels re-render several times a second, and a button swapped
+  // between press and release would lose its click.
+  root.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return;
     const t = (e.target as HTMLElement).closest<HTMLElement>('[data-act]');
-    if (!t) return;
+    if (!t || (t as HTMLButtonElement).disabled) return;
     const [act, arg, arg2] = t.dataset.act!.split(':');
     if (act === 'build') state.placing = state.placing === arg ? null : (arg as BuildingType);
     if (act === 'speed') [state.speed, state.paused] = arg === '0' ? [state.speed, !state.paused] : [Number(arg), false];
@@ -75,7 +91,20 @@ export function createHud(
       state.squad = [];
     }
     if (act === 'recall') pushCommand(world().commands, { type: 'recall', id: Number(arg) });
-    if (act === 'focus') focus(Number(arg), Number(arg2));
+    if (act === 'focus') actions.focus(Number(arg), Number(arg2));
+    if (act === 'menu') [state.menu, note] = [!state.menu, ''];
+    if (act === 'save') note = actions.save();
+    if (act === 'load') actions.load();
+    if (act === 'new') actions.newRun();
+    if (act === 'set') {
+      const key = arg as 'autoPause' | 'hints';
+      actions.settings[key] = !actions.settings[key];
+      actions.settingsChanged();
+    }
+    if (act === 'volume') {
+      actions.settings.volume = Math.min(1, Math.max(0, Math.round((actions.settings.volume + Number(arg) * 0.1) * 10) / 10));
+      actions.settingsChanged();
+    }
     if (act === 'component') pushCommand(world().commands, { type: 'buildComponent', component: arg as ComponentId });
     if (act === 'launch') pushCommand(world().commands, { type: 'launch' });
     if (act === 'upgrade') pushCommand(world().commands, { type: 'upgradeHearth' });
@@ -99,8 +128,9 @@ export function createHud(
         `<span><b>Day ${w.day}</b> ${phase.name}, ${next.name} in ${clock(phase.left)}</span><span>${w.temperature}°</span>
          <span>Colonists ${w.colonists.length}</span><span class="${w.hope < BALANCE.hope.lowBelow ? 'alert' : ''}">Hope ${Math.round(w.hope)}</span>
          <span>Airship ${w.airship.built.length}/${COMPONENT_IDS.length}</span>${RESOURCES.map((r) => `<span>${RESOURCE_NAMES[r]} ${Math.floor(w.stock[r])}</span>`).join('')}
-         <span>Storage ${Math.floor(stockTotal(w))}/${capacity(w)}</span>${hearth}<span class="speeds">${speeds}</span>`,
+         <span>Storage ${Math.floor(stockTotal(w))}/${capacity(w)}</span>${hearth}`,
       );
+      set('controls', `${speeds}<button data-act="menu">Menu</button>`);
 
       const cats: BuildingCategory[] = ['Shelter', 'Production', 'Defense', 'Escape'];
       set(
@@ -117,6 +147,9 @@ export function createHud(
       );
 
       set('forecast', forecastHtml(w));
+      const hint = actions.settings.hints && !w.lost && !w.won ? currentHint(w) : null;
+      set('hint', hint ? `<b>Next</b> ${hint.text}` : '');
+      set('menu', state.menu ? menuHtml(actions.settings, actions.hasSave(), note) : '');
       set('selection', selectionHtml(w, state));
       set('right', rightPanel(w, state));
       set(

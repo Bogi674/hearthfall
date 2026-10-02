@@ -39,18 +39,26 @@ body {
   overflow-wrap: anywhere;
 }
 
-#top {
+#topbar {
   grid-column: 1 / -1;
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px 14px;
+  gap: 8px 14px;
   align-items: center;
 }
 
-#top .speeds {
-  margin-left: auto;
+#top {
   display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  flex: 1;
+  min-width: 0;
+}
+
+#controls {
+  display: flex;
+  flex-wrap: wrap;
   gap: 4px;
+  flex-shrink: 0;
 }
 
 #left {
@@ -74,11 +82,27 @@ body {
   color: #a9c4d8;
 }
 
-#forecast {
+#center {
   grid-column: 2;
   grid-row: 2;
-  align-self: start;
-  justify-self: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+#hint {
+  max-width: 520px;
+  box-sizing: border-box;
+  color: #ffc56b;
+}
+
+#hint b {
+  margin-right: 6px;
+}
+
+#forecast {
   display: flex;
   flex-wrap: wrap;
   gap: 2px 12px;
@@ -202,7 +226,8 @@ small {
   color: #a9c4d8;
 }
 
-#over {
+#over,
+#menu {
   position: fixed;
   z-index: 3;
   max-height: 80vh;
@@ -301,4 +326,33 @@ button.row {
   text-align: left;
   margin: 4px 0 12px;
   padding-left: 20px;
+}
+
+#menu {
+  z-index: 4;
+  text-align: left;
+  width: min(460px, 90vw);
+}
+
+.menu-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0;
+}
+
+#menu table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+#menu td {
+  padding: 2px 6px 2px 0;
+  vertical-align: top;
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
