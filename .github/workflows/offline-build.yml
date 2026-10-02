@@ -1,0 +1,41 @@
+name: Offline build
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: offline-build
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm test
+
+      - run: npm run build:offline
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="build-${{ github.run_number }}"
+          cp dist-offline/index.html hearthfall.html
+          gh release create "$TAG" hearthfall.html \
+            --target "$GITHUB_SHA" \
+            --title "Offline build $TAG" \
+            --notes "Offline build of commit ${GITHUB_SHA::7}. Download hearthfall.html and open it in a browser. No server is needed." \
+            --latest

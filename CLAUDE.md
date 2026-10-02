@@ -16,7 +16,7 @@ Project instructions for HEARTHFALL, a colony survival, base building, and tower
 5. State a short plan before writing code.
 
 **At the end of a session or after a finished task:**
-1. Run `npm test` and `npm run build`. Both must pass.
+1. Run `npm test`, `npm run build`, and `npm run build:offline`. All three must pass.
 2. Add a dated entry to `docs/CHANGELOG.md` with what changed and which milestone it belongs to.
 3. Add any bugs or shortcuts you are aware of to `docs/KNOWN_ISSUES.md`.
 4. Record any design or architecture decision that was not already in the design document in `docs/DECISIONS.md`, with the reason.
@@ -95,6 +95,8 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 npm install        install dependencies
 npm run dev        start the dev server
 npm run build      production build, must pass before finishing a task
+npm run build:offline
+                   single file build in dist-offline/index.html, must pass before finishing a task
 npm test           run Vitest simulation tests
 ```
 
@@ -111,6 +113,12 @@ These rules are not optional. Breaking them makes the game hard to test, save, a
 5. **Determinism.** All randomness in the simulation uses the seeded RNG in `src/sim/rng.ts`. Never use `Math.random()` inside `src/sim`.
 6. **Data driven content.** Buildings, enemies, resources, recipes, POIs, airship components, and balance numbers live in `src/data`. Systems read from data and do not hard code content values.
 7. **Plain serializable state.** Simulation state contains only plain data that survives `JSON.stringify`. No class instances with hidden state, no Three.js objects, no functions.
+8. **The offline build must keep working.** `npm run build:offline` produces one `index.html` that runs when opened from disk with no server. Every push to `main` publishes it as a GitHub Release asset. To keep it working:
+   - Bundle every asset through a static `import` so Vite can inline it. Do not load files at runtime with `fetch`, `XMLHttpRequest`, loaders pointed at URLs, or paths in `public/`.
+   - Do not use dynamic `import()`, web workers from separate files, service workers, or `new URL(..., import.meta.url)` for assets.
+   - Do not load anything from a CDN or another server.
+   - Large assets such as textures, models, and audio need a size check first. Everything ends up base64 encoded inside one HTML file.
+   - `scripts/check-offline.mjs` runs at the end of `npm run build:offline` and fails if the output is more than one file or references an external file. Do not weaken it to make a build pass.
 
 ---
 
