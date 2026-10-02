@@ -1,50 +1,48 @@
 import * as THREE from 'three';
-import { createCamera } from './camera';
-import { addLights } from './lighting';
-import { PALETTE } from './materials';
+import { CameraRig } from './camera';
+import { addAmbientLights } from './lighting';
+import { installHearthFog, PALETTE } from './materials';
+import { createPost } from './post';
+
+// Fog distances are measured from the hearth, in world units.
+const FOG_NEAR = 10;
+const FOG_FAR = 52;
 
 export interface View {
   renderer: THREE.WebGLRenderer;
   scene: THREE.Scene;
-  camera: THREE.OrthographicCamera;
-  render(): void;
+  fog: THREE.Fog;
+  rig: CameraRig;
+  render(time: number): void;
 }
 
-export function createView(container: HTMLElement): View {
+export function createView(container: HTMLElement, mapSize: number): View {
+  installHearthFog();
+
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setClearColor(PALETTE.deepCold);
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.1;
   container.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
-  const camera = createCamera(1);
-  addLights(scene);
+  const fog = new THREE.Fog(PALETTE.deepCold, FOG_NEAR, FOG_FAR);
+  scene.fog = fog;
+  addAmbientLights(scene);
 
-  const ground = new THREE.Mesh(
-    new THREE.PlaneGeometry(40, 40).rotateX(-Math.PI / 2),
-    new THREE.MeshStandardMaterial({ color: PALETTE.nightBlue }),
-  );
-  scene.add(ground);
-
-  const marker = new THREE.Mesh(
-    new THREE.BoxGeometry(2, 2, 2),
-    new THREE.MeshStandardMaterial({ color: PALETTE.oldWood }),
-  );
-  marker.position.y = 1;
-  scene.add(marker);
+  const rig = new CameraRig(mapSize / 2);
+  const post = createPost(renderer, scene, rig.camera);
 
   const resize = () => {
     const w = container.clientWidth;
     const h = container.clientHeight;
     renderer.setSize(w, h, false);
-    const aspect = w / h;
-    const halfH = camera.top;
-    camera.left = -halfH * aspect;
-    camera.right = halfH * aspect;
-    camera.updateProjectionMatrix();
+    post.setSize(w, h);
+    rig.setAspect(w / h);
   };
   window.addEventListener('resize', resize);
   resize();
 
-  return { renderer, scene, camera, render: () => renderer.render(scene, camera) };
+  return { renderer, scene, fog, rig, render: (time) => post.render(time) };
 }
