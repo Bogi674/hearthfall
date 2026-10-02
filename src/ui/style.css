@@ -16,8 +16,9 @@ body {
 #hud {
   position: fixed;
   inset: 0;
+  z-index: 2;
   display: grid;
-  grid-template-columns: 250px minmax(0, 1fr) 210px;
+  grid-template-columns: 250px minmax(0, 1fr) 240px;
   grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 8px;
   padding: 8px;
@@ -204,6 +205,7 @@ small {
 
 #over {
   position: fixed;
+  z-index: 3;
   left: 50%;
   top: 40%;
   transform: translate(-50%, -50%);
@@ -216,6 +218,7 @@ small {
 #labels {
   position: fixed;
   inset: 0;
+  z-index: 1;
   pointer-events: none;
   overflow: hidden;
   font: 12px/1.2 system-ui, sans-serif;
@@ -234,4 +237,59 @@ small {
 
 #labels .tip {
   transform: translate(14px, 14px);
+}
+
+#labels .poi {
+  color: #a9c4d8;
+  border-color: #a9c4d8;
+  background: rgba(14, 22, 33, 0.85);
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.tabs button {
+  flex: 1;
+}
+
+button.row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  text-align: left;
+  margin-bottom: 4px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border: 1px solid #6b4a32;
+  border-radius: 4px;
+  padding: 6px;
+  margin-bottom: 6px;
+}
+
+.card button {
+  align-self: flex-start;
+  margin-top: 4px;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.link {
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.link:hover {
+  color: #ffc56b;
 }

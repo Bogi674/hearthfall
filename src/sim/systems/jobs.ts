@@ -20,7 +20,7 @@ export function jobsSystem(world: World, dt: number): void {
     const assigned = world.colonists.filter((c) => c[slot] === b.id);
     for (const c of assigned.slice(b.workers)) c[slot] = null;
     for (let n = assigned.length; n < b.workers; n++) {
-      const idle = world.colonists.find((c) => c[slot] === null);
+      const idle = world.colonists.find((c) => c[slot] === null && c.expedition === null);
       if (!idle) break;
       idle[slot] = b.id;
     }
@@ -37,6 +37,7 @@ export function jobsSystem(world: World, dt: number): void {
 
   const work = currentPhase(world).work;
   for (const c of world.colonists) {
+    if (c.expedition !== null) continue;
     const place = work ? c.job : (c.duty ?? c.bed);
     const b = place === null ? undefined : byId.get(place);
     const a = c.id * 2.4;

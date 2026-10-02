@@ -1,5 +1,6 @@
 // Seeded map generation. The same seed always produces the same map.
 import { BALANCE } from '../data/balance';
+import { POI_TYPES, POIS } from '../data/pois';
 import { getTile, inBounds, setTile, Tile, type MapState } from './grid';
 import { chance, nextFloat, nextInt, type RngState } from './rng';
 
@@ -8,6 +9,7 @@ const CFG = BALANCE.map;
 export interface GeneratedMap {
   map: MapState;
   hearth: { x: number; y: number };
+  pois: { type: (typeof POI_TYPES)[number]; x: number; y: number; clears: number }[];
 }
 
 export function generateMap(rng: RngState): GeneratedMap {
@@ -24,7 +26,19 @@ export function generateMap(rng: RngState): GeneratedMap {
   placeStreetRubble(map, rng);
   clearAround(map, hx, hy, CFG.clearingRadius);
 
-  return { map, hearth: { x: hx, y: hy } };
+  return { map, hearth: { x: hx, y: hy }, pois: placePois(map, rng, hx, hy) };
+}
+
+/** One POI of each type at its design distance, in a random direction, on a small cleared lot. */
+function placePois(map: MapState, rng: RngState, hx: number, hy: number): GeneratedMap['pois'] {
+  return POI_TYPES.map((type) => {
+    const a = nextFloat(rng) * Math.PI * 2;
+    const r = POIS[type].distance;
+    const x = Math.max(3, Math.min(map.width - 4, Math.round(hx + Math.cos(a) * r)));
+    const y = Math.max(3, Math.min(map.height - 4, Math.round(hy + Math.sin(a) * r)));
+    clearAround(map, x, y, 1.5);
+    return { type, x, y, clears: 0 };
+  });
 }
 
 function dist(ax: number, ay: number, bx: number, by: number): number {
@@ -128,8 +142,9 @@ function placeStreetRubble(map: MapState, rng: RngState): void {
 }
 
 function clearAround(map: MapState, cx: number, cy: number, radius: number): void {
-  for (let y = cy - radius; y <= cy + radius; y++) {
-    for (let x = cx - radius; x <= cx + radius; x++) {
+  const r = Math.floor(radius);
+  for (let y = cy - r; y <= cy + r; y++) {
+    for (let x = cx - r; x <= cx + r; x++) {
       if (inBounds(map, x, y) && dist(x, y, cx, cy) <= radius) setTile(map, x, y, Tile.Ground);
     }
   }

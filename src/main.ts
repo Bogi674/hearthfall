@@ -18,8 +18,8 @@ const container = document.getElementById('app')!;
 const view = createView(container, world.map.width);
 const worldView = createWorldView(world, view.scene, view.fog);
 const controls = bindCameraControls(view.rig, view.renderer.domElement);
-const state: UiState = { placing: null, rotated: false, selected: null, speed: 1, paused: false, buildOpen: true };
-const hud = createHud(document.body, state, () => world);
+const state: UiState = { placing: null, rotated: false, selected: null, speed: 1, paused: false, buildOpen: true, tab: 'colonists', poi: null, squad: [] };
+const hud = createHud(document.body, state, () => world, (x, y) => view.rig.target.set(x - world.map.width / 2, 0, y - world.map.height / 2));
 const labels = createLabels(document.body);
 const pointer = bindPointer(view.renderer.domElement, view.rig.camera, view.scene, state, () => world);
 

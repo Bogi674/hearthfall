@@ -125,3 +125,12 @@ export function createGhost(): THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMate
   ghost.visible = false;
   return ghost;
 }
+
+/** A POI landmark: a broken stone footing with a cold beacon that shows through fog. */
+export function createLandmark(): THREE.Group {
+  const g = new THREE.Group();
+  g.add(part(box, stone, 0, 0, 0, 1.8, 0.4, 1.8));
+  g.add(part(box, body, 0.5, 0.4, 0.5, 0.12, 2.2, 0.12));
+  g.add(part(box, new THREE.MeshBasicMaterial({ color: PALETTE.frost.clone().multiplyScalar(1.8), fog: false }), 0.5, 2.6, 0.5, 0.3, 0.3, 0.3));
+  return g;
+}

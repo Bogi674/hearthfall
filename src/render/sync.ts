@@ -7,7 +7,7 @@ import type { World } from '../sim/world';
 import { createGroundMaterial } from './groundShader';
 import { createHearthLight } from './lighting';
 import { createBars, type Bar } from './meshes/bars';
-import { createBuildingMesh, createColonistMesh } from './meshes/buildings';
+import { createBuildingMesh, createColonistMesh, createLandmark } from './meshes/buildings';
 import { createEnemyMeshes } from './meshes/enemies';
 import { createHearthMesh } from './meshes/hearth';
 import { buildProps, colorPropsByWarmth } from './meshes/props';
@@ -57,6 +57,11 @@ export function createWorldView(world: World, scene: THREE.Scene, fog: THREE.Fog
   const colonists = createColonistMesh(64);
   scene.add(colonists);
   const m = new THREE.Matrix4();
+  for (const p of world.pois) {
+    const g = createLandmark();
+    g.position.set(p.x - width / 2, 0, p.y - height / 2);
+    scene.add(g);
+  }
   const enemies = createEnemyMeshes();
   scene.add(enemies.group);
   const bars = createBars();

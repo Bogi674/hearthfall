@@ -1,7 +1,7 @@
 // Hunger, rest, body warmth, health, and death (section 6.3).
 import { BALANCE } from '../../data/balance';
 import { bandAt, DAY_SECONDS } from '../query';
-import { addLog, type World } from '../world';
+import { recordDeath, type World } from '../world';
 
 const N = BALANCE.needs;
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
@@ -26,7 +26,7 @@ export function needsSystem(world: World, dt: number): void {
     if (starving) c.health -= dt / N.starveKillSeconds;
     if (freezing) c.health -= dt / N.freezeKillSeconds;
     if (!starving && !freezing) c.health = clamp01(c.health + dt / N.healSeconds);
-    if (c.health <= 0) addLog(world, `${c.name} ${starving ? 'starved' : 'froze to death'}.`);
+    if (c.health <= 0) recordDeath(world, c, starving ? 'starved' : 'froze to death');
   }
   world.colonists = world.colonists.filter((c) => c.health > 0);
 }

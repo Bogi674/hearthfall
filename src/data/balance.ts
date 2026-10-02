@@ -116,6 +116,22 @@ export const BALANCE = {
     lightShamblerDamage: 0.7,
     lightRunnerSpeed: 0.8,
   },
+  /** Section 10. */
+  expeditions: {
+    maxSquad: 4,
+    /** Squads walk slower than colonists in camp. Tiles per second. */
+    speed: 1.2,
+    searchSeconds: 60,
+    rollSeconds: 6,
+    /** Chance of a danger event per roll is danger times this, divided by the square root of squad size. */
+    riskPerDanger: 0.035,
+    nightRisk: 3,
+    /** Health lost per injury, min and max. */
+    injury: [0.25, 0.5],
+    rareChance: 0.15,
+    /** Loot from a POI is multiplied by this for each full search already done there. */
+    revisitLoot: 0.5,
+  },
   production: {
     /** Work speed on cold tiles. Freezing tiles stop work. */
     coldSpeed: 0.5,

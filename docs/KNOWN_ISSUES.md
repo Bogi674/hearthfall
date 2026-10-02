@@ -29,3 +29,7 @@ Bugs, shortcuts, and loose ends that are known but not fixed yet.
 - Gates do nothing special for colonists yet, because colonists walk through walls anyway.
 - Performance with 200 monsters has not been measured on a real GPU. A full 8 night simulation runs at about 55 microseconds per tick in tests.
 - Dev builds put the world on `window.world` for scripted visual checks. Production and offline builds do not.
+- Squads walk in straight lines from the gate to the POI, through trees and ruins.
+- Loot that does not fit in storage when a squad returns is lost. The return message only lists what was kept.
+- POIs are not hidden by fog of war, because fog of war is not built yet.
+- Colonists away on expeditions still eat from the stockpile, since hauling is abstracted.

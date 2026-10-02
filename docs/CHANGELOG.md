@@ -2,6 +2,18 @@
 
 Newest entries first. Each entry names the milestone it belongs to.
 
+## 2026-10-02 (M4: Expeditions)
+
+- Added the six POIs from section 10.1 with danger, distance, loot, rare items, and survivors at the Clinic. Each map places one of each at its design distance, with a landmark and a name label.
+- Added metal and parts as resources so expeditions can bring them back. Their buildings arrive in M5.
+- Added the expeditions system. A squad of 1 to 4 walks out through the nearest gate, searches with rolls for loot and danger, and walks home. Squads are visible on the map the whole trip.
+- Danger events injure or kill. Bigger squads lower the risk and night triples it. A searched POI gives half the loot on each later visit.
+- Recall turns a squad around at once.
+- Added an Expeditions tab with places, danger, the danger chance per roll, loot hints, a squad picker, and active trips with recall.
+- Event log entries with a place can be clicked to focus the camera there. Deaths are now recorded with their cause for the M5 score screen.
+- Fixed map generation writing fractional tile keys when clearing a radius that is not a whole number.
+- Added `docs/screenshots/m4-expedition.jpg`.
+
 ## 2026-10-02 (M3: Defense and Waves)
 
 - Added the Wooden Barricade, Gate, Lantern Post, Spike Trap, and Watchtower. Every building now has HP and can be destroyed.

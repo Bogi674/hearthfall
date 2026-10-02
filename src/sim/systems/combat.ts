@@ -6,7 +6,7 @@ import { BUILDINGS } from '../../data/buildings';
 import { ENEMIES } from '../../data/enemies';
 import { center, currentPhase } from '../query';
 import { hearthRadius } from './warmth';
-import { addLog, type Building, type World } from '../world';
+import { addLog, recordDeath, type Building, type World } from '../world';
 
 const D = BALANCE.defense;
 
@@ -46,7 +46,7 @@ export function combatSystem(world: World, dt: number): void {
       if (hit) wall.hp -= damage * def.wallDamage;
     } else if (victim) {
       if (hit) victim.health -= damage / D.colonistHp;
-      if (victim.health <= 0) addLog(world, `${victim.name} was killed by a ${def.name}.`);
+      if (victim.health <= 0) recordDeath(world, victim, `was killed by a ${def.name}`);
     } else {
       const nx = next % width;
       const ny = (next - nx) / width;
@@ -90,7 +90,7 @@ export function combatSystem(world: World, dt: number): void {
   world.colonists = world.colonists.filter((c) => c.health > 0);
   const destroyed = world.buildings.filter((b) => b.hp <= 0);
   if (destroyed.length) {
-    for (const b of destroyed) addLog(world, `The ${BUILDINGS[b.type].name} was destroyed.`);
+    for (const b of destroyed) addLog(world, `The ${BUILDINGS[b.type].name} was destroyed.`, center(b));
     world.buildings = world.buildings.filter((b) => b.hp > 0);
     world.buildRev++;
   }

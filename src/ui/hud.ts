@@ -8,6 +8,7 @@ import { RESOURCE_NAMES, RESOURCES, type Amounts, type Resource } from '../data/
 import { pushCommand } from '../sim/commands';
 import { capacity, currentPhase, missing, stockTotal } from '../sim/query';
 import type { BuildingStatus, World } from '../sim/world';
+import { rightPanel, type Tab } from './panels';
 
 export interface UiState {
   placing: BuildingType | null;
@@ -16,6 +17,10 @@ export interface UiState {
   speed: number;
   paused: boolean;
   buildOpen: boolean;
+  tab: Tab;
+  /** POI picked in the expedition panel, and the colonists picked for the squad. */
+  poi: number | null;
+  squad: number[];
 }
 
 export const STATUS_TEXT: Partial<Record<BuildingStatus, string>> = {
@@ -30,9 +35,13 @@ export const STATUS_TEXT: Partial<Record<BuildingStatus, string>> = {
 
 const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 const amounts = (a: Amounts) => Object.entries(a).map(([r, n]) => `${n} ${RESOURCE_NAMES[r as Resource]}`).join(' + ');
-const bar = (v: number, label: string) => `<i class="bar" title="${label}"><b style="width:${Math.round(v * 100)}%"></b></i>`;
 
-export function createHud(root: HTMLElement, state: UiState, world: () => World): { update(): void } {
+export function createHud(
+  root: HTMLElement,
+  state: UiState,
+  world: () => World,
+  focus: (x: number, y: number) => void,
+): { update(): void } {
   root.insertAdjacentHTML(
     'beforeend',
     `<div id="hud"><div id="top" class="panel"></div><div id="left"><div id="selection" class="panel"></div><div id="log" class="panel"></div></div>
@@ -55,9 +64,19 @@ export function createHud(root: HTMLElement, state: UiState, world: () => World)
     if (act === 'speed') [state.speed, state.paused] = arg === '0' ? [state.speed, !state.paused] : [Number(arg), false];
     if (act === 'workers') pushCommand(world().commands, { type: 'setWorkers', id: Number(arg), count: Number(arg2) });
     if (act === 'restart') location.reload();
+    if (act === 'tab') state.tab = arg as Tab;
+    if (act === 'poi') state.poi = Number(arg);
+    if (act === 'squad') state.squad = state.squad.includes(Number(arg)) ? state.squad.filter((id) => id !== Number(arg)) : [...state.squad, Number(arg)];
+    if (act === 'send' && state.poi !== null) {
+      pushCommand(world().commands, { type: 'sendExpedition', poi: state.poi, members: state.squad });
+      state.squad = [];
+    }
+    if (act === 'recall') pushCommand(world().commands, { type: 'recall', id: Number(arg) });
+    if (act === 'focus') focus(Number(arg), Number(arg2));
+    api.update();
   });
 
-  return {
+  const api = {
     update() {
       const w = world();
       const phase = currentPhase(w);
@@ -95,21 +114,19 @@ export function createHud(root: HTMLElement, state: UiState, world: () => World)
 
       set('forecast', forecastHtml(w));
       set('selection', selectionHtml(w, state));
+      set('right', rightPanel(w, state));
       set(
-        'right',
-        `<h4>Colonists</h4>${w.colonists
-          .map((c) => {
-            const job = w.buildings.find((b) => b.id === c.job);
-            const task = c.asleep ? 'Sleeping' : !phase.work && c.duty !== null ? 'On watch' : job && phase.work ? BUILDINGS[job.type].name : 'Idle';
-            return `<div class="colonist"><span>${c.name}</span><small>${task}</small>
-              <div class="bars">${bar(c.health, 'Health')}${bar(c.hunger, 'Hunger')}${bar(c.rest, 'Rest')}${bar(c.warmth, 'Warmth')}</div></div>`;
-          })
-          .join('')}<p class="legend">Bars: health, hunger, rest, warmth</p>`,
+        'log',
+        w.log
+          .slice(-8)
+          .reverse()
+          .map((l) => `<div ${l.x !== undefined ? `class="link" data-act="focus:${l.x}:${l.y}"` : ''}>Day ${l.day}: ${l.text}</div>`)
+          .join(''),
       );
-      set('log', w.log.slice(-8).reverse().map((l) => `<div>Day ${l.day}: ${l.text}</div>`).join(''));
       set('over', w.lost ? `<h2>${w.lost}</h2><p>The colony lasted ${w.day} days.</p><button data-act="restart">Try again</button>` : '');
     },
   };
+  return api;
 }
 
 const EDGES = ['north', 'east', 'south', 'west'];

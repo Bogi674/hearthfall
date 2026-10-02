@@ -66,3 +66,15 @@ Design and architecture decisions that are not already in `docs/GAME_DESIGN.md`.
 - **Done line test.** The "good layout" is a barricade circle at radius 5, a spike trap circle at radius 6, and 4 watchtowers inside. The player rebuilds broken pieces each second. Food and fuel are topped up so only the defense decides the outcome.
 - **Test timeout is 60 seconds.** Multi day simulations take a few seconds each.
 - **Dev builds expose `window.world`.** Browser scripts use it to set up night scenes for screenshots. It is behind `import.meta.env.DEV`.
+
+## 2026-10-02 (M4)
+
+- **POIs are on the map.** Each type appears once, at its distance from `src/data/pois.ts` in a random direction. The 80 by 80 map is small, so distances run from 16 to 36 tiles.
+- **Squads leave through the gate nearest the POI** and come home through the same gate.
+- **Squads walk slower than colonists in camp,** at 1.2 tiles per second. This makes far trips take real time.
+- **Search.** A search lasts 60 seconds with a roll every 6 seconds. Each roll gives loot, may find the rare item or a survivor, and may cause a danger event.
+- **Risk formula.** Danger chance per roll is danger times 0.035, divided by the square root of squad size, times 3 at night. The UI shows this number before sending.
+- **Rare items drop once.** A rare item can only be found while the colony does not already hold it.
+- **Revisits.** Each full search of a POI halves its loot. A recalled squad does not count as a full search.
+- **Sent colonists lose their job and night duty.** Their slots refill from idle colonists at once. They get new jobs as idle colonists after they return.
+- **Survivors join on return.** A survivor found at the Clinic becomes a new colonist when the squad gets home.
