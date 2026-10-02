@@ -79,6 +79,43 @@ export const BALANCE = {
     freezeKillSeconds: 120,
     healSeconds: 600,
   },
+  /** Section 9.5. Threat for night n is base * growth^(n - 1), rounded. */
+  waves: {
+    base: 10,
+    growth: 1.32,
+    firstNight: 2,
+    bloodMoonEvery: 5,
+    /** Spawns are spread over the first part of the night. */
+    spawnSeconds: 90,
+    /** Spawn edges grow by one every this many nights, up to 4. */
+    nightsPerEdge: 4,
+  },
+  /** Flow field costs per tile (section 9.3). Impassable tiles are not entered. */
+  paths: {
+    ground: 1,
+    road: 1,
+    tree: 4,
+    rubble: 2,
+    structure: 40,
+    /** Runners avoid walls more and favor gates. */
+    runnerStructure: 80,
+    runnerGate: 10,
+  },
+  defense: {
+    hearthHp: 1000,
+    colonistHp: 100,
+    attackInterval: 1,
+    /** Enemies hit colonists within this many tiles. */
+    reach: 0.7,
+    towerRange: 6,
+    towerDamage: 12,
+    towerInterval: 0.8,
+    trapDps: 20,
+    trapWearPerSecond: 3,
+    /** Light from the hearth and lanterns (section 5.3). */
+    lightShamblerDamage: 0.7,
+    lightRunnerSpeed: 0.8,
+  },
   production: {
     /** Work speed on cold tiles. Freezing tiles stop work. */
     coldSpeed: 0.5,

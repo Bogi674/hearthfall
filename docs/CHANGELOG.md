@@ -2,6 +2,21 @@
 
 Newest entries first. Each entry names the milestone it belongs to.
 
+## 2026-10-02 (M3: Defense and Waves)
+
+- Added the Wooden Barricade, Gate, Lantern Post, Spike Trap, and Watchtower. Every building now has HP and can be destroyed.
+- Added flow field pathing toward the hearth. Walls cost a lot instead of blocking, so monsters break through the cheapest wall. Runners use their own field that favors gates and open gaps.
+- Added the Shambler, Runner, and Brute. Brutes deal triple damage to walls.
+- Added the wave formula with a Blood Moon every fifth night, unlocks by night, and spawn edges that grow over time.
+- Added the forecast bar. It shows threat, edges, and enemy types by day, and exact counts from dusk.
+- Added defender duty. Watchtower defenders keep their day job, skip sleep, and shoot monsters at night.
+- Spike traps hurt monsters standing on them. Light from the hearth and lit lanterns weakens Shamblers and slows Runners.
+- The hearth has HP. The run is lost if it is destroyed.
+- Added meshes for the defenses, monsters with glowing Blight eyes, lantern light pools, and health bars on damaged entities.
+- Tests show that a ringed base with towers and traps holds through night 8 on three seeds, and the same colony with no defenses falls.
+- The M2 economy tests now run with monsters cleared, matching the "no monsters" wording of the M2 done line.
+- Added `docs/screenshots/m3-night-attack.jpg` and `docs/screenshots/m3-overview.jpg`.
+
 ## 2026-10-02 (M2: Core Economy)
 
 - Added data for the ten M2 buildings, their recipes, resources, colonist names, start values, the day cycle, and needs rates.
@@ -15,6 +30,7 @@ Newest entries first. Each entry names the milestone it belongs to.
 - Added the HUD: top bar, build menu, selection panel with worker buttons, colonist list, event log, and game over screen.
 - Added pause, 1x, 2x, and 3x speed. The game auto pauses when dusk starts.
 - Tests show that a managed colony survives 5 days with everyone alive, and that neglecting fuel or food loses the run.
+- Added `docs/screenshots/m2-economy.jpg`.
 
 ## 2026-10-02 (Tooling, outside the milestone plan)
 

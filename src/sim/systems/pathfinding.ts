@@ -1,0 +1,89 @@
+// Flow fields toward the hearth (section 9.3). Each tile holds the cheapest cost to reach the hearth.
+// Walls cost a lot instead of blocking, so a fully walled base is still reachable through its weakest wall.
+// Rebuilt only when buildings or tiles change.
+import { BALANCE } from '../../data/balance';
+import { BUILDINGS } from '../../data/buildings';
+import { Tile } from '../grid';
+import type { World } from '../world';
+
+const P = BALANCE.paths;
+/** Cost of an impassable tile. A finite number keeps the state JSON safe. */
+export const BLOCKED = 1e9;
+
+export function pathfindingSystem(world: World, _dt: number): void {
+  const key = `${world.mapRev}|${world.buildRev}`;
+  if (world.flow.key === key) return;
+  world.flow = { key, normal: field(world, false), runner: field(world, true) };
+}
+
+function tileCost(world: World, runner: boolean): number[] {
+  const terrain: Partial<Record<Tile, number>> = { [Tile.Ground]: P.ground, [Tile.Road]: P.road, [Tile.Tree]: P.tree, [Tile.Rubble]: P.rubble };
+  const cost = world.map.tiles.map((t) => terrain[t] ?? BLOCKED);
+  for (const b of world.buildings) {
+    const def = BUILDINGS[b.type];
+    if (def.walkable) continue;
+    const c = !runner ? P.structure : def.gate ? P.runnerGate : P.runnerStructure;
+    for (let y = b.y; y < b.y + b.h; y++) for (let x = b.x; x < b.x + b.w; x++) cost[y * world.map.width + x] = c;
+  }
+  return cost;
+}
+
+/** Dijkstra from the hearth footprint over 4 neighbors. */
+function field(world: World, runner: boolean): number[] {
+  const { width, height } = world.map;
+  const cost = tileCost(world, runner);
+  const dist = new Array<number>(width * height).fill(BLOCKED);
+  const heap: [number, number][] = [];
+  for (let y = world.hearth.y - 1; y <= world.hearth.y + 1; y++) {
+    for (let x = world.hearth.x - 1; x <= world.hearth.x + 1; x++) {
+      dist[y * width + x] = 0;
+      push(heap, [0, y * width + x]);
+    }
+  }
+  while (heap.length) {
+    const [d, i] = pop(heap);
+    if (d > dist[i]) continue;
+    const x = i % width;
+    const y = (i - x) / width;
+    for (const [nx, ny] of [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]]) {
+      if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+      const n = ny * width + nx;
+      if (cost[n] >= BLOCKED) continue;
+      const nd = d + cost[n];
+      if (nd < dist[n]) {
+        dist[n] = nd;
+        push(heap, [nd, n]);
+      }
+    }
+  }
+  return dist;
+}
+
+function push(h: [number, number][], v: [number, number]): void {
+  h.push(v);
+  for (let i = h.length - 1; i > 0; ) {
+    const p = (i - 1) >> 1;
+    if (h[p][0] <= h[i][0]) break;
+    [h[p], h[i]] = [h[i], h[p]];
+    i = p;
+  }
+}
+
+function pop(h: [number, number][]): [number, number] {
+  const top = h[0];
+  const last = h.pop()!;
+  if (h.length) {
+    h[0] = last;
+    for (let i = 0; ; ) {
+      const l = 2 * i + 1;
+      const r = l + 1;
+      let m = i;
+      if (l < h.length && h[l][0] < h[m][0]) m = l;
+      if (r < h.length && h[r][0] < h[m][0]) m = r;
+      if (m === i) break;
+      [h[m], h[i]] = [h[i], h[m]];
+      i = m;
+    }
+  }
+  return top;
+}

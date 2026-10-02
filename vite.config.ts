@@ -7,5 +7,7 @@ export default defineConfig(({ mode }) => ({
   build: mode === 'offline' ? { outDir: 'dist-offline' } : {},
   test: {
     include: ['tests/**/*.test.ts'],
+    // Full run simulations cover several in game days.
+    testTimeout: 60_000,
   },
 }));

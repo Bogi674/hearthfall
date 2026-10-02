@@ -23,6 +23,9 @@ const hud = createHud(document.body, state, () => world);
 const labels = createLabels(document.body);
 const pointer = bindPointer(view.renderer.domElement, view.rig.camera, view.scene, state, () => world);
 
+// Dev builds expose the world so browser scripts can set up scenes for visual checks.
+if (import.meta.env.DEV) Object.assign(window, { world });
+
 let accumulator = 0;
 let last = performance.now();
 let lastHud = 0;

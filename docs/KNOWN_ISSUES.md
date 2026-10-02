@@ -21,3 +21,11 @@ Bugs, shortcuts, and loose ends that are known but not fixed yet.
 - Hope, cold snaps, hearth modes, hearth upgrades, and the hearth stoker slot are not in M2 and are not built yet.
 - The game over screen reloads the page to restart.
 - The HUD has been checked at 1440 by 900. Very small windows can squeeze the side panels.
+- Fog of war is not built yet, so the watchtower does not reveal anything.
+- Monsters move on a 4 neighbor grid, so they walk in steps. They also stack on the same tile with no separation.
+- Monsters that survive the night vanish at dawn. There is no retreat animation.
+- Tower shots, trap hits, and wall hits have no visual effect yet. Only health bars show damage.
+- There is no repair. Damaged walls stay damaged until the player replaces them.
+- Gates do nothing special for colonists yet, because colonists walk through walls anyway.
+- Performance with 200 monsters has not been measured on a real GPU. A full 8 night simulation runs at about 55 microseconds per tick in tests.
+- Dev builds put the world on `window.world` for scripted visual checks. Production and offline builds do not.

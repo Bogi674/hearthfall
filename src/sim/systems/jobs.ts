@@ -11,15 +11,18 @@ export function jobsSystem(world: World, dt: number): void {
   for (const c of world.colonists) {
     if (c.job !== null && !byId.has(c.job)) c.job = null;
     if (c.bed !== null && !byId.has(c.bed)) c.bed = null;
+    if (c.duty !== null && !byId.has(c.duty)) c.duty = null;
   }
 
   for (const b of world.buildings) {
-    const assigned = world.colonists.filter((c) => c.job === b.id);
-    for (const c of assigned.slice(b.workers)) c.job = null;
+    // Night duty posts take defenders, who keep their day job.
+    const slot = BUILDINGS[b.type].nightDuty ? 'duty' : 'job';
+    const assigned = world.colonists.filter((c) => c[slot] === b.id);
+    for (const c of assigned.slice(b.workers)) c[slot] = null;
     for (let n = assigned.length; n < b.workers; n++) {
-      const idle = world.colonists.find((c) => c.job === null);
+      const idle = world.colonists.find((c) => c[slot] === null);
       if (!idle) break;
-      idle.job = b.id;
+      idle[slot] = b.id;
     }
     const beds = BUILDINGS[b.type].beds ?? 0;
     let used = world.colonists.filter((c) => c.bed === b.id).length;
@@ -34,7 +37,7 @@ export function jobsSystem(world: World, dt: number): void {
 
   const work = currentPhase(world).work;
   for (const c of world.colonists) {
-    const place = work ? c.job : c.bed;
+    const place = work ? c.job : (c.duty ?? c.bed);
     const b = place === null ? undefined : byId.get(place);
     const a = c.id * 2.4;
     const target = b ? center(b) : { x: world.hearth.x + Math.cos(a) * 2.5, y: world.hearth.y + Math.sin(a) * 2.5 };
@@ -48,6 +51,6 @@ export function jobsSystem(world: World, dt: number): void {
       c.x += (dx / d) * step;
       c.y += (dy / d) * step;
     }
-    c.asleep = !work && b !== undefined && d - step < C.arriveDistance;
+    c.asleep = !work && c.duty === null && b !== undefined && d - step < C.arriveDistance;
   }
 }

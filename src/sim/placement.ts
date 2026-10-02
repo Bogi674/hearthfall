@@ -32,6 +32,8 @@ export function placeBuilding(world: World, type: BuildingType, x: number, y: nu
   if (placementError(world, type, x, y, rotated)) return false;
   const [w, h] = footprint(type, rotated);
   pay(world, BUILDINGS[type].cost);
-  world.buildings.push({ id: world.nextId++, type, x, y, w, h, workers: BUILDINGS[type].workers, progress: 0, loaded: false, status: 'ok' });
+  const def = BUILDINGS[type];
+  world.buildings.push({ id: world.nextId++, type, x, y, w, h, workers: def.workers, progress: 0, loaded: false, status: 'ok', hp: def.hp, lit: false });
+  world.buildRev++;
   return true;
 }

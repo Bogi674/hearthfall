@@ -2,6 +2,7 @@
 // Reads world state and only changes the world through the command queue.
 import { BALANCE } from '../data/balance';
 import { BUILDING_TYPES, BUILDINGS, type BuildingType } from '../data/buildings';
+import { ENEMIES, ENEMY_TYPES } from '../data/enemies';
 import { RECIPES } from '../data/recipes';
 import { RESOURCE_NAMES, RESOURCES, type Amounts, type Resource } from '../data/resources';
 import { pushCommand } from '../sim/commands';
@@ -19,6 +20,8 @@ export interface UiState {
 
 export const STATUS_TEXT: Partial<Record<BuildingStatus, string>> = {
   noWorkers: 'No workers',
+  noDefender: 'No defender',
+  noFuel: 'No fuel to light',
   noInput: 'Missing input',
   noResource: 'Nothing to gather nearby',
   tooCold: 'Too cold to work',
@@ -33,7 +36,7 @@ export function createHud(root: HTMLElement, state: UiState, world: () => World)
   root.insertAdjacentHTML(
     'beforeend',
     `<div id="hud"><div id="top" class="panel"></div><div id="left"><div id="selection" class="panel"></div><div id="log" class="panel"></div></div>
-     <div id="right" class="panel"></div><div id="build" class="panel"></div></div><div id="over" class="panel"></div>`,
+     <div id="forecast" class="panel"></div><div id="right" class="panel"></div><div id="build" class="panel"></div></div><div id="over" class="panel"></div>`,
   );
   const el = (id: string) => document.getElementById(id)!;
   const last = new Map<string, string>();
@@ -77,7 +80,7 @@ export function createHud(root: HTMLElement, state: UiState, world: () => World)
         'build',
         !state.buildOpen
           ? ''
-          : (['Shelter', 'Production'] as const)
+          : (['Shelter', 'Production', 'Defense'] as const)
               .map(
                 (cat) =>
                   `<div class="group"><h4>${cat}</h4>${BUILDING_TYPES.filter((t) => BUILDINGS[t].category === cat)
@@ -90,13 +93,15 @@ export function createHud(root: HTMLElement, state: UiState, world: () => World)
               .join(''),
       );
 
+      set('forecast', forecastHtml(w));
       set('selection', selectionHtml(w, state));
       set(
         'right',
         `<h4>Colonists</h4>${w.colonists
           .map((c) => {
             const job = w.buildings.find((b) => b.id === c.job);
-            return `<div class="colonist"><span>${c.name}</span><small>${c.asleep ? 'Sleeping' : job ? BUILDINGS[job.type].name : 'Idle'}</small>
+            const task = c.asleep ? 'Sleeping' : !phase.work && c.duty !== null ? 'On watch' : job && phase.work ? BUILDINGS[job.type].name : 'Idle';
+            return `<div class="colonist"><span>${c.name}</span><small>${task}</small>
               <div class="bars">${bar(c.health, 'Health')}${bar(c.hunger, 'Hunger')}${bar(c.rest, 'Rest')}${bar(c.warmth, 'Warmth')}</div></div>`;
           })
           .join('')}<p class="legend">Bars: health, hunger, rest, warmth</p>`,
@@ -107,21 +112,42 @@ export function createHud(root: HTMLElement, state: UiState, world: () => World)
   };
 }
 
+const EDGES = ['north', 'east', 'south', 'west'];
+
+/** Forecast bar (section 9.5): threat, edges, and enemy types by day, exact counts from dusk. */
+function forecastHtml(w: World): string {
+  const wave = w.wave;
+  const phase = currentPhase(w);
+  if (wave.threat === 0) return `<b>Night ${wave.night}</b> No attack expected.`;
+  const exact = phase.name === 'Dusk' || phase.name === 'Night';
+  const kinds = ENEMY_TYPES.filter((t) => wave.plan.includes(t))
+    .map((t) => (exact ? `${wave.plan.filter((p) => p === t).length} ${ENEMIES[t].plural}` : ENEMIES[t].plural))
+    .join(', ');
+  const edges = wave.edges.map((e) => EDGES[e]).join(' and ');
+  const when =
+    phase.name === 'Day' ? `Attack in ${clock(phase.left + BALANCE.phases[1].seconds)}`
+    : phase.name === 'Dusk' ? `Attack in ${clock(phase.left)}`
+    : phase.name === 'Night' ? `${w.enemies.length} monsters out, ${wave.plan.length - wave.spawned} still coming`
+    : 'The night is over';
+  return `<b class="${wave.bloodMoon ? 'alert' : ''}">Night ${wave.night}${wave.bloodMoon ? ', Blood Moon' : ''}</b>
+    <span>Threat ${wave.threat} from the ${edges}</span><span>${kinds}</span><span>${when}</span>`;
+}
+
 function selectionHtml(w: World, state: UiState): string {
   if (state.selected === 'hearth') {
     const lvl = BALANCE.hearth.levels[w.hearth.level - 1];
-    return `<h3>Hearth</h3><p>Level ${w.hearth.level}. Warms a radius of ${lvl.radius} tiles.</p><p>Burns ${lvl.fuelPerMinute} fuel per minute.</p>
+    return `<h3>Hearth</h3><p>Health ${Math.ceil(w.hearth.hp)}/${BALANCE.defense.hearthHp}</p><p>Level ${w.hearth.level}. Warms a radius of ${lvl.radius} tiles.</p><p>Burns ${lvl.fuelPerMinute} fuel per minute.</p>
       <p class="${w.hearth.lit ? '' : 'alert'}">${w.hearth.lit ? 'Burning' : 'Out of fuel'}</p>`;
   }
   const b = w.buildings.find((b) => b.id === state.selected);
   if (!b) return '';
   const def = BUILDINGS[b.type];
   const recipe = RECIPES[b.type];
-  const crew = w.colonists.filter((c) => c.job === b.id).length;
-  const lines = [`<h3>${def.name}</h3>`];
+  const crew = w.colonists.filter((c) => (def.nightDuty ? c.duty : c.job) === b.id).length;
+  const lines = [`<h3>${def.name}</h3><p>Health ${Math.ceil(b.hp)}/${def.hp}</p>`];
   if (STATUS_TEXT[b.status]) lines.push(`<p class="alert">${STATUS_TEXT[b.status]}</p>`);
   if (def.workers > 0) {
-    lines.push(`<p class="workers">Workers ${crew}/${b.workers} of ${def.workers}
+    lines.push(`<p class="workers">${def.nightDuty ? 'Night defenders' : 'Workers'} ${crew}/${b.workers} of ${def.workers}
       <button data-act="workers:${b.id}:${b.workers - 1}">−</button><button data-act="workers:${b.id}:${b.workers + 1}">+</button></p>`);
   }
   if (recipe) {
@@ -130,5 +156,8 @@ function selectionHtml(w: World, state: UiState): string {
   }
   if (def.beds) lines.push(`<p>Beds ${w.colonists.filter((c) => c.bed === b.id).length}/${def.beds}</p>`);
   if (def.storage) lines.push(`<p>Adds ${def.storage} storage</p>`);
+  if (def.light) lines.push(`<p>Lights a radius of ${def.light.radius} at night for ${def.light.fuel} fuel. ${b.lit ? 'Lit' : 'Unlit'}</p>`);
+  if (def.walkable) lines.push('<p>Hurts monsters that walk over it</p>');
+  if (def.nightDuty) lines.push(`<p>Shoots monsters within ${BALANCE.defense.towerRange} tiles at night</p>`);
   return lines.join('');
 }

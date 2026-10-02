@@ -16,8 +16,8 @@ const pyramid = new THREE.ConeGeometry(Math.SQRT1_2, 1, 4).rotateY(Math.PI / 4).
 const R = 1 / Math.sqrt(3);
 const ridge = new THREE.CylinderGeometry(R, R, 1, 3).rotateZ(Math.PI / 2).rotateX(-Math.PI / 2).translate(0, R / 2, 0);
 
-/** Body height and whether the building has a smoking chimney. */
-const LOOK: Record<BuildingType, { height: number; chimney?: boolean; stoneBody?: boolean }> = {
+/** Body height and whether the building has a smoking chimney. Defenses have their own builders below. */
+const LOOK: Partial<Record<BuildingType, { height: number; chimney?: boolean; stoneBody?: boolean }>> = {
   tent: { height: 0 },
   bunkhouse: { height: 1.3 },
   storageShed: { height: 1.1 },
@@ -30,16 +30,69 @@ const LOOK: Record<BuildingType, { height: number; chimney?: boolean; stoneBody?
   charcoalKiln: { height: 0.9, chimney: true, stoneBody: true },
 };
 
-function part(geo: THREE.BufferGeometry, mat: THREE.Material, x: number, y: number, z: number, sx: number, sy: number, sz: number) {
+function part(geo: THREE.BufferGeometry, mat: THREE.Material, x: number, y: number, z: number, sx: number, sy: number, sz: number, ry = 0, rz = 0) {
   const m = new THREE.Mesh(geo, mat);
   m.position.set(x, y, z);
   m.scale.set(sx, sy, sz);
+  m.rotation.set(0, ry, rz);
   return m;
 }
 
+const spike = new THREE.ConeGeometry(0.06, 0.3, 4).translate(0, 0.15, 0);
+
+/** Additive light pool on the ground that fakes a light source (section 12.4). */
+function lightPool(radius: number): THREE.Mesh {
+  const mat = new THREE.ShaderMaterial({
+    uniforms: { uColor: { value: PALETTE.lantern } },
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: 'uniform vec3 uColor; varying vec2 vUv; void main() { float r = length(vUv - 0.5) * 2.0; gl_FragColor = vec4(uColor * pow(max(0.0, 1.0 - r), 2.0) * 0.35, 1.0); }',
+  });
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(radius * 2, radius * 2).rotateX(-Math.PI / 2), mat);
+  m.position.y = 0.03;
+  m.name = 'light';
+  return m;
+}
+
+/** Builders for the one tile defenses from section 9.1. */
+const DEFENSE: Partial<Record<BuildingType, (g: THREE.Group) => void>> = {
+  woodenBarricade: (g) => {
+    g.add(part(box, body, 0, 0.15, 0, 1, 0.16, 0.16, 0, 0.5));
+    g.add(part(box, body, 0, 0.15, 0, 1, 0.16, 0.16, 0, -0.5));
+    g.add(part(box, body, 0, 0.45, 0, 1, 0.14, 0.14));
+  },
+  gate: (g) => {
+    g.add(part(box, stone, -0.42, 0, 0, 0.16, 1.4, 0.3));
+    g.add(part(box, stone, 0.42, 0, 0, 0.16, 1.4, 0.3));
+    g.add(part(box, body, 0, 0, 0, 0.68, 1.1, 0.12));
+  },
+  lanternPost: (g) => {
+    g.add(part(box, body, 0, 0, 0, 0.1, 1.5, 0.1));
+    g.add(part(box, glow, 0, 1.4, 0, 0.24, 0.26, 0.24));
+    g.add(lightPool(4));
+  },
+  spikeTrap: (g) => {
+    g.add(part(box, body, 0, 0, 0, 0.9, 0.05, 0.9));
+    for (const [x, z] of [[-0.25, -0.25], [0.25, -0.25], [-0.25, 0.25], [0.25, 0.25], [0, 0]]) g.add(part(spike, stone, x, 0.05, z, 1, 1, 1));
+  },
+  watchtower: (g) => {
+    for (const [x, z] of [[-0.35, -0.35], [0.35, -0.35], [-0.35, 0.35], [0.35, 0.35]]) g.add(part(box, body, x, 0, z, 0.1, 2.2, 0.1));
+    g.add(part(box, body, 0, 2.2, 0, 1, 0.15, 1));
+    g.add(part(pyramid, roof, 0, 2.75, 0, 1.1, 0.6, 1.1));
+    g.add(part(box, glow, 0, 2.4, 0, 0.2, 0.2, 0.2));
+  },
+};
+
 export function createBuildingMesh(type: BuildingType, w: number, h: number): THREE.Group {
   const g = new THREE.Group();
-  const look = LOOK[type];
+  const defense = DEFENSE[type];
+  if (defense) {
+    defense(g);
+    return g;
+  }
+  const look = LOOK[type]!;
   const bw = w - 0.3;
   const bd = h - 0.3;
   if (type === 'tent') {

@@ -5,10 +5,10 @@ import { build, makePlayer, runDays } from './helpers';
 
 const FULL_PLAN: BuildingType[] = ['woodcutterCamp', 'tent', 'quarry', 'charcoalKiln', 'foragerHut', 'kitchen', 'tent'];
 
-describe('core economy (M2 done when)', () => {
+describe('core economy with no monsters (M2 done when)', () => {
   it('a managed colony survives 5 days with everyone alive', () => {
     const world = createWorld(1);
-    runDays(world, 5, makePlayer(FULL_PLAN));
+    runDays(world, 5, makePlayer(FULL_PLAN), false);
     expect(world.lost).toBeNull();
     expect(world.day).toBe(6);
     expect(world.colonists.length).toBe(8);
@@ -17,14 +17,14 @@ describe('core economy (M2 done when)', () => {
 
   it('a colony that does nothing loses when the hearth goes out', () => {
     const world = createWorld(1);
-    runDays(world, 5);
+    runDays(world, 5, undefined, false);
     expect(world.lost).toBe('The hearth went out.');
     expect(world.day).toBeLessThanOrEqual(2);
   });
 
   it('a colony that neglects food starves', () => {
     const world = createWorld(1);
-    runDays(world, 6, makePlayer(['woodcutterCamp', 'tent', 'quarry', 'charcoalKiln', 'tent']));
+    runDays(world, 6, makePlayer(['woodcutterCamp', 'tent', 'quarry', 'charcoalKiln', 'tent']), false);
     expect(world.log.some((l) => l.text.includes('starved'))).toBe(true);
     expect(world.lost).toBe('Everyone is dead.');
   });

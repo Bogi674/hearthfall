@@ -45,10 +45,11 @@ export function build(world: World, type: BuildingType, minDist = 0): boolean {
 }
 
 /** Runs the world for whole days, calling the player once per simulated second. */
-export function runDays(world: World, days: number, player?: (w: World) => void): void {
+export function runDays(world: World, days: number, player?: (w: World) => void, monsters = true): void {
   for (let t = 0; t < days * DAY_SECONDS * TICKS_PER_SECOND && !world.lost; t++) {
     if (player && t % TICKS_PER_SECOND === 0) player(world);
     stepWorld(world);
+    if (!monsters) world.enemies = [];
   }
 }
 

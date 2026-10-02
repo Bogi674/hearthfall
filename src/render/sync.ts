@@ -1,10 +1,14 @@
 import * as THREE from 'three';
 import { BALANCE } from '../data/balance';
+import { BUILDINGS } from '../data/buildings';
+import { ENEMIES } from '../data/enemies';
 import { Tile } from '../sim/grid';
 import type { World } from '../sim/world';
 import { createGroundMaterial } from './groundShader';
 import { createHearthLight } from './lighting';
+import { createBars, type Bar } from './meshes/bars';
 import { createBuildingMesh, createColonistMesh } from './meshes/buildings';
+import { createEnemyMeshes } from './meshes/enemies';
 import { createHearthMesh } from './meshes/hearth';
 import { buildProps, colorPropsByWarmth } from './meshes/props';
 import { createSnow } from './meshes/snow';
@@ -53,6 +57,10 @@ export function createWorldView(world: World, scene: THREE.Scene, fog: THREE.Fog
   const colonists = createColonistMesh(64);
   scene.add(colonists);
   const m = new THREE.Matrix4();
+  const enemies = createEnemyMeshes();
+  scene.add(enemies.group);
+  const bars = createBars();
+  scene.add(bars.mesh);
 
   const hearth = createHearthMesh();
   hearth.group.position.set(world.hearth.x - width / 2, 0, world.hearth.y - height / 2);
@@ -106,6 +114,21 @@ export function createWorldView(world: World, scene: THREE.Scene, fog: THREE.Fog
         scene.remove(g);
         buildingMeshes.delete(id);
       }
+      const barList: Bar[] = [];
+      for (const b of w.buildings) {
+        const light = buildingMeshes.get(b.id)!.getObjectByName('light');
+        if (light) light.visible = b.lit;
+        const max = BUILDINGS[b.type].hp;
+        if (b.hp < max) barList.push({ x: b.x + (b.w - 1) / 2 - width / 2, z: b.y + (b.h - 1) / 2 - height / 2, y: 2, fraction: b.hp / max, enemy: false });
+      }
+      if (w.hearth.hp < BALANCE.defense.hearthHp) barList.push({ x: 0, z: 0, y: 2.5, fraction: w.hearth.hp / BALANCE.defense.hearthHp, enemy: false });
+      for (const e of w.enemies) {
+        const max = ENEMIES[e.type].hp;
+        if (e.hp < max) barList.push({ x: e.px + (e.x - e.px) * alpha - width / 2, z: e.py + (e.y - e.py) * alpha - height / 2, y: e.type === 'brute' ? 1.8 : 1.2, fraction: e.hp / max, enemy: true });
+      }
+      enemies.update(w.enemies, alpha, width / 2, height / 2);
+      camera.getWorldDirection(viewDir);
+      bars.update(barList, Math.atan2(-viewDir.x, -viewDir.z));
 
       let n = 0;
       for (const c of w.colonists) {

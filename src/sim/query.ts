@@ -50,3 +50,10 @@ export function missing(world: World, amounts: Amounts): string | null {
 export function pay(world: World, amounts: Amounts): void {
   for (const [r, n] of Object.entries(amounts) as [keyof typeof world.stock, number][]) world.stock[r] -= n;
 }
+
+/** Threat points for night n (section 9.5). Every fifth night is a Blood Moon with double threat. */
+export function nightThreat(n: number): number {
+  const W = BALANCE.waves;
+  if (n < W.firstNight) return 0;
+  return Math.round(W.base * W.growth ** (n - 1)) * (n % W.bloodMoonEvery === 0 ? 2 : 1);
+}

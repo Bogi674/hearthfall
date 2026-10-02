@@ -49,3 +49,20 @@ Design and architecture decisions that are not already in `docs/GAME_DESIGN.md`.
 - **Node amounts.** Trees hold 25 wood, rubble 15 scrap, and ruin walls 30 stone. Smaller amounts made a camp run dry in under 2 days. Depleted tiles become ground.
 - **Recipe numbers.** Cycle times and amounts are in `src/data/recipes.ts`. The design does not give them. They were tuned so the scripted player in `tests/helpers.ts` survives 5 days.
 - **The auto pause is in the main loop.** Speed and pause are not simulation state, so the loop pauses itself on the first tick of Dusk.
+
+## 2026-10-02 (M3)
+
+- **Monster terrain.** Water, blocked tiles, and ruin walls are impassable. Trees cost 4 and rubble costs 2. Ground and road cost 1. Impassable tiles use a large finite cost so the state stays JSON safe.
+- **Wall cost.** Any non walkable building costs 40 in the normal field. In the runner field walls cost 80 and gates cost 10, so Runners favor gaps and gates (section 9.4).
+- **What monsters attack.** A monster steps to the neighbor tile with the lowest flow value. If that tile is the hearth it hits the hearth. If it holds a building it hits the building. Otherwise it hits an awake colonist in reach, or it walks.
+- **Monsters retreat at dawn.** The design does not say what happens to survivors. Clearing them at dawn keeps each night a separate fight.
+- **Spawning.** Monsters spawn on random reachable tiles of the active edges, spread over the first 90 seconds of the night. Active edges start at 1 and grow by one every 4 nights, up to 4.
+- **Wave composition.** Threat is spent by picking uniformly among unlocked types that still fit. Night 1 has no wave because the first wave is on night 2.
+- **Night duty is separate from the day job.** A watchtower slot assigns a defender. The defender works their day job, then guards the tower at dusk and night and skips sleep (section 9.2).
+- **Lanterns pay fuel at dusk.** A Lantern Post takes 1 fuel when the night phases begin and stays lit until dawn. Without fuel it shows "No fuel to light".
+- **Light effects.** Inside the lit hearth radius or a lit lantern radius, Shamblers deal 30 percent less damage and Runners move 20 percent slower (section 5.3).
+- **Numbers not in the design.** Hearth HP 1000, colonist HP 100, tower range 6, tower damage 12 every 0.8 seconds, trap damage 20 per second, and HP for non defense buildings. All of these live in data files.
+- **Watchtowers reuse the progress field as their reload timer.** This avoids a field that only one building type uses.
+- **Done line test.** The "good layout" is a barricade circle at radius 5, a spike trap circle at radius 6, and 4 watchtowers inside. The player rebuilds broken pieces each second. Food and fuel are topped up so only the defense decides the outcome.
+- **Test timeout is 60 seconds.** Multi day simulations take a few seconds each.
+- **Dev builds expose `window.world`.** Browser scripts use it to set up night scenes for screenshots. It is behind `import.meta.env.DEV`.
