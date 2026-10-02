@@ -1,4 +1,4 @@
-// Warmth map. Each tile holds 0 to 100. Recomputed only when its inputs change.
+// Hearth fuel and the warmth map. Each tile holds 0 to 100. The map is recomputed only when its inputs change.
 import { BALANCE } from '../../data/balance';
 import type { World } from '../world';
 
@@ -18,8 +18,14 @@ export function hearthRadius(world: World): number {
   return BALANCE.hearth.levels[world.hearth.level - 1].radius;
 }
 
-export function warmthSystem(world: World, _dt: number): void {
-  const radius = hearthRadius(world);
+export function warmthSystem(world: World, dt: number): void {
+  const h = world.hearth;
+  const burn = (BALANCE.hearth.levels[h.level - 1].fuelPerMinute / 60) * dt;
+  h.lit = world.stock.fuel >= burn;
+  world.stock.fuel = Math.max(0, world.stock.fuel - burn);
+  h.outSeconds = h.lit ? 0 : h.outSeconds + dt;
+
+  const radius = h.lit ? hearthRadius(world) : 0;
   const key = `${world.temperature}|${radius}`;
   if (key === world.warmthKey) return;
 
@@ -28,7 +34,7 @@ export function warmthSystem(world: World, _dt: number): void {
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const d = Math.hypot(x - world.hearth.x, y - world.hearth.y);
-      world.warmth[y * width + x] = Math.round(Math.max(base, sourceWarmth(d, radius)));
+      world.warmth[y * width + x] = Math.round(radius > 0 ? Math.max(base, sourceWarmth(d, radius)) : base);
     }
   }
   world.warmthKey = key;

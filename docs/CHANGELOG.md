@@ -2,6 +2,20 @@
 
 Newest entries first. Each entry names the milestone it belongs to.
 
+## 2026-10-02 (M2: Core Economy)
+
+- Added data for the ten M2 buildings, their recipes, resources, colonist names, start values, the day cycle, and needs rates.
+- Added the day cycle with Day, Dusk, Night, and Dawn phases from section 3.2. Temperature drops by 1 degree each new day.
+- Added the hearth fuel burn. The hearth goes out with no fuel, and the run is lost after 60 seconds out.
+- Added colonists with health, hunger, rest, and body warmth. They eat meals, sleep in beds on warm tiles, freeze on cold tiles, and die with a logged cause.
+- Added worker and bed assignment. Colonists walk to their building by day and to their bed at dusk.
+- Added production with worker slots, inputs, warmth speed, storage limits, and blocked reasons. Gatherers harvest nearby nodes and the nodes deplete.
+- Added the place and set workers commands, with placement checks shared by the command and the preview.
+- Added building meshes, colonists, and a placement ghost with the blocked reason next to the cursor.
+- Added the HUD: top bar, build menu, selection panel with worker buttons, colonist list, event log, and game over screen.
+- Added pause, 1x, 2x, and 3x speed. The game auto pauses when dusk starts.
+- Tests show that a managed colony survives 5 days with everyone alive, and that neglecting fuel or food loses the run.
+
 ## 2026-10-02 (Tooling, outside the milestone plan)
 
 - Added `npm run build:offline`. It uses `vite-plugin-singlefile` to write one self contained `dist-offline/index.html` that runs when opened directly from disk.

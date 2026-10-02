@@ -1,6 +1,19 @@
 // Balance numbers and content tuning. Values follow docs/GAME_DESIGN.md and are expected to change.
 
 export const BALANCE = {
+  /** Section 18. */
+  start: {
+    colonists: 8,
+    stock: { wood: 60, scrap: 10, rawFood: 30, meals: 16, fuel: 40 },
+    storage: 300,
+  },
+  /** Section 3.2. Phases run in this order and repeat every day. */
+  phases: [
+    { name: 'Day', seconds: 300, work: true },
+    { name: 'Dusk', seconds: 60, work: false },
+    { name: 'Night', seconds: 180, work: false },
+    { name: 'Dawn', seconds: 30, work: true },
+  ],
   map: {
     width: 80,
     height: 80,
@@ -38,6 +51,36 @@ export const BALANCE = {
   },
   hearth: {
     /** Radius in tiles per hearth level, from section 5.2. */
-    levels: [{ radius: 8 }, { radius: 12 }, { radius: 16 }],
+    levels: [
+      { radius: 8, fuelPerMinute: 3 },
+      { radius: 12, fuelPerMinute: 5 },
+      { radius: 16, fuelPerMinute: 8 },
+    ],
+    /** The run is lost after the hearth is out this long. */
+    outLossSeconds: 60,
+  },
+  colonist: {
+    /** Tiles per second. */
+    speed: 3,
+    arriveDistance: 0.6,
+  },
+  /** Section 6.3. Durations are seconds to drain or fill the whole bar. */
+  needs: {
+    hungerDays: 2,
+    restDays: 1.5,
+    eatBelow: 0.5,
+    mealRestores: 0.5,
+    sleepFillSeconds: 200,
+    tiredWorkSpeed: 0.6,
+    warmFillSeconds: 30,
+    coldDrainSeconds: 400,
+    freezingDrainSeconds: 150,
+    starveKillSeconds: 300,
+    freezeKillSeconds: 120,
+    healSeconds: 600,
+  },
+  production: {
+    /** Work speed on cold tiles. Freezing tiles stop work. */
+    coldSpeed: 0.5,
   },
 } as const;

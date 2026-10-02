@@ -33,3 +33,19 @@ Design and architecture decisions that are not already in `docs/GAME_DESIGN.md`.
 - **Assets must be bundled through static imports.** Runtime loads by URL, dynamic `import()`, separate worker files, and CDN scripts all break when the file is opened from disk. This is now architecture rule 8 in `CLAUDE.md`.
 - **Every push to `main` publishes a GitHub Release.** The workflow runs `npm test` before building, so a broken commit does not publish. Each release gets a unique tag `build-<run number>` and is marked latest. This keeps a history of builds and gives a stable download link at `releases/latest/download/hearthfall.html`.
 - **The release asset is named `hearthfall.html`.** The build still writes `index.html`. The workflow copies it to `hearthfall.html` before upload, because a download named `index.html` does not say what it is.
+
+## 2026-10-02 (M2)
+
+- **Buildings are built instantly when placed.** M2 lists placement but not construction time. The cost is paid on placement.
+- **No stoker for the hearth.** The hearth burns fuel from the stockpile on its own. The stoker slot in section 8 has no defined effect yet.
+- **Colonists walk in straight lines.** Hauling is abstracted in the prototype, and colonists only need to reach their building or bed. Pathfinding arrives for enemies in M3.
+- **Work phases are Day and Dawn.** Colonists work in those phases and go to bed at Dusk. Without a bed they wait by the hearth.
+- **Sleep only counts in a bed on a warm tile.** This follows section 6.3. A tent outside the warm circle gives no rest.
+- **Meals are eaten automatically.** A colonist eats one meal when hunger falls below half. One meal restores half of the bar, so each colonist eats about one meal per day.
+- **Health heals slowly.** Health recovers over 600 seconds while a colonist is neither starving nor frozen. Without this, small damage would add up forever.
+- **A production building takes inputs at the start of a cycle.** This is the one cycle input buffer from section 7.3. Output waits when storage is full.
+- **Storage counts all resources together.** The start value of 300 plus each Storage Shed is the cap for the sum of all stock.
+- **Default workers fill every slot.** A new building requests all its slots. The player lowers the count with the minus button.
+- **Node amounts.** Trees hold 25 wood, rubble 15 scrap, and ruin walls 30 stone. Smaller amounts made a camp run dry in under 2 days. Depleted tiles become ground.
+- **Recipe numbers.** Cycle times and amounts are in `src/data/recipes.ts`. The design does not give them. They were tuned so the scripted player in `tests/helpers.ts` survives 5 days.
+- **The auto pause is in the main loop.** Speed and pause are not simulation state, so the loop pauses itself on the first tick of Dusk.

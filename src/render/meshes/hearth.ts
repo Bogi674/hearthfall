@@ -6,7 +6,7 @@ import { mixPalette, PALETTE } from '../materials';
 
 export interface HearthMesh {
   group: THREE.Group;
-  update(time: number): void;
+  update(time: number, lit: boolean): void;
 }
 
 export function createHearthMesh(): HearthMesh {
@@ -60,8 +60,10 @@ export function createHearthMesh(): HearthMesh {
 
   return {
     group,
-    update(time: number) {
+    update(time: number, lit: boolean) {
+      embers.visible = lit;
       for (const f of flames) {
+        f.mesh.visible = lit;
         const flicker = 1 + Math.sin(time * 9 + f.phase) * 0.12 + Math.sin(time * 23 + f.phase * 2) * 0.06;
         f.mesh.scale.set(1 / Math.sqrt(flicker), flicker, 1 / Math.sqrt(flicker));
         f.mesh.rotation.y = time * 0.8 + f.phase;
