@@ -4,7 +4,7 @@ import { createWorld, stepWorld, TICKS_PER_SECOND } from '../src/sim/world';
 import { fullRunPlayer } from './fullrun';
 
 describe('full run (M5 done when)', () => {
-  for (const seed of [1, 2]) {
+  for (const seed of [1, 4, 5]) {
     it(`a careful player can launch the airship on seed ${seed}`, () => {
       const world = createWorld(seed);
       const player = fullRunPlayer();

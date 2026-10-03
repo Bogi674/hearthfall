@@ -50,7 +50,7 @@ describe('warmth', () => {
   it('a bigger hearth level warms a larger area', () => {
     const world = createWorld(1);
     expect(warmthAt(world, 11, 0)).toBeLessThan(W.warmThreshold);
-    world.hearth.level = 2;
+    world.hearth.level = 3;
     warmthSystem(world, 0.1);
     expect(warmthAt(world, 11, 0)).toBeGreaterThanOrEqual(W.warmThreshold);
   });

@@ -6,7 +6,7 @@ Working title. Version 0.1. This document is the single source of truth for desi
 
 ## 1. Overview
 
-**Pitch.** A small group of survivors is stranded in a ruined town during a monster outbreak as winter closes in. They must keep a fire burning, build a warm shelter, defend it against hordes that grow every night, and assemble an airship to escape before the cold and the monsters overwhelm them.
+**Pitch.** A small group of survivors is stranded in a ruined town during a monster outbreak as winter closes in. They shelter in a run down house with a working fireplace. They must keep the fire burning, repair the house little by little, grow it into a walled compound, defend it against hordes that grow every night, and assemble an airship to escape before the cold and the monsters overwhelm them.
 
 **Genre.** Colony survival, base building, and tower defense.
 
@@ -64,7 +64,7 @@ Time controls are pause, 1x, 2x, and 3x. The game auto pauses on dusk start in t
 - **Layout.** The hearth sits in a central clearing. Around it are ruined houses, streets, trees, rubble, and a few points of interest at increasing distance and danger.
 - **Tile types.** Ground, road, tree, rubble, ruin wall, water, and blocked.
 - **Resource nodes.** Trees yield wood. Rubble yields scrap. Some ruins yield stone. Nodes deplete.
-- **Fog of war.** The map outside the starting radius is hidden. Expeditions and watchtowers reveal it.
+- **Fog of war.** The map outside the starting radius is hidden. At the start only the 2 to 3 closest points of interest are known. Expedition squads reveal the land around them as they travel. Watchtowers reveal a small radius around themselves. A Lookout Post spots far points of interest as unconfirmed rumors (section 10.4). An expedition must reach a rumor to confirm what it is.
 - **Edges.** Monsters spawn from marked spawn zones on map edges. The forecast shows which edges are active.
 
 ---
@@ -78,12 +78,16 @@ This is the system that connects survival, defense, and the visual identity.
 - The hearth emits warmth in a radius. Heaters add smaller local radii.
 - Outdoor temperature lowers the baseline warmth everywhere over time.
 
-### 5.2 Hearth
-| Level | Radius in tiles | Fuel per minute | Upgrade cost |
-|---|---|---|---|
-| 1 | 8 | 3 | Start |
-| 2 | 12 | 5 | 40 planks, 20 metal |
-| 3 | 16 | 8 | 80 planks, 60 metal, 10 parts |
+### 5.2 Hearth House
+The hearth is a fireplace inside a run down house in the town square. The colony repairs the house one stage at a time. Each stage makes the house look more whole, warms a wider radius, burns more fuel, and makes the house tougher. Monsters that reach the house attack it, and the run is lost if it falls.
+
+| Stage | Name | Radius in tiles | Fuel per minute | HP | Repair cost |
+|---|---|---|---|---|---|
+| 1 | Ruined House | 8 | 3 | 4000 | Start |
+| 2 | Patched Roof | 10 | 4 | 4500 | 20 wood, 10 planks |
+| 3 | Rebuilt Walls | 12 | 5 | 5000 | 40 planks, 10 stone |
+| 4 | Glazed and Stoved | 14 | 6 | 5500 | 40 planks, 20 metal |
+| 5 | Restored Lodge | 16 | 8 | 6000 | 80 planks, 60 metal, 10 parts |
 
 The player can set the hearth to Low, Normal, or Overdrive. Low halves fuel use and shrinks the radius by 30 percent. Overdrive doubles fuel use and grows the radius by 30 percent.
 
@@ -159,7 +163,7 @@ Costs and numbers are starting values and live in data files.
 
 | Building | Cost | Workers | Function | Prototype |
 |---|---|---|---|---|
-| Hearth | Start | 1 stoker | Warmth and light core | Yes |
+| Hearth House | Start | 1 stoker | Warmth and light core, repaired in stages (section 5.2) | Yes |
 | Tent | 10 wood | 0 | Beds for 4 | Yes |
 | Bunkhouse | 30 planks, 10 stone | 0 | Beds for 10, small warmth bonus | Yes |
 | Storage Shed | 20 wood | 0 | Plus 200 capacity | Yes |
@@ -175,6 +179,10 @@ Costs and numbers are starting values and live in data files.
 | Workshop | 40 planks, 30 metal | 2 | Parts | Yes |
 | Heater | 10 metal, 5 parts | 0 | Warmth radius 4, uses fuel | Yes |
 | Airship Dock | 100 planks, 80 metal, 20 parts | 4 | Builds airship components | Yes |
+| Lookout Post | 20 wood, 10 planks | 0 | Spots far points of interest as rumors. Upgrades to stage 2 (30 planks, 10 stone) and stage 3 (40 planks, 15 metal) to see further | Yes |
+
+### 8.1 The compound
+The colony grows from the house outward. Tents and workshops cluster around it. Walls join into a palisade or stone curtain around the core. Gates let squads out. Watchtowers and lantern posts stand on the walls as defense points. The goal is a compound that looks built by hand over many days.
 
 ---
 
@@ -184,11 +192,11 @@ Costs and numbers are starting values and live in data files.
 | Structure | Cost | HP | Role | Prototype |
 |---|---|---|---|---|
 | Wooden Barricade | 5 wood | 100 | Blocks and redirects | Yes |
-| Reinforced Wall | 5 metal, 5 stone | 350 | Strong block | No |
+| Reinforced Wall | 5 metal, 5 stone | 350 | Strong block | Yes |
 | Gate | 15 planks | 200 | Lets colonists and expeditions pass | Yes |
 | Lantern Post | 5 wood, 1 fuel per night | 50 | Light radius 4, weakens monsters | Yes |
 | Spike Trap | 10 wood | 80 | Damages enemies that walk over it | Yes |
-| Watchtower | 25 planks | 150 | Needs 1 defender, ranged attack, reveals fog | Yes |
+| Watchtower | 25 planks | 150 | Needs 1 defender, ranged attack, reveals fog in radius 8 | Yes |
 | Fire Barrel | 10 metal, 3 fuel | 60 | Area burn when triggered | No |
 | Bolt Thrower | 20 metal, 10 parts | 250 | Needs 1 defender, heavy damage, slow | No |
 
@@ -244,6 +252,13 @@ Generated per map. Each has a name, distance, danger level from 1 to 5, and a lo
 - A cleared POI yields reduced loot on later visits.
 - An expedition can be recalled at any time and starts walking home immediately.
 
+### 10.4 Discovery
+- Each point of interest is hidden, rumored, or known.
+- The 3 closest are known at the start. The farther ones are more dangerous and more rewarding.
+- A Lookout Post marks every point of interest within its sight radius as a rumor. The map shows a question mark there. Sight is 30 tiles at stage 1, 36 at stage 2, and 44 at stage 3, measured from the post.
+- An expedition can be sent to a rumor. When the squad arrives the place becomes known and the search begins.
+- A squad also discovers any point of interest that comes within 6 tiles of its path.
+
 ---
 
 ## 11. Escape Vehicle: The Airship
@@ -296,7 +311,10 @@ Orthographic camera at a classic isometric angle. Zoom with scroll. Rotate in 90
 - ACES tone mapping and bloom on emissive surfaces.
 - Real point lights are limited to 8, chosen by importance and distance to camera. All other light sources use emissive materials plus additive ground decals that fake light pools.
 - InstancedMesh for trees, rubble, walls, snow props, and enemies.
-- Procedural geometry first. Buildings are composed from boxes, cylinders, and cones with simple roofs, warm windows, and small props. Real models can replace them later without changing the simulation.
+- Procedural geometry first. Real models can replace it later without changing the simulation.
+- Target look: chunky stylized low poly, like a hand built diorama. Buildings have stone footings, timber framed plaster walls, overhanging gabled roofs with a ridge beam, chimneys, framed doors, and warm lit windows. Trees are tiered and slightly irregular. Rocks are rounded.
+- Characters are small chunky figures with readable silhouettes: boots, legs, a belted tunic, sleeves with gloves, a head, a hood or hat, and two bright eyes. Monsters share the same build with torn clothes, horns, spines, and Blight eyes.
+- The moon casts soft shadows from buildings, trees, and characters.
 - Soft vignette and a light film grain.
 
 ### 12.5 Readability
@@ -464,9 +482,16 @@ Each milestone must meet its acceptance criteria before the next starts.
 - Placeholder audio for fire, wind, and wave warnings.
 - **Done when:** a new player can finish a run without outside help.
 
+### M7: The Hearth House and the Compound
+- The hearth becomes the Hearth House with five repair stages (section 5.2).
+- Reinforced Wall and Lookout Post. Walls join visually into a palisade or stone curtain.
+- Fog of war and point of interest discovery (sections 4 and 10.4).
+- Visual polish to the target look in section 12.4: buildings, the house, trees, rocks, ruins, characters, monsters, and moon shadows.
+- **Done when:** a screenshot reads as a cozy hand built compound around a repaired house in a cold dark world, and far places must be found before they can be searched.
+
 ### Later milestones
 - Physical hauling, hand carts, and conveyor lines.
-- Traits, more enemies, Greenhouse, Reinforced Wall, Fire Barrel, and Bolt Thrower.
+- Traits, more enemies, Greenhouse, Fire Barrel, and Bolt Thrower.
 - Alternate escape vehicles and map biomes.
 - Real art and audio replacement.
 - Steam build with Tauri or Electron.

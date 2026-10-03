@@ -51,11 +51,13 @@ export const BALANCE = {
   },
   hearth: {
     /** Radius in tiles per hearth level, from section 5.2. */
-    /** Section 5.2. Cost is what it takes to reach that level. */
+    /** The Hearth House stages from section 5.2. Cost is what it takes to reach that stage. */
     levels: [
-      { radius: 8, fuelPerMinute: 3, cost: {} },
-      { radius: 12, fuelPerMinute: 5, cost: { planks: 40, metal: 20 } },
-      { radius: 16, fuelPerMinute: 8, cost: { planks: 80, metal: 60, parts: 10 } },
+      { name: 'Ruined House', radius: 8, fuelPerMinute: 3, hp: 4000, cost: {} },
+      { name: 'Patched Roof', radius: 10, fuelPerMinute: 4, hp: 4500, cost: { wood: 20, planks: 10 } },
+      { name: 'Rebuilt Walls', radius: 12, fuelPerMinute: 5, hp: 5000, cost: { planks: 40, stone: 10 } },
+      { name: 'Glazed and Stoved', radius: 14, fuelPerMinute: 6, hp: 5500, cost: { planks: 40, metal: 20 } },
+      { name: 'Restored Lodge', radius: 16, fuelPerMinute: 8, hp: 6000, cost: { planks: 80, metal: 60, parts: 10 } },
     ],
     /** The run is lost after the hearth is out this long. */
     outLossSeconds: 60,
@@ -103,7 +105,6 @@ export const BALANCE = {
     runnerGate: 10,
   },
   defense: {
-    hearthHp: 4000,
     colonistHp: 100,
     attackInterval: 1,
     /** Enemies hit colonists within this many tiles. */
@@ -116,6 +117,15 @@ export const BALANCE = {
     /** Light from the hearth and lanterns (section 5.3). */
     lightShamblerDamage: 0.7,
     lightRunnerSpeed: 0.8,
+  },
+  /** Fog of war and discovery (sections 4 and 10.4). */
+  discovery: {
+    startRadius: 14,
+    knownAtStart: 3,
+    squadReveal: 5,
+    squadDiscover: 6,
+    watchtowerReveal: 8,
+    lookoutReveal: 10,
   },
   /** Section 10. */
   expeditions: {

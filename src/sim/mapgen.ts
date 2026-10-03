@@ -9,7 +9,7 @@ const CFG = BALANCE.map;
 export interface GeneratedMap {
   map: MapState;
   hearth: { x: number; y: number };
-  pois: { type: (typeof POI_TYPES)[number]; x: number; y: number; clears: number }[];
+  pois: { type: (typeof POI_TYPES)[number]; x: number; y: number; clears: number; seen: 'hidden' | 'rumored' | 'known' }[];
 }
 
 export function generateMap(rng: RngState): GeneratedMap {
@@ -37,7 +37,7 @@ function placePois(map: MapState, rng: RngState, hx: number, hy: number): Genera
     const x = Math.max(3, Math.min(map.width - 4, Math.round(hx + Math.cos(a) * r)));
     const y = Math.max(3, Math.min(map.height - 4, Math.round(hy + Math.sin(a) * r)));
     clearAround(map, x, y, 1.5);
-    return { type, x, y, clears: 0 };
+    return { type, x, y, clears: 0, seen: 'hidden' as const };
   });
 }
 

@@ -7,7 +7,7 @@ import { COMPONENT_IDS, COMPONENTS, LAST_NIGHT, type ComponentId } from '../data
 import { placeBuilding } from './placement';
 import { center, missing, pay } from './query';
 import { recall } from './systems/expeditions';
-import { addLog, type World } from './world';
+import { addLog, type Building, type World } from './world';
 
 export type Command =
   | { type: 'place'; building: BuildingType; x: number; y: number; rotated: boolean }
@@ -16,7 +16,8 @@ export type Command =
   | { type: 'recall'; id: number }
   | { type: 'buildComponent'; component: ComponentId }
   | { type: 'launch' }
-  | { type: 'upgradeHearth' };
+  | { type: 'upgradeHearth' }
+  | { type: 'upgradeBuilding'; id: number };
 
 export function pushCommand(queue: Command[], command: Command): void {
   queue.push(command);
@@ -35,9 +36,19 @@ export function applyCommands(world: World): void {
       [world.airship.building, world.airship.progress] = [c.component, 0];
     }
     if (c.type === 'upgradeHearth' && !hearthUpgradeError(world)) {
-      pay(world, BALANCE.hearth.levels[world.hearth.level].cost);
+      const next = BALANCE.hearth.levels[world.hearth.level];
+      pay(world, next.cost);
+      world.hearth.hp += next.hp - BALANCE.hearth.levels[world.hearth.level - 1].hp;
       world.hearth.level++;
-      addLog(world, `The hearth burns brighter. Level ${world.hearth.level}.`, world.hearth);
+      addLog(world, `The house is repaired: ${next.name}.`, world.hearth);
+    }
+    if (c.type === 'upgradeBuilding') {
+      const b = world.buildings.find((b) => b.id === c.id);
+      if (b && !buildingUpgradeError(world, b)) {
+        pay(world, BUILDINGS[b.type].upgrades![b.level - 1]);
+        b.level++;
+        addLog(world, `The ${BUILDINGS[b.type].name} reaches stage ${b.level}.`, b);
+      }
     }
     if (c.type === 'launch' && !launchError(world)) {
       world.airship.launch = { elapsed: 0, fuel: 0 };
@@ -57,6 +68,7 @@ export function applyCommands(world: World): void {
 export function expeditionError(world: World, poi: number, members: number[]): string | null {
   if (!world.buildings.some((b) => b.type === 'gate')) return 'Build a Gate first';
   if (!world.pois[poi]) return 'Pick a place to search';
+  if (world.pois[poi].seen === 'hidden') return 'Nobody knows where that is yet';
   if (members.length < 1 || members.length > BALANCE.expeditions.maxSquad) return `Pick 1 to ${BALANCE.expeditions.maxSquad} colonists`;
   for (const id of members) {
     const c = world.colonists.find((c) => c.id === id);
@@ -105,5 +117,12 @@ export function hearthUpgradeError(world: World): string | null {
   const next = BALANCE.hearth.levels[world.hearth.level];
   if (!next) return 'Fully upgraded';
   const short = missing(world, next.cost);
+  return short ? `Not enough ${RESOURCE_NAMES[short as Resource].toLowerCase()}` : null;
+}
+
+export function buildingUpgradeError(world: World, b: Building): string | null {
+  const cost = BUILDINGS[b.type].upgrades?.[b.level - 1];
+  if (!cost) return 'Fully upgraded';
+  const short = missing(world, cost);
   return short ? `Not enough ${RESOURCE_NAMES[short as Resource].toLowerCase()}` : null;
 }

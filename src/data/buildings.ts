@@ -24,6 +24,9 @@ export interface BuildingDef {
   light?: { radius: number; fuel: number };
   /** Warmth and light radius in tiles while it burns fuel. */
   heat?: { radius: number; fuelPerMinute: number };
+  /** Lookout sight radius per stage, and the cost to reach each stage after the first. */
+  sight?: number[];
+  upgrades?: Amounts[];
 }
 
 const DEFS = {
@@ -45,6 +48,11 @@ const DEFS = {
   workshop: { name: 'Workshop', category: 'Production', cost: { planks: 40, metal: 30 }, size: [2, 2], workers: 2, hp: 200 },
   heater: { name: 'Heater', category: 'Shelter', cost: { metal: 10, parts: 5 }, size: [1, 1], workers: 0, hp: 80, heat: { radius: 4, fuelPerMinute: 1 } },
   airshipDock: { name: 'Airship Dock', category: 'Escape', cost: { planks: 100, metal: 80, parts: 20 }, size: [4, 4], workers: 4, hp: 500 },
+  reinforcedWall: { name: 'Reinforced Wall', category: 'Defense', cost: { metal: 5, stone: 5 }, size: [1, 1], workers: 0, hp: 350 },
+  lookoutPost: {
+    name: 'Lookout Post', category: 'Escape', cost: { wood: 20, planks: 10 }, size: [1, 1], workers: 0, hp: 120,
+    sight: [30, 36, 44], upgrades: [{ planks: 30, stone: 10 }, { planks: 40, metal: 15 }],
+  },
   watchtower: { name: 'Watchtower', category: 'Defense', cost: { planks: 25 }, size: [1, 1], workers: 1, hp: 150, nightDuty: true },
 } satisfies Record<string, BuildingDef>;
 

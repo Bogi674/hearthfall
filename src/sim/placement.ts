@@ -33,7 +33,7 @@ export function placeBuilding(world: World, type: BuildingType, x: number, y: nu
   const [w, h] = footprint(type, rotated);
   pay(world, BUILDINGS[type].cost);
   const def = BUILDINGS[type];
-  world.buildings.push({ id: world.nextId++, type, x, y, w, h, workers: def.workers, progress: 0, loaded: false, status: 'ok', hp: def.hp, lit: false });
+  world.buildings.push({ id: world.nextId++, type, x, y, w, h, workers: def.workers, progress: 0, loaded: false, status: 'ok', hp: def.hp, lit: false, level: 1 });
   world.buildRev++;
   return true;
 }

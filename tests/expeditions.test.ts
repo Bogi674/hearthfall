@@ -25,6 +25,8 @@ function runTrips(world: World, maxSeconds = 2000): void {
 }
 
 function send(world: World, type: keyof typeof POIS, size: number): number[] {
+  // These tests are about danger and loot, so the place counts as already found.
+  world.pois[poiIndex(world, type)].seen = 'known';
   const members = world.colonists.filter((c) => c.expedition === null).slice(0, size).map((c) => c.id);
   world.commands.push({ type: 'sendExpedition', poi: poiIndex(world, type), members });
   stepWorld(world);

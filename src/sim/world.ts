@@ -13,6 +13,7 @@ import { createRng, type RngState } from './rng';
 import { jobsSystem } from './systems/jobs';
 import { needsSystem } from './systems/needs';
 import { combatSystem } from './systems/combat';
+import { discoverySystem } from './systems/discovery';
 import { expeditionsSystem } from './systems/expeditions';
 import { hopeSystem } from './systems/hope';
 import { pathfindingSystem } from './systems/pathfinding';
@@ -55,6 +56,8 @@ export interface Building {
   hp: number;
   /** Lantern posts are lit for the night once their fuel is paid. */
   lit: boolean;
+  /** Upgrade stage for buildings that have stages, such as the Lookout Post. */
+  level: number;
 }
 
 export interface Colonist {
@@ -110,6 +113,10 @@ export interface World {
   /** Bumped when a building is placed or destroyed, so the flow field is rebuilt. */
   buildRev: number;
   pois: Poi[];
+  /** Fog of war: 1 for revealed tiles, row major like map.tiles. */
+  revealed: number[];
+  /** Bumped when tiles are revealed, so renderers know to refresh. */
+  revealRev: number;
   expeditions: Expedition[];
   items: Partial<Record<ItemId, number>>;
   /** Colony morale from 0 to 100 (section 6.5). */
@@ -167,6 +174,8 @@ export interface Poi {
   y: number;
   /** Full searches done here. Each one reduces later loot (section 10.3). */
   clears: number;
+  /** Discovery state (section 10.4). */
+  seen: 'hidden' | 'rumored' | 'known';
 }
 
 export interface Expedition {
@@ -205,7 +214,7 @@ export function createWorld(seed: number): World {
     map,
     nodes: map.tiles.map((t) => NODE_AMOUNTS[t] ?? 0),
     mapRev: 0,
-    hearth: { ...hearth, level: 1, lit: true, outSeconds: 0, hp: BALANCE.defense.hearthHp },
+    hearth: { ...hearth, level: 1, lit: true, outSeconds: 0, hp: BALANCE.hearth.levels[0].hp },
     warmth: new Array<number>(map.width * map.height).fill(0),
     warmthKey: '',
     stock,
@@ -217,6 +226,8 @@ export function createWorld(seed: number): World {
     flow: { key: '', normal: [], runner: [] },
     buildRev: 0,
     pois,
+    revealed: new Array<number>(map.width * map.height).fill(0),
+    revealRev: 0,
     expeditions: [],
     items: {},
     hope: BALANCE.hope.start,
@@ -232,6 +243,7 @@ export function createWorld(seed: number): World {
     addColonist(world, hearth.x + Math.cos(a) * 2.5, hearth.y + Math.sin(a) * 2.5);
   }
   warmthSystem(world, 0);
+  discoverySystem(world, 0);
   pathfindingSystem(world, 0);
   wavesSystem(world, 0);
   return world;
@@ -271,6 +283,7 @@ export function stepWorld(world: World): void {
   jobsSystem(world, TICK_SECONDS);
   needsSystem(world, TICK_SECONDS);
   expeditionsSystem(world, TICK_SECONDS);
+  discoverySystem(world, TICK_SECONDS);
   productionSystem(world, TICK_SECONDS);
   combatSystem(world, TICK_SECONDS);
   vehicleSystem(world, TICK_SECONDS);

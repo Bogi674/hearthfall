@@ -7,9 +7,9 @@ import { BUILDINGS, type BuildingType } from '../src/data/buildings';
 import { POIS, type ItemId, type PoiType } from '../src/data/pois';
 import type { Amounts } from '../src/data/resources';
 import { COMPONENT_IDS, COMPONENTS, LAST_NIGHT, type ComponentId } from '../src/data/vehicle';
-import { componentError, hearthUpgradeError, launchError } from '../src/sim/commands';
+import { buildingUpgradeError, componentError, hearthUpgradeError, launchError } from '../src/sim/commands';
 import { placementError } from '../src/sim/placement';
-import { bandAt, capacity, center, currentPhase, stockTotal } from '../src/sim/query';
+import { bandAt, capacity, center, currentPhase, missing, stockTotal } from '../src/sim/query';
 import type { World } from '../src/sim/world';
 import { findSpot } from './helpers';
 
@@ -21,14 +21,15 @@ const ITEM_POIS: [ItemId, PoiType][] = [
   ['engineBlock', 'railDepot'],
   ['compassRig', 'oldAirfield'],
 ];
-type Target = BuildingType | 'hearth' | ComponentId;
+type Target = BuildingType | 'hearth' | 'lookout' | ComponentId;
 const TARGETS: Target[] = [
   'woodcutterCamp', 'tent', 'quarry', 'charcoalKiln', 'foragerHut', 'kitchen', 'tent', 'sawmill', 'watchtower', 'watchtower',
-  'woodcutterCamp', 'gate', 'salvageYard', 'storageShed', 'smelter', 'hearth', 'watchtower', 'watchtower', 'storageShed',
-  'workshop', 'woodcutterCamp', 'storageShed', 'charcoalKiln',
+  'woodcutterCamp', 'gate', 'lookoutPost', 'hearth', 'salvageYard', 'storageShed', 'lookout', 'smelter', 'hearth', 'watchtower', 'watchtower',
+  'lookout', 'storageShed',
+  'workshop', 'sawmill', 'woodcutterCamp', 'storageShed', 'charcoalKiln',
   'airshipDock', ...COMPONENT_IDS,
 ];
-const INSIDE: BuildingType[] = ['tent', 'watchtower'];
+const INSIDE: BuildingType[] = ['tent', 'watchtower', 'lookoutPost'];
 
 const count = (w: World, t: BuildingType) => w.buildings.filter((b) => b.type === t).length;
 const ring = (w: World, r: number) => {
@@ -45,7 +46,12 @@ function nextTarget(w: World): { target: Target; cost: Amounts } | null {
   for (const t of TARGETS) {
     seen.set(t, (seen.get(t) ?? 0) + 1);
     if (t === 'hearth') {
-      if (w.hearth.level < 2) return { target: t, cost: BALANCE.hearth.levels[1].cost };
+      if (w.hearth.level <= seen.get(t)!) return { target: t, cost: BALANCE.hearth.levels[w.hearth.level].cost };
+    } else if (t === 'lookout') {
+      // Upgrade the lookout only while a place with a rare item is still unknown.
+      const post = w.buildings.find((b) => b.type === 'lookoutPost');
+      const hidden = ITEM_POIS.some(([, type]) => w.pois.find((p) => p.type === type)!.seen === 'hidden');
+      if (post && hidden && post.level <= seen.get(t)!) return { target: t, cost: BUILDINGS.lookoutPost.upgrades![post.level - 1] };
     } else if (isComponent(t)) {
       if (!w.airship.built.includes(t) && w.airship.building !== t) return { target: t, cost: COMPONENTS[t].cost };
     } else if (count(w, t) < seen.get(t)!) {
@@ -66,6 +72,9 @@ export function fullRunPlayer() {
       const t = next.target;
       if (t === 'hearth') {
         if (!hearthUpgradeError(w)) w.commands.push({ type: 'upgradeHearth' });
+      } else if (t === 'lookout') {
+        const post = w.buildings.find((b) => b.type === 'lookoutPost')!;
+        if (!buildingUpgradeError(w, post)) w.commands.push({ type: 'upgradeBuilding', id: post.id });
       } else if (isComponent(t)) {
         if (!componentError(w, t)) w.commands.push({ type: 'buildComponent', component: t });
       } else {
@@ -73,10 +82,13 @@ export function fullRunPlayer() {
         if (spot) w.commands.push({ type: 'place', building: t, x: spot.x, y: spot.y, rotated: false });
       }
     }
-    const workingCamps = w.buildings.filter((b) => b.type === 'woodcutterCamp' && b.status !== 'noResource').length;
-    if (workingCamps < 2 && s.wood >= 15) {
-      const spot = findSpot(w, 'woodcutterCamp', OUTSIDE, 30);
-      if (spot) w.commands.push({ type: 'place', building: 'woodcutterCamp', x: spot.x, y: spot.y, rotated: false });
+    // Replace gatherers that ran out of nodes.
+    for (const [type, keep] of [['woodcutterCamp', 2], ['salvageYard', 1]] as [BuildingType, number][]) {
+      const working = w.buildings.filter((b) => b.type === type && b.status !== 'noResource').length;
+      if (count(w, type) && working < keep && !missing(w, BUILDINGS[type].cost)) {
+        const spot = findSpot(w, type, OUTSIDE, type === 'woodcutterCamp' ? 30 : 10);
+        if (spot) w.commands.push({ type: 'place', building: type, x: spot.x, y: spot.y, rotated: false });
+      }
     }
     if (stockTotal(w) > capacity(w) - 40 && s.wood >= 20) {
       const spot = findSpot(w, 'storageShed', OUTSIDE);
@@ -128,8 +140,8 @@ export function fullRunPlayer() {
       ['quarry', s.stone < (cost.stone ?? 0) ? 3 : 0],
       ['workshop', partsShort > 0 && s.planks >= 1 && s.metal >= 1 ? 2 : 0],
       ['smelter', s.metal < metalNeed && s.scrap >= 2 && s.fuel > 30 ? 2 : 0],
-      ['sawmill', s.planks < planksNeed && s.wood > 30 ? 2 : 0],
       ['salvageYard', s.scrap < 2 * Math.max(0, metalNeed - s.metal) ? 3 : 0],
+      ['sawmill', s.planks < planksNeed && s.wood > 30 ? 4 : 0],
       ['woodcutterCamp', 99],
     ];
     const crew = new Map<number, number>();
@@ -151,8 +163,11 @@ export function fullRunPlayer() {
     // Expeditions for missing rare items, only when there is daylight for the whole trip.
     const gate = w.buildings.find((b) => b.type === 'gate');
     // After the rare items, search the Clinic for survivors to grow the work force.
-    const item = ITEM_POIS.find(([id]) => !w.items[id]) ?? (['silkCanopy', 'clinic'] as [ItemId, PoiType]);
-    if (gate && !w.expeditions.length && phase.name === 'Day') {
+    // Squads can only go where the colony knows of, or where the lookout saw something.
+    const reachable = ([, type]: [ItemId, PoiType]) => w.pois.find((p) => p.type === type)!.seen !== 'hidden';
+    // Survivor trips stop once the dock stands, when every worker is needed at home.
+    const item = ITEM_POIS.filter(reachable).find(([id]) => !w.items[id]) ?? (count(w, 'airshipDock') ? null : (['silkCanopy', 'clinic'] as [ItemId, PoiType]));
+    if (gate && item && reachable(item) && !w.expeditions.length && phase.name === 'Day') {
       const poi = w.pois.findIndex((p) => p.type === item[1]);
       const g = center(gate);
       const p = w.pois[poi];

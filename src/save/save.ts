@@ -2,7 +2,7 @@
 // Rendering state is rebuilt from it on load.
 import type { World } from '../sim/world';
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
 export function saveGame(world: World): string {
   return JSON.stringify({ version: SAVE_VERSION, world });

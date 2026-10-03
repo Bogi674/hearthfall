@@ -64,6 +64,8 @@ export function phaseStarted(world: World, name: string, dt: number): boolean {
   return p.name === name && p.seconds - p.left < dt - 1e-9;
 }
 
+export const hearthStage = (world: World) => BALANCE.hearth.levels[world.hearth.level - 1];
+
 /** Work speed multiplier from hope (section 6.5). */
 export function hopeSpeed(world: World): number {
   return world.hope < BALANCE.hope.lowBelow ? BALANCE.hope.lowWorkSpeed : 1;

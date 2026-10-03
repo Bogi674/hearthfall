@@ -4,6 +4,7 @@ import { BUILDINGS } from '../data/buildings';
 import { COMPONENT_IDS } from '../data/vehicle';
 import { ENEMIES } from '../data/enemies';
 import { Tile } from '../sim/grid';
+import { hearthStage } from '../sim/query';
 import type { World } from '../sim/world';
 import { createGroundMaterial } from './groundShader';
 import { createHearthLight } from './lighting';
@@ -138,7 +139,7 @@ export function createWorldView(world: World, scene: THREE.Scene, fog: THREE.Fog
         const max = BUILDINGS[b.type].hp;
         if (b.hp < max) barList.push({ x: b.x + (b.w - 1) / 2 - width / 2, z: b.y + (b.h - 1) / 2 - height / 2, y: 2, fraction: b.hp / max, enemy: false });
       }
-      if (w.hearth.hp < BALANCE.defense.hearthHp) barList.push({ x: 0, z: 0, y: 2.5, fraction: w.hearth.hp / BALANCE.defense.hearthHp, enemy: false });
+      if (w.hearth.hp < hearthStage(w).hp) barList.push({ x: 0, z: 0, y: 3.5, fraction: w.hearth.hp / hearthStage(w).hp, enemy: false });
       for (const e of w.enemies) {
         const max = ENEMIES[e.type].hp;
         if (e.hp < max) barList.push({ x: e.px + (e.x - e.px) * alpha - width / 2, z: e.py + (e.y - e.py) * alpha - height / 2, y: e.type === 'brute' ? 1.8 : 1.2, fraction: e.hp / max, enemy: true });

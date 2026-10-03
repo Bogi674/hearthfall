@@ -7,7 +7,7 @@ import { RECIPES } from '../data/recipes';
 import { RESOURCE_NAMES, RESOURCES, type Amounts, type Resource } from '../data/resources';
 import { COMPONENT_IDS, type ComponentId } from '../data/vehicle';
 import { hearthUpgradeError, pushCommand } from '../sim/commands';
-import { capacity, currentPhase, missing, stockTotal } from '../sim/query';
+import { capacity, currentPhase, hearthStage, missing, stockTotal } from '../sim/query';
 import type { BuildingStatus, World } from '../sim/world';
 import { currentHint } from '../data/hints';
 import { INTRO } from '../data/story';
@@ -202,7 +202,7 @@ function forecastHtml(w: World): string {
 function selectionHtml(w: World, state: UiState): string {
   if (state.selected === 'hearth') {
     const lvl = BALANCE.hearth.levels[w.hearth.level - 1];
-    return `<h3>Hearth</h3><p>Health ${Math.ceil(w.hearth.hp)}/${BALANCE.defense.hearthHp}</p><p>Level ${w.hearth.level}. Warms a radius of ${lvl.radius} tiles.</p><p>Burns ${lvl.fuelPerMinute} fuel per minute.</p>
+    return `<h3>Hearth House</h3><p>${lvl.name}, stage ${w.hearth.level} of ${BALANCE.hearth.levels.length}.</p><p>Health ${Math.ceil(w.hearth.hp)}/${hearthStage(w).hp}</p><p>Warms a radius of ${lvl.radius} tiles. Burns ${lvl.fuelPerMinute} fuel per minute.</p>
       <p class="${w.hearth.lit ? '' : 'alert'}">${w.hearth.lit ? 'Burning' : 'Out of fuel'}</p>${upgradeHtml(w)}`;
   }
   const b = w.buildings.find((b) => b.id === state.selected);
@@ -230,10 +230,10 @@ function selectionHtml(w: World, state: UiState): string {
 
 function upgradeHtml(w: World): string {
   const next = BALANCE.hearth.levels[w.hearth.level];
-  if (!next) return '<p>Fully upgraded.</p>';
+  if (!next) return '<p>The house is fully restored.</p>';
   const error = hearthUpgradeError(w);
-  return `<p>Level ${w.hearth.level + 1}: radius ${next.radius}, ${next.fuelPerMinute} fuel per minute. Costs ${amounts(next.cost)}.</p>
-    ${error ? `<p class="alert">${error}</p>` : '<button data-act="upgrade">Upgrade the hearth</button>'}`;
+  return `<h4>Next repair: ${next.name}</h4><p>Radius ${next.radius}, ${next.fuelPerMinute} fuel per minute, ${next.hp} health. Costs ${amounts(next.cost)}.</p>
+    ${error ? `<p class="alert">${error}</p>` : '<button data-act="upgrade">Repair the house</button>'}`;
 }
 
 /** Score screen (section 3.4 and M5): survivors, the left behind, and every death with its cause. */
