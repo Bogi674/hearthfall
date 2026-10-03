@@ -5,8 +5,8 @@ import { installHearthFog, PALETTE } from './materials';
 import { createPost } from './post';
 
 // Fog distances are measured from the hearth, in world units.
-const FOG_NEAR = 10;
-const FOG_FAR = 52;
+const FOG_NEAR = 14;
+const FOG_FAR = 78;
 
 export interface View {
   renderer: THREE.WebGLRenderer;

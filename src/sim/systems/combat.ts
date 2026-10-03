@@ -1,6 +1,6 @@
 // Monsters follow the flow field and attack what blocks them (section 9.3).
 // Watchtowers shoot with a defender on duty, spike traps hurt monsters standing on them,
-// and light weakens Shamblers and slows Runners (section 5.3).
+// and light protects people in steps that grow stronger toward its core (section 5.3).
 import { BALANCE } from '../../data/balance';
 import { BUILDINGS } from '../../data/buildings';
 import { ENEMIES } from '../../data/enemies';
@@ -21,12 +21,22 @@ export function combatSystem(world: World, dt: number): void {
   const lightRadius = (b: Building) => BUILDINGS[b.type].light?.radius ?? BUILDINGS[b.type].heat?.radius ?? 0;
   const lights = world.buildings.filter((b) => b.lit).map((b) => ({ ...center(b), r: lightRadius(b) }));
   if (world.hearth.lit) lights.push({ x: world.hearth.x, y: world.hearth.y, r: hearthRadius(world) });
-  const isLit = (x: number, y: number) => lights.some((l) => Math.hypot(x - l.x, y - l.y) <= l.r);
+  const NO_LIGHT = { damage: 1, speed: 1 };
+  /** The strongest light step over a tile, from any light. */
+  const lightAt = (x: number, y: number) => {
+    let best: { damage: number; speed: number } = NO_LIGHT;
+    for (const l of lights) {
+      const d = Math.hypot(x - l.x, y - l.y) / l.r;
+      const step = BALANCE.light.steps.find((s) => d <= s.reach);
+      if (step && step.damage < best.damage) best = step;
+    }
+    return best;
+  };
 
   for (const e of world.enemies) {
     const def = ENEMIES[e.type];
     const field = def.runner ? world.flow.runner : world.flow.normal;
-    const lit = isLit(e.x, e.y);
+    const light = lightAt(e.x, e.y);
     e.px = e.x;
     e.py = e.y;
     e.cooldown -= dt;
@@ -38,21 +48,22 @@ export function combatSystem(world: World, dt: number): void {
 
     const hit = e.cooldown <= 0;
     if (hit) e.cooldown = D.attackInterval;
-    const damage = def.damage * (e.type === 'shambler' && lit ? D.lightShamblerDamage : 1);
+    const damage = def.damage;
     const wall = blocking.get(next);
-    const victim = world.colonists.find((c) => !c.asleep && Math.hypot(c.x - e.x, c.y - e.y) < D.reach);
+    // In the brightest light monsters do not go for people at all.
+    const victim = light.damage > 0 && world.colonists.find((c) => !c.asleep && Math.hypot(c.x - e.x, c.y - e.y) < D.reach);
     if (field[next] === 0) {
       if (hit) world.hearth.hp -= damage;
     } else if (wall) {
       if (hit) wall.hp -= damage * def.wallDamage;
     } else if (victim) {
-      if (hit) victim.health -= damage / D.colonistHp;
+      if (hit) victim.health -= (damage * light.damage) / D.colonistHp;
       if (victim.health <= 0) recordDeath(world, victim, `was killed by a ${def.name}`);
     } else {
       const nx = next % width;
       const ny = (next - nx) / width;
       const d = Math.hypot(nx - e.x, ny - e.y);
-      const step = Math.min(d, def.speed * (def.runner && lit ? D.lightRunnerSpeed : 1) * dt);
+      const step = Math.min(d, def.speed * light.speed * dt);
       if (d > 0) {
         e.x += ((nx - e.x) / d) * step;
         e.y += ((ny - e.y) / d) * step;

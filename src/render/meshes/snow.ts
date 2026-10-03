@@ -4,7 +4,7 @@ import { PALETTE } from '../materials';
 // Falling snow as GPU points. Each flake samples the warmth map and fades out over warm tiles,
 // so snow falls only outside the warm radius (section 12.2).
 
-const COUNT = 9000;
+const COUNT = 20000;
 const HEIGHT = 10;
 
 export interface Snow {

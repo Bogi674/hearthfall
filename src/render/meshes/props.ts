@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { Tile, type MapState } from '../../sim/grid';
+import { FOG_PROP_TILES } from '../fogOfWar';
 import { createPropMaterial, mixPalette, PALETTE } from '../materials';
 
 // Instanced map props: trees, rubble, and ruin walls. One InstancedMesh per part.
@@ -143,14 +144,17 @@ export function buildProps(map: MapState): PropLayer[] {
   return [foliage, trunks, rubble, walls];
 }
 
-/** Colors each prop by the warmth of its tile, and hides props under fog of war. Call when either changes. */
-export function colorPropsByWarmth(layers: PropLayer[], warmth: number[], warmThreshold: number, revealed: number[]): void {
+/**
+ * Colors each prop by the warmth of its tile. Blue holds fog of war visibility: 1 when revealed,
+ * fading toward 0 deeper in the fog, where the prop is hidden. Call when warmth or fog changes.
+ */
+export function colorPropsByWarmth(layers: PropLayer[], warmth: number[], warmThreshold: number, fogDist: Float32Array): void {
   const c = new THREE.Color();
   for (const l of layers) {
     l.tileOf.forEach((tile, i) => {
       l.mesh.getColorAt(i, c);
-      c.r = 1 - THREE.MathUtils.smoothstep(warmth[tile], warmThreshold - 8, warmThreshold + 4);
-      c.b = revealed[tile];
+      c.r = 1 - THREE.MathUtils.smoothstep(warmth[tile], warmThreshold - 20, warmThreshold + 8);
+      c.b = fogDist[tile] === 0 ? 1 : Math.max(0, 1 - fogDist[tile] / FOG_PROP_TILES) * 0.9;
       l.mesh.setColorAt(i, c);
     });
     l.mesh.instanceColor!.needsUpdate = true;

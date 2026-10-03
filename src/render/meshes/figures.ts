@@ -1,15 +1,17 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import type { EnemyType } from '../../data/enemies';
-import { mixPalette, PALETTE } from '../materials';
+import type { Look, LookColor } from '../../data/looks';
+import { LOOK_COLORS, mixPalette, PALETTE } from '../materials';
 
 // Procedural characters in the chunky low poly style (section 12.4). Each part is one InstancedMesh,
 // so a crowd stays cheap. Limbs hang from a pivot and swing while the figure walks. A part with an
 // offset rides on its pivot, so gloves, boots, and claws follow the limb they belong to.
 
 type Vec = [number, number, number];
+type LookSlot = { [K in keyof Look]: Look[K] extends LookColor ? K : never }[keyof Look];
 
-interface Part {
+export interface Part {
   geo: THREE.BufferGeometry;
   mat: THREE.Material;
   /** Pivot position. */
@@ -20,8 +22,10 @@ interface Part {
   offset?: Vec;
   /** Swing amplitude in radians around the x axis while walking. The sign sets the phase. */
   swing?: number;
-  /** Per figure color from instance colors. */
-  tinted?: boolean;
+  /** Per figure color, taken from this slot of the figure's look. */
+  tint?: LookSlot;
+  /** Shown only for looks that match, such as a hair style or a kind of coat. */
+  when?: (look: Look) => boolean;
 }
 
 export interface Figure {
@@ -30,58 +34,25 @@ export interface Figure {
   z: number;
   yaw: number;
   moving: boolean;
+  look?: Look;
 }
 
-const block = new RoundedBoxGeometry(1, 1, 1, 2, 0.12);
-const limb = new THREE.CapsuleGeometry(0.5, 0.6, 3, 8).scale(1, 0.62, 1).translate(0, -0.5, 0);
-const ball = new THREE.SphereGeometry(0.5, 16, 12);
-const cone = new THREE.ConeGeometry(0.5, 1, 12).translate(0, 0.5, 0);
-const tunic = new THREE.CylinderGeometry(0.42, 0.5, 1, 12);
-const flare = new THREE.CylinderGeometry(0.5, 0.62, 1, 12);
-const disc = new THREE.CylinderGeometry(0.5, 0.5, 1, 14);
+export const block = new RoundedBoxGeometry(1, 1, 1, 2, 0.12);
+export const limb = new THREE.CapsuleGeometry(0.5, 0.6, 3, 8).scale(1, 0.62, 1).translate(0, -0.5, 0);
+export const ball = new THREE.SphereGeometry(0.5, 16, 12);
+export const cone = new THREE.ConeGeometry(0.5, 1, 12).translate(0, 0.5, 0);
+export const flare = new THREE.CylinderGeometry(0.5, 0.62, 1, 12);
+export const disc = new THREE.CylinderGeometry(0.5, 0.5, 1, 14);
 
-const std = (color: THREE.Color) => new THREE.MeshStandardMaterial({ color, roughness: 0.85, flatShading: true });
+export const std = (color: THREE.Color) => new THREE.MeshStandardMaterial({ color, roughness: 0.85, flatShading: true });
+/** White base for parts colored per figure through instance colors. */
+export const cloth = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, flatShading: true });
 // Monster eyes glow and ignore fog so they read in the dark (sections 12.3 and 12.5).
 const blight = new THREE.MeshBasicMaterial({ color: PALETTE.blight.clone().multiplyScalar(3), fog: false });
 // Wounds and sacs glow less than eyes, so bloom does not swallow the body.
 const wound = new THREE.MeshBasicMaterial({ color: mixPalette(PALETTE.blight, PALETTE.deepCold, 0.35) });
-// Colonist eyes are two bright dots under the hood, like the reference character.
-const eye = new THREE.MeshBasicMaterial({ color: PALETTE.frost.clone().multiplyScalar(1.4) });
 
-const cloth = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, flatShading: true });
-const face = std(mixPalette(PALETTE.warmShadow, PALETTE.oldWood, 0.3));
-const trousers = std(mixPalette(PALETTE.warmShadow, PALETTE.nightBlue, 0.35));
-const leather = std(mixPalette(PALETTE.oldWood, PALETTE.warmShadow, 0.55));
-const brass = std(mixPalette(PALETTE.lantern, PALETTE.oldWood, 0.35));
-const pack = std(mixPalette(PALETTE.oldWood, PALETTE.lantern, 0.2));
-
-/** Tunic and hat colors, picked per colonist so the group reads as different people. */
-export const COAT_COLORS = [
-  mixPalette(PALETTE.ember, PALETTE.warmShadow, 0.3),
-  mixPalette(PALETTE.nightBlue, PALETTE.frost, 0.4),
-  PALETTE.oldWood,
-  mixPalette(PALETTE.lantern, PALETTE.oldWood, 0.45),
-];
-
-const pair = (make: (side: number) => Part): Part[] => [make(-1), make(1)];
-
-export const COLONIST_RIG: Part[] = [
-  ...pair((s) => ({ geo: limb, mat: trousers, at: [s * 0.07, 0.38, 0], size: [0.1, 0.3, 0.1], swing: s * 0.6 })),
-  ...pair((s) => ({ geo: block, mat: leather, at: [s * 0.07, 0.38, 0], offset: [0, -0.34, 0.025], size: [0.12, 0.09, 0.17], swing: s * 0.6 })),
-  { geo: flare, mat: cloth, at: [0, 0.37, 0], size: [0.34, 0.1, 0.26], tinted: true },
-  { geo: tunic, mat: cloth, at: [0, 0.54, 0], size: [0.31, 0.33, 0.23], tinted: true },
-  { geo: disc, mat: leather, at: [0, 0.43, 0], size: [0.33, 0.045, 0.25] },
-  { geo: block, mat: brass, at: [0, 0.43, 0.125], size: [0.07, 0.055, 0.025] },
-  { geo: block, mat: leather, at: [0, 0.55, 0.115], size: [0.035, 0.38, 0.02], rot: [0, 0, 0.65] },
-  { geo: block, mat: pack, at: [0, 0.55, -0.15], size: [0.2, 0.22, 0.09] },
-  ...pair((s) => ({ geo: limb, mat: cloth, at: [s * 0.19, 0.68, 0], size: [0.085, 0.27, 0.085], rot: [0, 0, s * 0.18], swing: -s * 0.5, tinted: true })),
-  ...pair((s) => ({ geo: ball, mat: leather, at: [s * 0.19, 0.68, 0], offset: [0, -0.3, 0], size: [0.1, 0.1, 0.1], rot: [0, 0, s * 0.18], swing: -s * 0.5 })),
-  { geo: ball, mat: face, at: [0, 0.81, 0.01], size: [0.23, 0.22, 0.22] },
-  { geo: ball, mat: cloth, at: [0, 0.83, -0.03], size: [0.27, 0.26, 0.26], tinted: true },
-  { geo: disc, mat: cloth, at: [0, 0.92, -0.01], size: [0.4, 0.03, 0.4], tinted: true },
-  { geo: cone, mat: cloth, at: [0, 0.92, -0.02], size: [0.27, 0.32, 0.27], rot: [-0.3, 0, 0], tinted: true },
-  ...pair((s) => ({ geo: ball, mat: eye, at: [s * 0.045, 0.81, 0.115], size: [0.04, 0.055, 0.02] })),
-];
+export const pair = (make: (side: number) => Part): Part[] => [make(-1), make(1)];
 
 const rags = std(mixPalette(PALETTE.deepCold, PALETTE.warmShadow, 0.55));
 const pale = std(mixPalette(PALETTE.nightBlue, PALETTE.frost, 0.28));
@@ -141,14 +112,14 @@ export const ENEMY_RIGS: Record<EnemyType, Part[]> = {
 
 export interface FigureSet {
   group: THREE.Group;
-  update(figures: Figure[], time: number, stride: number, colorOf?: (id: number) => THREE.Color): void;
+  update(figures: Figure[], time: number, stride: number): void;
 }
 
 export function createFigureSet(rig: Part[], max: number, scale = 1): FigureSet {
   const group = new THREE.Group();
   const meshes = rig.map((p) => {
     const m = new THREE.InstancedMesh(p.geo, p.mat, max);
-    if (p.tinted) m.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(max * 3), 3);
+    if (p.tint) m.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(max * 3), 3);
     m.count = 0;
     m.frustumCulled = false;
     m.castShadow = !(p.mat instanceof THREE.MeshBasicMaterial);
@@ -164,31 +135,42 @@ export function createFigureSet(rig: Part[], max: number, scale = 1): FigureSet 
   const v = new THREE.Vector3();
   const size = new THREE.Vector3();
   const one = new THREE.Vector3(1, 1, 1);
-  const s = new THREE.Vector3(scale, scale, scale);
+  const s = new THREE.Vector3();
   const up = new THREE.Vector3(0, 1, 0);
+  const hidden = new THREE.Matrix4().makeScale(0, 0, 0);
+  const used = rig.map(() => false);
 
   return {
     group,
-    update(figures, time, stride, colorOf) {
+    update(figures, time, stride) {
       const shown = figures.slice(0, max);
+      used.fill(false);
       shown.forEach((f, i) => {
+        const look = f.look;
+        s.set(scale * (look?.build ?? 1), scale * (look?.height ?? 1), scale * (look?.build ?? 1));
         base.compose(v.set(f.x, 0, f.z), q.setFromAxisAngle(up, f.yaw), s);
         const phase = f.moving ? Math.sin(time * stride + f.id * 1.7) : 0;
         rig.forEach((p, k) => {
+          if (p.when && !(look && p.when(look))) {
+            meshes[k].setMatrixAt(i, hidden);
+            return;
+          }
+          used[k] = true;
           const r = p.rot ?? [0, 0, 0];
           e.set(r[0] + (p.swing ?? 0) * phase, r[1], r[2]);
           // Pivot, then rotation, then the offset along the limb, then the part's own size.
           local.compose(v.set(...p.at), q.setFromEuler(e), one);
           tail.compose(v.set(...(p.offset ?? [0, 0, 0])), none, size.set(...p.size));
           meshes[k].setMatrixAt(i, local.multiply(tail).premultiply(base));
-          if (p.tinted && colorOf) meshes[k].setColorAt(i, colorOf(f.id));
+          if (p.tint && look) meshes[k].setColorAt(i, LOOK_COLORS[look[p.tint]]);
         });
       });
-      for (const m of meshes) {
-        m.count = shown.length;
+      meshes.forEach((m, k) => {
+        // Parts no figure shows are skipped entirely.
+        m.count = used[k] ? shown.length : 0;
         m.instanceMatrix.needsUpdate = true;
         if (m.instanceColor) m.instanceColor.needsUpdate = true;
-      }
+      });
     },
   };
 }

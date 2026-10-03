@@ -12,7 +12,7 @@ export function baselineWarmth(temperature: number): number {
 /** Warmth a heat source gives a tile at distance d. Full heat at the center, warm threshold at the radius edge. */
 export function sourceWarmth(d: number, radius: number): number {
   if (d <= radius) return 100 - (100 - CFG.warmThreshold) * (d / radius);
-  return Math.max(0, CFG.warmThreshold * (1 - (d - radius) / CFG.edgeFalloff));
+  return Math.max(0, CFG.warmThreshold * (1 - (d - radius) / (radius * CFG.edgeFalloff)));
 }
 
 export function hearthRadius(world: World): number {

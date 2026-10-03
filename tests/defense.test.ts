@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ENEMIES } from '../src/data/enemies';
 import { placementError } from '../src/sim/placement';
 import { currentPhase, DAY_SECONDS, nightThreat } from '../src/sim/query';
+import { combatSystem } from '../src/sim/systems/combat';
 import { BLOCKED } from '../src/sim/systems/pathfinding';
 import { createWorld, stepWorld, TICKS_PER_SECOND, type World } from '../src/sim/world';
 import { build, runDays } from './helpers';
@@ -148,5 +149,26 @@ describe('defense (M3 done when)', () => {
       runNights(world, 8);
       expect(world.lost, `seed ${seed}`).not.toBeNull();
     }
+  });
+});
+
+describe('light', () => {
+  /** Health a colonist loses in 10 seconds next to a Shambler at a given distance from the hearth. */
+  const lossAt = (d: number) => {
+    const w = createWorld(1);
+    const c = w.colonists[0];
+    w.colonists = [c];
+    [c.x, c.y] = [w.hearth.x + d, w.hearth.y];
+    w.enemies = [{ id: 999, type: 'shambler', x: c.x + 0.3, y: c.y, px: c.x + 0.3, py: c.y, hp: 40, cooldown: 0 }];
+    for (let i = 0; i < 100; i++) combatSystem(w, 0.1);
+    return 1 - c.health;
+  };
+
+  it('protects people more the closer they are to the fire', () => {
+    const [bright, dim, fringe, dark] = [2, 7, 10, 20].map(lossAt);
+    expect(bright).toBe(0);
+    expect(dim).toBeGreaterThan(0);
+    expect(fringe).toBeGreaterThan(dim);
+    expect(dark).toBeGreaterThan(fringe);
   });
 });

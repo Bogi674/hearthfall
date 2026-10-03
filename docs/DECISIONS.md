@@ -120,3 +120,17 @@ Design and architecture decisions that are not already in `docs/GAME_DESIGN.md`.
 - **Save version 2.** The world gained house levels, building levels, the reveal map, and place states. Old saves lack them, so they are rejected rather than patched.
 - **Idle colonists stand 3.3 tiles from the house.** At the old radius they stood inside the house walls.
 - **The full run test uses seeds 1, 4, and 5.** The bot plays a fixed build order. M7 added real costs to that order, and seeds 2, 3, and 6 no longer launch before the night 10 Blood Moon with it. The test still proves the M5 done line on three maps.
+
+## 2026-10-03 (M8)
+
+- **Map 128 by 128.** This was already the full game target in section 4. Distances to places grow by about 1.5 times. Squads walk a third faster, so the longest trip still fits in one day.
+- **Forest density is anchored to a fixed distance.** Tree density used to ramp up relative to the map size. On the bigger map that pushed the woods so far out that woodcutters stood 40 tiles from home. Now the forest starts 17 tiles out on any map size.
+- **Monsters spawn 42 tiles out, not at the map edge.** At the map edge a Shambler would need most of the night to arrive. A fixed spawn square keeps waves as dangerous as before.
+- **Lookout sight 44, 56, and 66.** Stage 1 finds the Clinic, stage 2 the Rail Depot and Old Airfield from near the house. Stage 3 helps a post built away from the center.
+- **Light protects people, not buildings.** The request asked that people closer to the fire are safer and that monsters at the fringe can attack but not fully hurt. Applying the steps to buildings would make the house unbreakable in the bright core, which removes the loss condition. So the steps scale damage to people and the speed of monsters only.
+- **In the bright core monsters ignore people.** With zero damage a monster would stand and swing at a person forever. Skipping people there lets it keep walking to a wall or the house.
+- **Warmth fades over 60 percent of the radius.** A gradual edge reads like real light. It also widens the cold but not freezing ring outside the warm circle, which is a small help late in a run.
+- **Fog haze from a distance map.** The renderer turns the reveal map into a distance to the nearest known tile with a two pass chamfer sweep. The ground shader shows grey haze for the first few tiles and black deeper in. Props use the same distance to fade to grey silhouettes and then hide. The simulation state did not change.
+- **Looks are data, colors live in materials.** `src/data/looks.ts` lists the twenty designs by color name. `LOOK_COLORS` in `src/render/materials.ts` defines those colors once. Skin and hair need natural tones outside the eight palette colors, so they are kept muted and warm.
+- **The name picks woman or man, the seed picks the design.** Names already alternate between women and men. A look is derived in the renderer from the name and the seed, so no new state is saved and old saves still load.
+- **One rig for every look.** Each style is a part that shows only for looks that ask for it. Hidden parts are zero size instances, and parts nobody wears are skipped. This keeps the shared InstancedMesh approach from the character decision.

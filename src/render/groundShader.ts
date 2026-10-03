@@ -8,8 +8,8 @@ export interface GroundTextures {
   warmth: THREE.DataTexture;
   /** Red marks road tiles, green marks water tiles. Linear filtered for soft edges. */
   tiles: THREE.DataTexture;
-  /** Fog of war: 255 where revealed. Linear filtered so the edge of the known world is soft. */
-  reveal: THREE.DataTexture;
+  /** Fog of war depth: 0 on revealed tiles, rising to 255 deep in the unknown. Linear filtered. */
+  fogDepth: THREE.DataTexture;
 }
 
 export function createGroundMaterial(
@@ -22,7 +22,9 @@ export function createGroundMaterial(
     uniforms: {
       uWarmth: { value: textures.warmth },
       uTiles: { value: textures.tiles },
-      uReveal: { value: textures.reveal },
+      uFogDepth: { value: textures.fogDepth },
+      uBase: { value: 0.3 },
+      uTime: { value: 0 },
       uMapSize: { value: mapSize },
       uWarmT: { value: warmThreshold / 100 },
       uFrost: { value: 0 },
@@ -48,7 +50,9 @@ void main() {
     fragmentShader: /* glsl */ `
 uniform sampler2D uWarmth;
 uniform sampler2D uTiles;
-uniform sampler2D uReveal;
+uniform sampler2D uFogDepth;
+uniform float uBase;
+uniform float uTime;
 uniform vec2 uMapSize;
 uniform float uWarmT;
 uniform float uFrost;
@@ -82,6 +86,8 @@ void main() {
   float grain = noise(vXZ * 0.35) * 0.5 + noise(vXZ * 1.7) * 0.35 + noise(vXZ * 6.0) * 0.15;
 
   // Warm side: dry earth in a pool of firelight that is brightest at the core.
+  // Light fades like real light: strong at the core, then a long soft falloff into the dark.
+  float light = clamp((w - uBase) / (1.0 - uBase), 0.0, 1.0);
   float heat = smoothstep(uWarmT, 1.0, w);
   vec3 earth = mix(uWarmShadow, uOldWood, 0.3 + 0.5 * grain);
   earth = mix(earth, uWarmShadow * 1.3, road * 0.6);
@@ -97,16 +103,21 @@ void main() {
   vec3 ice = mix(uNightBlue, uFrostCol, 0.1 + 0.08 * noise(vXZ * 0.8));
   cold = mix(cold, ice, water);
 
-  float t = smoothstep(uWarmT - 0.05, uWarmT + 0.03, w);
-  vec3 color = mix(cold, warm, t);
-  // A thin line of frost where the warm circle meets the cold.
-  color += uFrostCol * 0.05 * (1.0 - abs(t * 2.0 - 1.0));
+  float t = smoothstep(0.02, 0.62, light);
+  // Snow just outside the light still catches a little of the fire.
+  cold += uEmber * 0.12 * smoothstep(0.0, 0.5, light);
+  vec3 color = mix(cold, warm * (0.55 + 0.45 * t), t * t * (3.0 - 2.0 * t));
 
   color = mix(color, uFogColor, smoothstep(uFogNear, uFogFar, length(vXZ)));
-  // Fog of war: unexplored land sinks into the dark (section 4).
-  // Noise breaks up the edge so it reads as mist, not as tile corners.
-  float known = texture2D(uReveal, uv).r + (noise(vXZ * 0.45) - 0.5) * 0.45;
-  color = mix(uDeepCold * 0.45, color, smoothstep(0.25, 0.75, known));
+  // Fog of war (section 4): close to the known land the ground shows through a grey drifting haze.
+  // Deeper into the unknown it sinks to black. Noise breaks up the edge so it reads as mist.
+  float depth = texture2D(uFogDepth, uv).r + (noise(vXZ * 0.45) - 0.5) * 0.05;
+  float drift = noise(vXZ * 0.22 + vec2(uTime * 0.05, uTime * 0.03)) * 0.6 + noise(vXZ * 0.6 - vec2(uTime * 0.04, 0.0)) * 0.4;
+  vec3 grey = vec3(dot(color, vec3(0.3, 0.59, 0.11)));
+  vec3 haze = mix(uNightBlue, uFrostCol, 0.3) * (0.45 + 0.4 * drift);
+  vec3 fogged = mix(grey * 0.5, haze, 0.65);
+  fogged = mix(fogged, uDeepCold * 0.12, smoothstep(0.1, 1.0, depth));
+  color = mix(color, fogged, smoothstep(0.0, 0.06, depth));
   gl_FragColor = vec4(color, 1.0);
   #include <tonemapping_fragment>
   #include <colorspace_fragment>

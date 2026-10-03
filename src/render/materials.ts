@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { LookColor } from '../data/looks';
 
 // Palette from section 12.3 of docs/GAME_DESIGN.md. Every render color starts here.
 export const PALETTE = {
@@ -11,6 +12,39 @@ export const PALETTE = {
   deepCold: new THREE.Color('#0E1621'),
   blight: new THREE.Color('#8BFF6A'),
 } as const;
+
+/**
+ * Character tones for colonist looks (src/data/looks.ts). Natural skin, hair, and cloth colors go
+ * beyond the eight palette colors, so they are kept muted and slightly warm to sit with the palette.
+ */
+export const LOOK_COLORS: Record<LookColor, THREE.Color> = {
+  skinFair: new THREE.Color('#E8BFA0'),
+  skinLight: new THREE.Color('#D9A27E'),
+  skinTan: new THREE.Color('#B87B55'),
+  skinBrown: new THREE.Color('#8A5A3C'),
+  skinDeep: new THREE.Color('#5C3A28'),
+  hairBlack: new THREE.Color('#1E1A1A'),
+  hairDarkBrown: new THREE.Color('#3A2619'),
+  hairBrown: new THREE.Color('#5E3D26'),
+  hairAuburn: new THREE.Color('#7E3B22'),
+  hairRed: new THREE.Color('#A8502A'),
+  hairBlonde: new THREE.Color('#D2A85E'),
+  hairAsh: new THREE.Color('#B9A88A'),
+  hairGrey: new THREE.Color('#A7A39C'),
+  rust: new THREE.Color('#9C4A2A'),
+  moss: new THREE.Color('#5A6B3A'),
+  navy: new THREE.Color('#2E3E5C'),
+  mustard: new THREE.Color('#C4932F'),
+  charcoal: new THREE.Color('#3A3838'),
+  plum: new THREE.Color('#5E3550'),
+  teal: new THREE.Color('#2F6464'),
+  cream: new THREE.Color('#D8CBB0'),
+  leather: new THREE.Color('#5A3A24'),
+  olive: new THREE.Color('#5E5A34'),
+  denim: new THREE.Color('#3C5170'),
+  wine: new THREE.Color('#6E2A2E'),
+  sand: new THREE.Color('#A68E66'),
+};
 
 /** Mix of two palette colors. Derived colors are built this way so the palette stays the only source. */
 export function mixPalette(a: THREE.Color, b: THREE.Color, t: number): THREE.Color {
@@ -36,7 +70,8 @@ export function installHearthFog(): void {
 
 /**
  * Material for instanced props that change look with warmth.
- * Instance color red holds coldness from 0 to 1, green holds a brightness variation, and blue is 0 under fog of war.
+ * Instance color red holds coldness from 0 to 1, green holds a brightness variation, and blue holds fog of war
+ * visibility: 1 when revealed, lower in the fog, where the prop turns to a grey silhouette, and hidden near 0.
  * Cold props shift to the cold tint and gather snow on upward faces.
  */
 export function createPropMaterial(warm: THREE.Color, cold: THREE.Color, snow: boolean): THREE.MeshStandardMaterial {
@@ -56,10 +91,11 @@ export function createPropMaterial(warm: THREE.Color, cold: THREE.Color, snow: b
       .replace(
         '#include <color_fragment>',
         /* glsl */ `
-  if (vColor.b < 0.5) discard;
+  if (vColor.b < 0.03) discard;
   float hfCold = vColor.r;
   diffuseColor.rgb = mix(uWarmTint, uColdTint, hfCold) * (0.75 + 0.5 * vColor.g);
   diffuseColor.rgb = mix(diffuseColor.rgb, uSnow, smoothstep(0.3, 0.7, vHfUp) * hfCold);
+  if (vColor.b < 0.99) diffuseColor.rgb = vec3(dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11))) * (0.15 + 0.45 * vColor.b);
 `,
       );
   };

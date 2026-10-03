@@ -15,23 +15,28 @@ export const BALANCE = {
     { name: 'Dawn', seconds: 30, work: true },
   ],
   map: {
-    width: 80,
-    height: 80,
+    width: 128,
+    height: 128,
     /** Tiles around the hearth that are always clear ground. */
     clearingRadius: 6,
     /** Ruined town extends this far from the hearth. Trees thicken beyond it. */
-    townRadius: 28,
-    houseAttempts: 220,
-    houseCountMax: 26,
+    townRadius: 40,
+    houseAttempts: 420,
+    houseCountMax: 50,
     houseWidth: [4, 7],
     houseDepth: [4, 6],
     /** Chance that a wall tile of a ruined house has collapsed. */
     wallGapChance: 0.3,
     houseRubbleChance: 0.25,
     streetRubbleChance: 0.04,
-    ponds: 2,
+    ponds: 4,
+    /** Side streets run parallel to the main roads at these offsets from the hearth. */
+    sideStreets: [-26, -14, 13, 25],
     pondRadius: [3, 5],
     forestNoiseScale: 9,
+    /** Trees start to thicken this far from the hearth and reach full density this many tiles later. */
+    forestStart: 17,
+    forestRamp: 40,
   },
   temperature: {
     day1: -2,
@@ -46,8 +51,8 @@ export const BALANCE = {
     warmThreshold: 50,
     /** Tiles below this are freezing. Between the two thresholds is cold. */
     freezingThreshold: 20,
-    /** Heat sources fall from the warm threshold to 0 over this many tiles past their radius. */
-    edgeFalloff: 3,
+    /** Past its radius a heat source fades from the warm threshold to 0 over this fraction of its radius. */
+    edgeFalloff: 0.6,
   },
   hearth: {
     /** Radius in tiles per hearth level, from section 5.2. */
@@ -92,6 +97,8 @@ export const BALANCE = {
     spawnSeconds: 90,
     /** Spawn edges grow by one every this many nights, up to 4. */
     nightsPerEdge: 4,
+    /** Monsters spawn on the sides of a square this many tiles out from the hearth. */
+    spawnDistance: 42,
   },
   /** Flow field costs per tile (section 9.3). Impassable tiles are not entered. */
   paths: {
@@ -114,24 +121,33 @@ export const BALANCE = {
     towerInterval: 0.8,
     trapDps: 20,
     trapWearPerSecond: 3,
-    /** Light from the hearth and lanterns (section 5.3). */
-    lightShamblerDamage: 0.7,
-    lightRunnerSpeed: 0.8,
+  },
+  /**
+   * Light steps from the core of a light out to its fringe (section 5.3). Reach is the distance as a
+   * fraction of the light radius. Damage scales what monsters deal to people. Speed scales monster speed.
+   */
+  light: {
+    steps: [
+      { name: 'Bright', reach: 0.5, damage: 0, speed: 0.6 },
+      { name: 'Lit', reach: 0.8, damage: 0.25, speed: 0.75 },
+      { name: 'Dim', reach: 1, damage: 0.5, speed: 0.85 },
+      { name: 'Fringe', reach: 1.4, damage: 0.75, speed: 1 },
+    ],
   },
   /** Fog of war and discovery (sections 4 and 10.4). */
   discovery: {
-    startRadius: 14,
+    startRadius: 18,
     knownAtStart: 3,
-    squadReveal: 5,
-    squadDiscover: 6,
+    squadReveal: 6,
+    squadDiscover: 8,
     watchtowerReveal: 8,
-    lookoutReveal: 10,
+    lookoutReveal: 12,
   },
   /** Section 10. */
   expeditions: {
     maxSquad: 4,
     /** Squads walk slower than colonists in camp. Tiles per second. */
-    speed: 1.2,
+    speed: 1.6,
     searchSeconds: 60,
     rollSeconds: 6,
     /** Chance of a danger event per roll is danger times this, divided by the square root of squad size. */

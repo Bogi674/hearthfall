@@ -68,13 +68,17 @@ function planWave(world: World, night: number, final = false): Wave {
   return { night, threat, bloodMoon, edges: edges.slice(0, edgeCount), plan, spawned: 0, final };
 }
 
-/** Spawns on a random reachable tile of one of the active edges. */
+/** Spawns on a random reachable tile of one active side of the spawn square around the hearth. */
 function spawn(world: World, type: EnemyType, edges: number[]): void {
   const { width, height } = world.map;
+  const s = W.spawnDistance;
+  const { x: hx, y: hy } = world.hearth;
   for (let tries = 0; tries < 30; tries++) {
     const edge = edges[nextInt(world.rng, 0, edges.length - 1)];
-    const t = Math.floor(nextFloat(world.rng) * (edge % 2 === 0 ? width : height));
-    const [x, y] = [[t, 0], [width - 1, t], [t, height - 1], [0, t]][edge];
+    const t = Math.floor(nextFloat(world.rng) * 2 * s) - s;
+    const [dx, dy] = [[t, -s], [s, t], [t, s], [-s, t]][edge];
+    const x = Math.max(0, Math.min(width - 1, hx + dx));
+    const y = Math.max(0, Math.min(height - 1, hy + dy));
     if (world.flow.normal[y * width + x] >= BLOCKED) continue;
     world.enemies.push({ id: world.nextId++, type, x, y, px: x, py: y, hp: ENEMIES[type].hp, cooldown: 0 });
     return;

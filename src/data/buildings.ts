@@ -51,7 +51,7 @@ const DEFS = {
   reinforcedWall: { name: 'Reinforced Wall', category: 'Defense', cost: { metal: 5, stone: 5 }, size: [1, 1], workers: 0, hp: 350 },
   lookoutPost: {
     name: 'Lookout Post', category: 'Escape', cost: { wood: 20, planks: 10 }, size: [1, 1], workers: 0, hp: 120,
-    sight: [30, 36, 44], upgrades: [{ planks: 30, stone: 10 }, { planks: 40, metal: 15 }],
+    sight: [44, 56, 66], upgrades: [{ planks: 30, stone: 10 }, { planks: 40, metal: 15 }],
   },
   watchtower: { name: 'Watchtower', category: 'Defense', cost: { planks: 25 }, size: [1, 1], workers: 1, hp: 150, nightDuty: true },
 } satisfies Record<string, BuildingDef>;

@@ -5,7 +5,7 @@ Bugs, shortcuts, and loose ends that are known but not fixed yet.
 ## Open
 
 - The production bundle is about 530 kB and Vite warns about chunk size. Almost all of it is Three.js. Code splitting can wait until load time matters.
-- Performance was only checked in headless Chromium with software WebGL. It has not been measured on a real GPU. Seed 1 has about 1700 trees, 230 rubble tiles, and 220 wall tiles. That is 4 instanced draw calls plus 9000 snow points.
+- Performance was only checked in headless Chromium with software WebGL. It has not been measured on a real GPU. Since M8 the map is 128 by 128, so there are about three times as many trees and ruins. Props are still 4 instanced draw calls, plus 20000 snow points.
 - The `Blocked` tile type exists but map generation does not place it yet.
 - The fog patch measures distance from the world origin. This works because the hearth is always at the map center. Sprite materials would fail to compile with the patched chunk because the sprite shader has no `transformed` variable. Nothing uses sprites yet.
 - Trees inside the warm circle are lit from the hearth side only. From the default camera angle the side facing the camera can look dark.
@@ -27,7 +27,7 @@ Bugs, shortcuts, and loose ends that are known but not fixed yet.
 - Dev builds put the world on `window.world` for scripted visual checks. Production and offline builds do not.
 - Squads walk in straight lines from the gate to the POI, through trees and ruins.
 - Monsters under fog of war are not drawn, even when they attack something you can see from the dark edge.
-- Props hidden under fog of war are discarded in the shader, but they may still cast shadows into revealed land.
+- Props deep in the fog of war are discarded in the shader, but they may still cast shadows into revealed land. Props in the grey haze near the known land also cast normal shadows.
 - Only the ruined stages 1 and 2 show the fire inside the house. From stage 3 the fire burns in a bowl by the door.
 - Walls only join along the four grid directions. A ring of walls has gaps at diagonal steps.
 - Saves from before M7 (version 1) cannot be loaded.
@@ -36,7 +36,7 @@ Bugs, shortcuts, and loose ends that are known but not fixed yet.
 - Loot that does not fit in storage when a squad returns is lost. The return message only lists what was kept.
 - Colonists away on expeditions still eat from the stockpile, since hauling is abstracted.
 - **Design conflict.** The threat formula `10 * 1.32^(n - 1)` gives about 10000 threat on night 26, where the run arc in section 3.3 puts the late game. Only a launch around day 8 to 10 is survivable now. The full game arc needs a different curve or a cap.
-- The scripted full run launches in time on seeds 1, 4, and 5. On seeds 2, 3, and 6 it launches too late and loses to the night 10 Blood Moon. The M7 house repairs and lookout costs made the simple bot slower. Some maps are harder for a simple player.
+- The scripted full run launches by day 9 on seeds 1, 3, 4, 5, and 6. On seed 2 it never finishes the airship in 14 days. The test checks seeds 1, 4, and 5 to keep the test time down.
 - The Last Night always starts at the start of a night, even when launched by day.
 - The airship model is placeholder boxes and a sphere, and the launch climb is a simple render animation.
 - Desertion is recorded in the list of the dead with the cause "deserted the colony".
@@ -45,5 +45,11 @@ Bugs, shortcuts, and loose ends that are known but not fixed yet.
 - The F1 debug panel from section 15.7 is not built. Dev builds expose `window.world` instead.
 - Hints cover only the first two days. Later goals rely on the Airship and Expeditions tabs explaining what is missing.
 - No human playtest has confirmed the M6 done line. The hints, tab texts, and score screen were checked in headless Chromium only.
+- The person rig holds every style as its own InstancedMesh, 75 parts in all. Parts no colonist wears are skipped, but a varied colony draws most of them, plus their shadows.
+- The look of a colonist comes from the name and the seed. After 24 colonists the names repeat, so two colonists can share a name and a look.
+- Hidden parts of a figure are drawn as zero size instances. They cost vertex work but no pixels.
+- Light steps protect people only. Monsters still hit walls and the house at full strength, even in the bright core.
+- The fog haze is drawn from a distance map that the renderer rebuilds every time tiles are revealed. It is fast on a 128 by 128 map but would need a smarter update on a much larger map.
+- Monster speed in light uses the same steps for every type, so the old Runner only slow is gone.
 - Characters only have a walk cycle. There are no attack, work, or death animations yet.
 - The intro story opens on every new run. There is no setting to skip it, only the button to close it.

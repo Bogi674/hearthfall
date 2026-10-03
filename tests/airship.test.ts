@@ -36,8 +36,9 @@ describe('M5 production', () => {
   it('a heater warms a cold spot while it has fuel', () => {
     const w = rich();
     fill(w, { metal: 10, parts: 5, fuel: 30 });
-    const x = w.hearth.x + 14;
     const y = w.hearth.y;
+    let x = w.hearth.x + 14;
+    while (placementError(w, 'heater', x, y, false)) x++;
     const i = y * w.map.width + x;
     const cold = w.warmth[i];
     expect(placementError(w, 'heater', x, y, false)).toBeNull();

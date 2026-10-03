@@ -2,6 +2,18 @@
 
 Newest entries first. Each entry names the milestone it belongs to.
 
+## 2026-10-03 (M8: Scale, People, and Light)
+
+- The map grows from 80 by 80 to 128 by 128 tiles. The town spreads out to 40 tiles with more ruined houses, more side streets, and four frozen ponds. The forest still starts to thicken about 17 tiles out, so wood stays close.
+- Points of interest are farther away. The Farmhouse is 24 tiles out and the Old Airfield is 54. Squads walk 1.6 tiles per second instead of 1.2. The start reveal grows to 18 tiles. Squads reveal 6 tiles around them and find places within 8 tiles. Lookout sight is now 44, 56, and 66 tiles.
+- Monsters spawn on a square 42 tiles out from the hearth instead of at the map edge, so nights keep their timing on the bigger map.
+- Twenty colonist designs replace the wizard look: ten for women and ten for men (`src/data/looks.ts`, `src/render/meshes/people.ts`). They differ in height, build, skin, hair style and color, beards, knit hats, parkas, jackets, sweaters with scarves, vests, long coats, trousers, cargo pants, tall boots, skirts, and overalls.
+- Warmth fades past a heat source over 60 percent of its radius instead of 3 tiles. The ground shader draws the light as a long soft falloff with no hard edge.
+- Light protects people in steps: Bright, Lit, Dim, and Fringe (section 5.3). Monsters do not attack people in the bright core. In the fringe they attack at reduced strength. Monsters also slow down the deeper they go into the light. This replaces the old Shambler and Runner rule.
+- Fog of war is no longer flat black. Near the known land it shows the ground as a darker grey drifting haze, with faint grey shapes of trees and ruins. Farther in it fades to pitch black.
+- Tests cover the light steps, the gradual warmth falloff, and the colonist looks.
+- Added `docs/screenshots/m8-start.jpg`, `m8-fog.jpg`, `m8-compound.jpg`, and `m8-people.jpg`.
+
 ## 2026-10-03 (M7: The Hearth House and the Compound)
 
 - The hearth is now the Hearth House. It starts as a ruined house with a fire inside. Clicking it shows the next repair. Five stages raise its warm radius, fuel use, and health (section 5.2).

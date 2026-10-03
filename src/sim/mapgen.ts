@@ -55,7 +55,7 @@ function placeRoads(map: MapState, rng: RngState, hx: number, hy: number): void 
       setTile(map, mainX + w, i, Tile.Road);
     }
   }
-  for (const offset of [-15, 14]) {
+  for (const offset of CFG.sideStreets) {
     const y = hy + offset + nextInt(rng, -1, 1);
     const half = nextInt(rng, 14, CFG.townRadius);
     for (let x = hx - half; x <= hx + half; x++) if (inBounds(map, x, y)) setTile(map, x, y, Tile.Road);
@@ -121,12 +121,11 @@ function placePonds(map: MapState, rng: RngState, hx: number, hy: number): void 
 /** Trees grow in noisy clusters. Density rises with distance from the hearth. */
 function placeTrees(map: MapState, rng: RngState, hx: number, hy: number): void {
   const noise = createValueNoise(rng, map.width, map.height, CFG.forestNoiseScale);
-  const maxDist = Math.hypot(hx, hy);
   for (let y = 0; y < map.height; y++) {
     for (let x = 0; x < map.width; x++) {
       if (getTile(map, x, y) !== Tile.Ground) continue;
       const d = dist(x, y, hx, hy);
-      const outside = Math.max(0, (d - CFG.townRadius * 0.6) / (maxDist - CFG.townRadius * 0.6));
+      const outside = Math.min(1, Math.max(0, (d - CFG.forestStart) / CFG.forestRamp));
       const density = noise(x, y) * 0.9 - 0.45 + outside * 0.75;
       if (chance(rng, Math.max(0, Math.min(0.9, density)))) setTile(map, x, y, Tile.Tree);
     }

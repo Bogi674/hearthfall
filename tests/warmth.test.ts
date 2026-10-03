@@ -27,9 +27,18 @@ describe('warmth', () => {
 
   it('falls to the outdoor baseline past the radius', () => {
     const world = createWorld(1);
-    const far = hearthRadius(world) + W.edgeFalloff + 1;
+    const far = Math.ceil(hearthRadius(world) * (1 + W.edgeFalloff)) + 1;
     expect(warmthAt(world, far, 0)).toBe(Math.round(baselineWarmth(world.temperature)));
     expect(warmthAt(world, far, 0)).toBeLessThan(W.warmThreshold);
+  });
+
+  it('fades gradually past the radius instead of dropping at once', () => {
+    const world = createWorld(1);
+    const r = hearthRadius(world);
+    const values = [1, 2, 3].map((k) => warmthAt(world, r + k, 0));
+    expect(values[0]).toBeLessThan(W.warmThreshold);
+    expect(values[0]).toBeGreaterThan(values[1]);
+    expect(values[1]).toBeGreaterThan(values[2]);
   });
 
   it('day 1 outside is cold but not freezing', () => {

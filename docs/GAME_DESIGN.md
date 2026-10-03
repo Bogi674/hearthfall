@@ -59,13 +59,13 @@ Time controls are pause, 1x, 2x, and 3x. The game auto pauses on dusk start in t
 
 ## 4. World and Map
 
-- **Grid.** Square tiles of 1 world unit. Prototype map is 80 by 80 tiles. Full game target is 128 by 128.
+- **Grid.** Square tiles of 1 world unit. The map is 128 by 128 tiles.
 - **Generation.** Seed based and deterministic. The same seed always produces the same map.
-- **Layout.** The hearth sits in a central clearing. Around it are ruined houses, streets, trees, rubble, and a few points of interest at increasing distance and danger.
+- **Layout.** The hearth sits in a central clearing. Around it are ruined houses, streets, trees, rubble, and a few points of interest at increasing distance and danger. The forest starts to thicken about 17 tiles out, so the first gathering spots stay close. The nearest point of interest is 24 tiles away and the farthest is 54.
 - **Tile types.** Ground, road, tree, rubble, ruin wall, water, and blocked.
 - **Resource nodes.** Trees yield wood. Rubble yields scrap. Some ruins yield stone. Nodes deplete.
-- **Fog of war.** The map outside the starting radius is hidden. At the start only the 2 to 3 closest points of interest are known. Expedition squads reveal the land around them as they travel. Watchtowers reveal a small radius around themselves. A Lookout Post spots far points of interest as unconfirmed rumors (section 10.4). An expedition must reach a rumor to confirm what it is.
-- **Edges.** Monsters spawn from marked spawn zones on map edges. The forecast shows which edges are active.
+- **Fog of war.** The map outside the starting radius of 18 tiles is hidden. Close to the known land, hidden ground shows as a darker grey haze with faint shapes of trees and ruins. Farther in, it fades to pitch black. At the start only the 2 to 3 closest points of interest are known. Expedition squads reveal the land around them as they travel. Watchtowers reveal a small radius around themselves. A Lookout Post spots far points of interest as unconfirmed rumors (section 10.4). An expedition must reach a rumor to confirm what it is.
+- **Edges.** Monsters come out of the dark from the north, east, south, or west. They spawn on the sides of a square 42 tiles out from the hearth, so the night timing does not depend on the map size. The forecast shows which sides are active.
 
 ---
 
@@ -76,6 +76,7 @@ This is the system that connects survival, defense, and the visual identity.
 ### 5.1 Warmth map
 - The simulation keeps a warmth value from 0 to 100 for every tile.
 - The hearth emits warmth in a radius. Heaters add smaller local radii.
+- Past its radius a heat source does not stop at once. Its warmth fades over another 60 percent of its radius, like real light fading into the dark.
 - Outdoor temperature lowers the baseline warmth everywhere over time.
 
 ### 5.2 Hearth House
@@ -94,7 +95,17 @@ The player can set the hearth to Low, Normal, or Overdrive. Low halves fuel use 
 ### 5.3 Effects of warmth
 - Buildings on warm tiles work at full speed. Cold tiles reduce speed to 50 percent. Freezing tiles stop work.
 - Colonists on cold tiles lose body warmth. At zero body warmth they take health damage.
-- Light from the hearth, heaters, and lantern posts reduces damage dealt by Shamblers by 30 percent and slows Runners by 20 percent.
+- Light from the hearth, heaters, and lantern posts protects people in steps. The closer to the light, the stronger it is. Reach is measured as a share of the light radius.
+
+| Step | Reach | Damage monsters deal to people | Monster speed |
+|---|---|---|---|
+| Bright | Up to 50 percent | None. Monsters do not go for people. | 60 percent |
+| Lit | Up to 80 percent | 25 percent | 75 percent |
+| Dim | Up to 100 percent | 50 percent | 85 percent |
+| Fringe | Up to 140 percent | 75 percent | Full |
+| Dark | Beyond | Full | Full |
+
+- In the fringe monsters start to attack, but they cannot fully hurt people. Light does not soften attacks on walls, buildings, or the house.
 
 ### 5.4 Temperature schedule
 Outdoor temperature starts at minus 2 degrees on day 1 and drops by 1 degree per day. Cold snaps are announced one day ahead and drop the temperature by 10 extra degrees for one day.
@@ -194,7 +205,7 @@ The colony grows from the house outward. Tents and workshops cluster around it. 
 | Wooden Barricade | 5 wood | 100 | Blocks and redirects | Yes |
 | Reinforced Wall | 5 metal, 5 stone | 350 | Strong block | Yes |
 | Gate | 15 planks | 200 | Lets colonists and expeditions pass | Yes |
-| Lantern Post | 5 wood, 1 fuel per night | 50 | Light radius 4, weakens monsters | Yes |
+| Lantern Post | 5 wood, 1 fuel per night | 50 | Light radius 4, protects people in steps (section 5.3) | Yes |
 | Spike Trap | 10 wood | 80 | Damages enemies that walk over it | Yes |
 | Watchtower | 25 planks | 150 | Needs 1 defender, ranged attack, reveals fog in radius 8 | Yes |
 | Fire Barrel | 10 metal, 3 fuel | 60 | Area burn when triggered | No |
@@ -255,9 +266,9 @@ Generated per map. Each has a name, distance, danger level from 1 to 5, and a lo
 ### 10.4 Discovery
 - Each point of interest is hidden, rumored, or known.
 - The 3 closest are known at the start. The farther ones are more dangerous and more rewarding.
-- A Lookout Post marks every point of interest within its sight radius as a rumor. The map shows a question mark there. Sight is 30 tiles at stage 1, 36 at stage 2, and 44 at stage 3, measured from the post.
+- A Lookout Post marks every point of interest within its sight radius as a rumor. The map shows a question mark there. Sight is 44 tiles at stage 1, 56 at stage 2, and 66 at stage 3, measured from the post.
 - An expedition can be sent to a rumor. When the squad arrives the place becomes known and the search begins.
-- A squad also discovers any point of interest that comes within 6 tiles of its path.
+- A squad also discovers any point of interest that comes within 8 tiles of its path. Squads walk 1.6 tiles per second, so the far trips still fit in one day.
 
 ---
 
@@ -290,7 +301,7 @@ Orthographic camera at a classic isometric angle. Zoom with scroll. Rotate in 90
 
 ### 12.2 Warm inside, cold outside
 - The ground shader samples the warmth map and blends between two palettes.
-- Warm tiles show golden ground, soft light pools, and dry earth.
+- Warm tiles show golden ground, soft light pools, and dry earth. The light fades gradually from the bright core into the dark, with no hard edge.
 - Cold tiles show desaturated blue ground with a frost and snow overlay that grows over days.
 - Snow particles fall only outside the warm radius.
 - Fog is cold blue and thickens with distance from the hearth.
@@ -313,7 +324,7 @@ Orthographic camera at a classic isometric angle. Zoom with scroll. Rotate in 90
 - InstancedMesh for trees, rubble, walls, snow props, and enemies.
 - Procedural geometry first. Real models can replace it later without changing the simulation.
 - Target look: chunky stylized low poly, like a hand built diorama. Buildings have stone footings, timber framed plaster walls, overhanging gabled roofs with a ridge beam, chimneys, framed doors, and warm lit windows. Trees are tiered and slightly irregular. Rocks are rounded.
-- Characters are small chunky figures with readable silhouettes: boots, legs, a belted tunic, sleeves with gloves, a head, a hood or hat, and two bright eyes. Monsters share the same build with torn clothes, horns, spines, and Blight eyes.
+- Colonists are small chunky low poly people in winter clothes. There are ten designs for women and ten for men. They differ in height, build, skin, hair style and color, beards, hats, coats, and trousers or skirts. Monsters share the chunky build with torn clothes, horns, spines, and Blight eyes.
 - The moon casts soft shadows from buildings, trees, and characters.
 - Soft vignette and a light film grain.
 
@@ -488,6 +499,13 @@ Each milestone must meet its acceptance criteria before the next starts.
 - Fog of war and point of interest discovery (sections 4 and 10.4).
 - Visual polish to the target look in section 12.4: buildings, the house, trees, rocks, ruins, characters, monsters, and moon shadows.
 - **Done when:** a screenshot reads as a cozy hand built compound around a repaired house in a cold dark world, and far places must be found before they can be searched.
+
+### M8: Scale, People, and Light
+- The map grows to 128 by 128 tiles. Points of interest sit farther out, and squads walk faster to match (sections 4 and 10.4).
+- Twenty colonist designs, ten for women and ten for men (section 12.4).
+- Warmth and light fade gradually past their radius. Light protects people in steps (section 5.3).
+- Fog of war shows a grey haze near the known land that fades to black farther out (section 4).
+- **Done when:** a screenshot shows a soft light falloff, grey haze at the edge of the known land, and colonists that read as different people. The scripted full run still launches the airship by day 10.
 
 ### Later milestones
 - Physical hauling, hand carts, and conveyor lines.
