@@ -8,6 +8,8 @@ export interface GroundTextures {
   warmth: THREE.DataTexture;
   /** Red marks road tiles, green marks water tiles. Linear filtered for soft edges. */
   tiles: THREE.DataTexture;
+  /** Fog of war: 255 where revealed. Linear filtered so the edge of the known world is soft. */
+  reveal: THREE.DataTexture;
 }
 
 export function createGroundMaterial(
@@ -20,6 +22,7 @@ export function createGroundMaterial(
     uniforms: {
       uWarmth: { value: textures.warmth },
       uTiles: { value: textures.tiles },
+      uReveal: { value: textures.reveal },
       uMapSize: { value: mapSize },
       uWarmT: { value: warmThreshold / 100 },
       uFrost: { value: 0 },
@@ -45,6 +48,7 @@ void main() {
     fragmentShader: /* glsl */ `
 uniform sampler2D uWarmth;
 uniform sampler2D uTiles;
+uniform sampler2D uReveal;
 uniform vec2 uMapSize;
 uniform float uWarmT;
 uniform float uFrost;
@@ -81,7 +85,7 @@ void main() {
   float heat = smoothstep(uWarmT, 1.0, w);
   vec3 earth = mix(uWarmShadow, uOldWood, 0.3 + 0.5 * grain);
   earth = mix(earth, uWarmShadow * 1.3, road * 0.6);
-  vec3 warm = earth * (0.7 + 1.1 * heat) + uLantern * 0.1 * heat + uEmber * 0.35 * heat * heat * heat;
+  vec3 warm = earth * (0.65 + 0.75 * heat) + uLantern * 0.06 * heat + uEmber * 0.22 * heat * heat * heat;
 
   // Cold side: blue ground under snow that grows with the frost amount.
   vec3 dirt = mix(uDeepCold, uNightBlue, 0.4 + 0.6 * grain);
@@ -99,6 +103,10 @@ void main() {
   color += uFrostCol * 0.05 * (1.0 - abs(t * 2.0 - 1.0));
 
   color = mix(color, uFogColor, smoothstep(uFogNear, uFogFar, length(vXZ)));
+  // Fog of war: unexplored land sinks into the dark (section 4).
+  // Noise breaks up the edge so it reads as mist, not as tile corners.
+  float known = texture2D(uReveal, uv).r + (noise(vXZ * 0.45) - 0.5) * 0.45;
+  color = mix(uDeepCold * 0.45, color, smoothstep(0.25, 0.75, known));
   gl_FragColor = vec4(color, 1.0);
   #include <tonemapping_fragment>
   #include <colorspace_fragment>

@@ -19,7 +19,10 @@ export function createLabels(root: HTMLElement): { update(world: World, camera: 
         v.set(x - world.map.width / 2, h, y - world.map.height / 2).project(camera);
         return { x: ((v.x + 1) / 2) * innerWidth, y: ((1 - v.y) / 2) * innerHeight };
       };
-      for (const p of world.pois) items.push({ text: POIS[p.type].name, ...screen(p.x, 3.2, p.y), cls: 'poi' });
+      // Hidden places get no label. Rumors are unconfirmed until a squad gets there (section 10.4).
+      for (const p of world.pois) {
+        if (p.seen !== 'hidden') items.push({ text: p.seen === 'known' ? POIS[p.type].name : 'Unconfirmed sighting', ...screen(p.x, 3.2, p.y), cls: 'poi' });
+      }
       for (const b of world.buildings) {
         const text = STATUS_TEXT[b.status];
         if (!text) continue;

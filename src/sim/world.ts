@@ -240,7 +240,7 @@ export function createWorld(seed: number): World {
   };
   for (let i = 0; i < BALANCE.start.colonists; i++) {
     const a = (i / BALANCE.start.colonists) * Math.PI * 2;
-    addColonist(world, hearth.x + Math.cos(a) * 2.5, hearth.y + Math.sin(a) * 2.5);
+    addColonist(world, hearth.x + Math.cos(a) * 3.3, hearth.y + Math.sin(a) * 3.3);
   }
   warmthSystem(world, 0);
   discoverySystem(world, 0);

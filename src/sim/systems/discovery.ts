@@ -3,11 +3,10 @@
 import { BALANCE } from '../../data/balance';
 import { BUILDINGS } from '../../data/buildings';
 import { POIS } from '../../data/pois';
-import { center } from '../query';
+import { center, directionFromHearth } from '../query';
 import { addLog, type World } from '../world';
 
 const D = BALANCE.discovery;
-const DIRECTIONS = ['east', 'south east', 'south', 'south west', 'west', 'north west', 'north', 'north east'];
 
 function reveal(world: World, cx: number, cy: number, r: number): void {
   const { width, height } = world.map;
@@ -22,12 +21,6 @@ function reveal(world: World, cx: number, cy: number, r: number): void {
     }
   }
   if (changed) world.revealRev++;
-}
-
-/** Compass direction from the hearth, for rumors such as "something to the north". */
-function direction(world: World, x: number, y: number): string {
-  const a = Math.atan2(y - world.hearth.y, x - world.hearth.x);
-  return DIRECTIONS[(Math.round(a / (Math.PI / 4)) + 8) % 8];
 }
 
 export function discoverySystem(world: World, _dt: number): void {
@@ -47,7 +40,7 @@ export function discoverySystem(world: World, _dt: number): void {
     for (const p of world.pois) {
       if (p.seen === 'hidden' && Math.hypot(p.x - at.x, p.y - at.y) <= def.sight[b.level - 1]) {
         p.seen = 'rumored';
-        addLog(world, `The lookout spotted something to the ${direction(world, p.x, p.y)}.`, p);
+        addLog(world, `The lookout spotted something to the ${directionFromHearth(world, p.x, p.y)}.`, p);
       }
     }
   }

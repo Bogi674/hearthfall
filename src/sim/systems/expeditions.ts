@@ -26,7 +26,7 @@ export function expeditionsSystem(world: World, dt: number): void {
     });
   }
   for (const ex of world.expeditions.filter((e) => e.members.length === 0)) {
-    addLog(world, `The squad sent to the ${POIS[world.pois[ex.poi].type].name} was lost.`, ex);
+    addLog(world, `The squad sent to ${placeName(world, ex.poi)} was lost.`, ex);
   }
   world.expeditions = world.expeditions.filter((e) => e.members.length > 0 && !(e.stage === 'back' && e.route.length === 0));
   world.colonists = world.colonists.filter((c) => c.health > 0);
@@ -121,6 +121,12 @@ function returnHome(world: World, ex: Expedition): void {
   }
   for (let i = 0; i < ex.recruits; i++) got.push(`${addColonist(world, ex.x, ex.y).name}, a survivor`);
   for (const c of world.colonists) if (c.expedition === ex.id) c.expedition = null;
-  const from = POIS[world.pois[ex.poi].type].name;
-  addLog(world, got.length ? `The squad is back from the ${from} with ${got.join(', ')}.` : `The squad is back from the ${from} with nothing.`, ex);
+  const from = placeName(world, ex.poi);
+  addLog(world, got.length ? `The squad is back from ${from} with ${got.join(', ')}.` : `The squad is back from ${from} with nothing.`, ex);
+}
+
+/** "the Clinic" once known, or "the sighting" while it is still a rumor. */
+function placeName(world: World, poi: number): string {
+  const p = world.pois[poi];
+  return p.seen === 'known' ? `the ${POIS[p.type].name}` : 'the sighting';
 }

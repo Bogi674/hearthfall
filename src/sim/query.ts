@@ -58,6 +58,14 @@ export function nightThreat(n: number): number {
   return Math.round(W.base * W.growth ** (n - 1)) * (n % W.bloodMoonEvery === 0 ? 2 : 1);
 }
 
+const DIRECTIONS = ['east', 'south east', 'south', 'south west', 'west', 'north west', 'north', 'north east'];
+
+/** Compass direction from the hearth, for rumors such as "something to the north". */
+export function directionFromHearth(world: World, x: number, y: number): string {
+  const a = Math.atan2(y - world.hearth.y, x - world.hearth.x);
+  return DIRECTIONS[(Math.round(a / (Math.PI / 4)) + 8) % 8];
+}
+
 /** True on the first tick of the named phase. */
 export function phaseStarted(world: World, name: string, dt: number): boolean {
   const p = currentPhase(world);

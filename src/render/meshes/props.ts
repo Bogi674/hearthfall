@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { Tile, type MapState } from '../../sim/grid';
 import { createPropMaterial, mixPalette, PALETTE } from '../materials';
@@ -25,6 +26,8 @@ function tilesOfType(map: MapState, type: Tile): number[] {
 
 function layer(geometry: THREE.BufferGeometry, material: THREE.Material, count: number): PropLayer {
   const mesh = new THREE.InstancedMesh(geometry, material, count);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
   mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(count * 3), 3);
   return { mesh, tileOf: [] };
 }
@@ -45,20 +48,23 @@ export function buildProps(map: MapState): PropLayer[] {
     l.tileOf.push(tile);
   };
 
-  // Trees: stacked cones on a short trunk.
+  // Trees: four tiers of drooping cones on a trunk, each tier turned a little so the outline is irregular.
   const trees = tilesOfType(map, Tile.Tree);
-  const foliageGeo = mergeGeometries([
-    new THREE.ConeGeometry(0.75, 1.4, 7).translate(0, 1.2, 0),
-    new THREE.ConeGeometry(0.55, 1.1, 7).translate(0, 1.85, 0),
-    new THREE.ConeGeometry(0.35, 0.8, 7).translate(0, 2.4, 0),
-  ]);
+  const foliageGeo = mergeGeometries(
+    [
+      [0.82, 1.0, 0.95],
+      [0.66, 0.9, 1.5],
+      [0.5, 0.8, 2.0],
+      [0.32, 0.7, 2.45],
+    ].map(([r, h, y], i) => new THREE.ConeGeometry(r, h, 9, 1).rotateY(i * 0.6).translate(0, y, 0)),
+  );
   const foliage = layer(
     foliageGeo,
     createPropMaterial(mixPalette(PALETTE.warmShadow, PALETTE.oldWood, 0.35), mixPalette(PALETTE.nightBlue, PALETTE.frost, 0.2), true),
     trees.length,
   );
   const trunks = layer(
-    new THREE.CylinderGeometry(0.1, 0.15, 0.7, 6).translate(0, 0.35, 0),
+    new THREE.CylinderGeometry(0.09, 0.15, 0.75, 8).translate(0, 0.37, 0),
     createPropMaterial(PALETTE.oldWood, mixPalette(PALETTE.oldWood, PALETTE.nightBlue, 0.6), false),
     trees.length,
   );
@@ -77,7 +83,7 @@ export function buildProps(map: MapState): PropLayer[] {
   // Rubble: three flattened stones per tile.
   const rubbleTiles = tilesOfType(map, Tile.Rubble);
   const rubble = layer(
-    new THREE.DodecahedronGeometry(0.22, 0),
+    new THREE.IcosahedronGeometry(0.22, 1),
     createPropMaterial(mixPalette(PALETTE.warmShadow, PALETTE.oldWood, 0.5), mixPalette(PALETTE.nightBlue, PALETTE.frost, 0.3), true),
     rubbleTiles.length * 3,
   );
@@ -99,7 +105,7 @@ export function buildProps(map: MapState): PropLayer[] {
   const wallTiles = tilesOfType(map, Tile.RuinWall);
   const isWall = (x: number, z: number) => x >= 0 && z >= 0 && x < map.width && z < map.height && map.tiles[z * map.width + x] === Tile.RuinWall;
   const walls = layer(
-    new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0),
+    new RoundedBoxGeometry(1, 1, 1, 2, 0.06).translate(0, 0.5, 0),
     createPropMaterial(mixPalette(PALETTE.oldWood, PALETTE.frost, 0.3), mixPalette(PALETTE.nightBlue, PALETTE.frost, 0.4), true),
     wallTiles.length * 2,
   );
@@ -137,13 +143,14 @@ export function buildProps(map: MapState): PropLayer[] {
   return [foliage, trunks, rubble, walls];
 }
 
-/** Colors each prop by the warmth of its tile. Call when the warmth map changes. */
-export function colorPropsByWarmth(layers: PropLayer[], warmth: number[], warmThreshold: number): void {
+/** Colors each prop by the warmth of its tile, and hides props under fog of war. Call when either changes. */
+export function colorPropsByWarmth(layers: PropLayer[], warmth: number[], warmThreshold: number, revealed: number[]): void {
   const c = new THREE.Color();
   for (const l of layers) {
     l.tileOf.forEach((tile, i) => {
       l.mesh.getColorAt(i, c);
       c.r = 1 - THREE.MathUtils.smoothstep(warmth[tile], warmThreshold - 8, warmThreshold + 4);
+      c.b = revealed[tile];
       l.mesh.setColorAt(i, c);
     });
     l.mesh.instanceColor!.needsUpdate = true;

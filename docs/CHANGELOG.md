@@ -2,6 +2,22 @@
 
 Newest entries first. Each entry names the milestone it belongs to.
 
+## 2026-10-03 (M7: The Hearth House and the Compound)
+
+- The hearth is now the Hearth House. It starts as a ruined house with a fire inside. Clicking it shows the next repair. Five stages raise its warm radius, fuel use, and health (section 5.2).
+- Added the Reinforced Wall. Walls, barricades, and gates join their neighbors, so a run of wall pieces reads as one palisade or stone wall.
+- Added the Lookout Post. It has three stages that raise how far it sees. It spots places as unconfirmed sightings.
+- Added fog of war (`src/sim/systems/discovery.ts`). Only the land around the house and the three closest places are known at the start. Squads reveal land as they walk and confirm places they reach or pass near. A rumored place can be targeted, but its name and danger stay unknown until a squad confirms it.
+- Saves are now version 2. Version 1 saves are rejected.
+- New low poly mesh kit (`src/render/meshes/kit.ts`) with rounded blocks, timber frames, gabled roofs, chimneys, and lit windows. Every building was rebuilt with it.
+- Colonists now look like small chunky wizards: a hooded pointed hat, a dark face with white eyes, a flared tunic, a belt with a brass buckle, gloves, and boots. Monsters got claws, horns, rags, and shoulder plates.
+- Trees, rubble, and ruins have more polygons and flat shading.
+- The moon casts real shadows. Buildings, props, and characters cast them onto the ground.
+- Tuned the firelight, bloom, and ground glow so the house does not blow out.
+- Colonists idle in a ring outside the house walls.
+- The scripted full run now repairs the house twice, builds and raises a lookout, and runs two sawmills. It is checked on seeds 1, 4, and 5.
+- Added `docs/screenshots/m7-start.jpg`, `m7-fog.jpg`, `m7-compound.jpg`, `m7-close.jpg`, and `m7-characters.jpg`.
+
 ## 2026-10-03 (Polish after M6: characters and intro story)
 
 - Colonists and monsters are now rigged figures instead of a capsule and a box (`src/render/meshes/figures.ts`). Legs and arms swing while they walk.

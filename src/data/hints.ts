@@ -19,10 +19,12 @@ export const HINTS: Hint[] = [
   { text: 'Build a Charcoal Kiln. It turns wood into fuel. If the hearth stays out for a minute, the run is lost.', done: (w) => has(w, 'charcoalKiln') },
   { text: 'Build a Forager Hut and a Kitchen so colonists have meals.', done: (w) => has(w, 'foragerHut') && has(w, 'kitchen') },
   { text: 'Click any building to see why it is blocked and to change its workers.', done: (w) => w.day > 1 || w.dayTime > 200 },
+  { text: 'Click the house to repair it. Each repair warms a wider area and makes the house tougher.', done: (w) => w.hearth.level > 1 },
   { text: 'Monsters attack from night 2. Build a Sawmill for planks.', done: (w) => has(w, 'sawmill') },
   { text: 'Build a Watchtower inside the warm circle. Its defender guards it at night.', done: (w) => has(w, 'watchtower') },
   { text: 'Ring the hearth with Wooden Barricades. Monsters break the weakest wall, so leave no gaps.', done: (w) => has(w, 'woodenBarricade', 12) },
   { text: 'Build a Gate. Expeditions leave through it to find the four rare items the airship needs.', done: (w) => has(w, 'gate') },
+  { text: 'Build a Lookout Post. It spots far places in the dark. Only a squad can confirm what they are.', done: (w) => has(w, 'lookoutPost') },
   { text: 'Open the Expeditions tab, pick a place and a squad, and send them out by day.', done: (w) => w.expeditions.length > 0 || Object.keys(w.items).length > 0 },
 ];
 

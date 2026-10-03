@@ -6,6 +6,8 @@ import { bandAt, center, currentPhase } from '../query';
 import type { World } from '../world';
 
 const C = BALANCE.colonist;
+/** Idle colonists wait in a ring just outside the Hearth House. */
+const IDLE_RADIUS = 3.3;
 
 export function jobsSystem(world: World, dt: number): void {
   const byId = new Map(world.buildings.map((b) => [b.id, b]));
@@ -50,7 +52,7 @@ export function jobsSystem(world: World, dt: number): void {
     // Nobody stands at a job that is too cold to work. They wait by the hearth.
     if (b && work && !boarding && bandAt(world, center(b).x, center(b).y) === 'freezing') b = undefined;
     const a = c.id * 2.4;
-    const target = b ? center(b) : { x: world.hearth.x + Math.cos(a) * 2.5, y: world.hearth.y + Math.sin(a) * 2.5 };
+    const target = b ? center(b) : { x: world.hearth.x + Math.cos(a) * IDLE_RADIUS, y: world.hearth.y + Math.sin(a) * IDLE_RADIUS };
     c.px = c.x;
     c.py = c.y;
     const dx = target.x - c.x;

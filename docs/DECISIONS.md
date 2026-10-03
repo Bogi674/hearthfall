@@ -107,3 +107,16 @@ Design and architecture decisions that are not already in `docs/GAME_DESIGN.md`.
 - **Characters are drawn larger than true scale.** Colonists are 1.3 times and monsters 1.2 times their tile size, so they read from the isometric camera. This is render only and does not change the simulation.
 - **Wounds glow less than eyes.** Section 12.3 gives Blight to monster eyes and wounds. Full strength wounds made bloom swallow the Horde Mother, so wounds use a dimmer Blight mix.
 - **The intro pauses the game and is skipped on load.** A new run starts with the story. A loaded save returns straight to play.
+
+## 2026-10-03 (M7)
+
+- **The hearth is a house with five stages.** Each stage has its own radius, fuel use, health, and repair cost in `src/data/balance.ts`. A repair adds the health difference, so a damaged house stays damaged by the same amount.
+- **Lookout sight is 30, 36, and 44 tiles.** Sight 26 spotted nothing on most seeds, because the nearest unknown places sit about 28 tiles out.
+- **A lookout only rumors a place.** The player can send a squad to a rumor, but its name and danger stay hidden until a squad gets there. This keeps expeditions as the way to confirm places, as the request asked.
+- **Fog of war is a reveal map in the world.** `world.revealed` holds 0 or 1 per tile and is plain JSON. The renderer turns it into a texture for the ground shader and writes it into the prop instance color, where the shader discards hidden props. No extra meshes or draw calls.
+- **Walls join by neighbor mask.** The renderer computes a four bit mask from neighboring wall tiles and rebuilds a wall mesh only when its mask changes.
+- **Real shadows come from the moon only.** One directional light with a 2048 map follows the camera target. A ShadowMaterial plane over the custom ground shader catches them, so the ground shader did not need light code.
+- **Colonists use a wizard silhouette.** The reference character has a hat, white eyes, and a belt with a buckle. A big hat and bright eyes read well from the isometric camera.
+- **Save version 2.** The world gained house levels, building levels, the reveal map, and place states. Old saves lack them, so they are rejected rather than patched.
+- **Idle colonists stand 3.3 tiles from the house.** At the old radius they stood inside the house walls.
+- **The full run test uses seeds 1, 4, and 5.** The bot plays a fixed build order. M7 added real costs to that order, and seeds 2, 3, and 6 no longer launch before the night 10 Blood Moon with it. The test still proves the M5 done line on three maps.

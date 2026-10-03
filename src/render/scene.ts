@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { CameraRig } from './camera';
-import { addAmbientLights } from './lighting';
+import { addAmbientLights, followWithShadow } from './lighting';
 import { installHearthFog, PALETTE } from './materials';
 import { createPost } from './post';
 
@@ -24,12 +24,22 @@ export function createView(container: HTMLElement, mapSize: number): View {
   renderer.setClearColor(PALETTE.deepCold);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.1;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   container.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
   const fog = new THREE.Fog(PALETTE.deepCold, FOG_NEAR, FOG_FAR);
   scene.fog = fog;
-  addAmbientLights(scene);
+  const moon = addAmbientLights(scene);
+  // The ground uses its own shader, so a transparent catcher plane on top of it shows the shadows.
+  const catcher = new THREE.Mesh(
+    new THREE.PlaneGeometry(mapSize + 80, mapSize + 80).rotateX(-Math.PI / 2),
+    new THREE.ShadowMaterial({ color: PALETTE.deepCold, opacity: 0.55 }),
+  );
+  catcher.position.y = 0.01;
+  catcher.receiveShadow = true;
+  scene.add(catcher);
 
   const rig = new CameraRig(mapSize / 2);
   const post = createPost(renderer, scene, rig.camera);
@@ -44,5 +54,14 @@ export function createView(container: HTMLElement, mapSize: number): View {
   window.addEventListener('resize', resize);
   resize();
 
-  return { renderer, scene, fog, rig, render: (time) => post.render(time) };
+  return {
+    renderer,
+    scene,
+    fog,
+    rig,
+    render: (time) => {
+      followWithShadow(moon, rig.target);
+      post.render(time);
+    },
+  };
 }

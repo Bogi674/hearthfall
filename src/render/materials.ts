@@ -36,11 +36,11 @@ export function installHearthFog(): void {
 
 /**
  * Material for instanced props that change look with warmth.
- * Instance color red holds coldness from 0 to 1 and green holds a brightness variation.
+ * Instance color red holds coldness from 0 to 1, green holds a brightness variation, and blue is 0 under fog of war.
  * Cold props shift to the cold tint and gather snow on upward faces.
  */
 export function createPropMaterial(warm: THREE.Color, cold: THREE.Color, snow: boolean): THREE.MeshStandardMaterial {
-  const material = new THREE.MeshStandardMaterial({ roughness: 0.95, metalness: 0 });
+  const material = new THREE.MeshStandardMaterial({ roughness: 0.95, metalness: 0, flatShading: true });
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uWarmTint = { value: warm };
     shader.uniforms.uColdTint = { value: cold };
@@ -56,6 +56,7 @@ export function createPropMaterial(warm: THREE.Color, cold: THREE.Color, snow: b
       .replace(
         '#include <color_fragment>',
         /* glsl */ `
+  if (vColor.b < 0.5) discard;
   float hfCold = vColor.r;
   diffuseColor.rgb = mix(uWarmTint, uColdTint, hfCold) * (0.75 + 0.5 * vColor.g);
   diffuseColor.rgb = mix(diffuseColor.rgb, uSnow, smoothstep(0.3, 0.7, vHfUp) * hfCold);

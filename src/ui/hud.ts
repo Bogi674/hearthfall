@@ -6,7 +6,7 @@ import { ENEMIES, ENEMY_TYPES } from '../data/enemies';
 import { RECIPES } from '../data/recipes';
 import { RESOURCE_NAMES, RESOURCES, type Amounts, type Resource } from '../data/resources';
 import { COMPONENT_IDS, type ComponentId } from '../data/vehicle';
-import { hearthUpgradeError, pushCommand } from '../sim/commands';
+import { buildingUpgradeError, hearthUpgradeError, pushCommand } from '../sim/commands';
 import { capacity, currentPhase, hearthStage, missing, stockTotal } from '../sim/query';
 import type { BuildingStatus, World } from '../sim/world';
 import { currentHint } from '../data/hints';
@@ -113,6 +113,7 @@ export function createHud(root: HTMLElement, state: UiState, world: () => World,
     if (act === 'component') pushCommand(world().commands, { type: 'buildComponent', component: arg as ComponentId });
     if (act === 'launch') pushCommand(world().commands, { type: 'launch' });
     if (act === 'upgrade') pushCommand(world().commands, { type: 'upgradeHearth' });
+    if (act === 'stage') pushCommand(world().commands, { type: 'upgradeBuilding', id: Number(arg) });
     api.update();
   });
 
@@ -225,6 +226,12 @@ function selectionHtml(w: World, state: UiState): string {
   if (def.light) lines.push(`<p>Lights a radius of ${def.light.radius} at night for ${def.light.fuel} fuel. ${b.lit ? 'Lit' : 'Unlit'}</p>`);
   if (def.walkable) lines.push('<p>Hurts monsters that walk over it</p>');
   if (def.nightDuty) lines.push(`<p>Shoots monsters within ${BALANCE.defense.towerRange} tiles at night</p>`);
+  if (def.sight) {
+    const next = def.upgrades?.[b.level - 1];
+    const error = buildingUpgradeError(w, b);
+    lines.push(`<p>Stage ${b.level} of ${def.sight.length}. Spots far places within ${def.sight[b.level - 1]} tiles. A squad must go to confirm them.</p>`);
+    if (next) lines.push(`<p>Stage ${b.level + 1} sees ${def.sight[b.level]} tiles. Costs ${amounts(next)}.</p>${error ? `<p class="alert">${error}</p>` : `<button data-act="stage:${b.id}">Build it higher</button>`}`);
+  }
   return lines.join('');
 }
 

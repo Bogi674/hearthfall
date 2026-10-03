@@ -9,7 +9,7 @@ import type { World } from '../sim/world';
 import { createGroundMaterial } from './groundShader';
 import { createHearthLight } from './lighting';
 import { createBars, type Bar } from './meshes/bars';
-import { createBuildingMesh, createLandmark } from './meshes/buildings';
+import { createBuildingMesh, createLandmark, WALL_EAST, WALL_NORTH, WALL_SOUTH, WALL_TYPES, WALL_WEST } from './meshes/buildings';
 import { createEnemyMeshes } from './meshes/enemies';
 import { COAT_COLORS, COLONIST_RIG, createFigureSet, type Figure } from './meshes/figures';
 import { createHearthMesh } from './meshes/hearth';
@@ -47,7 +47,11 @@ export function createWorldView(world: World, scene: THREE.Scene, fog: THREE.Fog
   tilesTex.minFilter = THREE.LinearFilter;
   tilesTex.needsUpdate = true;
 
-  const groundMat = createGroundMaterial({ warmth: warmthTex, tiles: tilesTex }, mapSize, warmThreshold, fog);
+  const revealTex = new THREE.DataTexture(new Uint8Array(width * height), width, height, THREE.RedFormat);
+  revealTex.magFilter = THREE.LinearFilter;
+  revealTex.minFilter = THREE.LinearFilter;
+
+  const groundMat = createGroundMaterial({ warmth: warmthTex, tiles: tilesTex, reveal: revealTex }, mapSize, warmThreshold, fog);
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(width + 80, height + 80).rotateX(-Math.PI / 2), groundMat);
   ground.position.set(-0.5, 0, -0.5);
   scene.add(ground);
@@ -57,16 +61,19 @@ export function createWorldView(world: World, scene: THREE.Scene, fog: THREE.Fog
   let mapRev = world.mapRev;
 
   const buildingMeshes = new Map<number, THREE.Group>();
+  // Walls join their neighbors, so a wall mesh is rebuilt when its neighbor mask changes.
+  const wallMasks = new Map<number, number>();
   // Characters are drawn a little larger than true scale so they read from the isometric camera.
   const colonists = createFigureSet(COLONIST_RIG, 64, 1.3);
   scene.add(colonists.group);
   const colonistHeading = new Map<number, number>();
   let launchedAt = 0;
-  for (const p of world.pois) {
+  const landmarks = world.pois.map((p) => {
     const g = createLandmark();
     g.position.set(p.x - width / 2, 0, p.y - height / 2);
     scene.add(g);
-  }
+    return g;
+  });
   const enemies = createEnemyMeshes();
   scene.add(enemies.group);
   const bars = createBars();
@@ -85,6 +92,7 @@ export function createWorldView(world: World, scene: THREE.Scene, fog: THREE.Fog
 
   const viewDir = new THREE.Vector3();
   let warmthKey = '';
+  let revealRev = -1;
 
   return {
     update(w, time, alpha, pixelsPerUnit, camera) {
@@ -98,23 +106,38 @@ export function createWorldView(world: World, scene: THREE.Scene, fog: THREE.Fog
         for (const p of props) scene.add(p.mesh);
         warmthKey = '';
       }
-      if (w.warmthKey !== warmthKey) {
+      if (w.warmthKey !== warmthKey || w.revealRev !== revealRev) {
         warmthKey = w.warmthKey;
+        revealRev = w.revealRev;
         const data = warmthTex.image.data as Uint8Array;
         for (let i = 0; i < w.warmth.length; i++) data[i] = Math.round(w.warmth[i] * 2.55);
         warmthTex.needsUpdate = true;
-        colorPropsByWarmth(props, w.warmth, warmThreshold);
+        const fogData = revealTex.image.data as Uint8Array;
+        for (let i = 0; i < w.revealed.length; i++) fogData[i] = w.revealed[i] * 255;
+        revealTex.needsUpdate = true;
+        colorPropsByWarmth(props, w.warmth, warmThreshold, w.revealed);
       }
+      // Places: nothing while hidden, a beacon for a rumor, the full site once known (section 10.4).
+      w.pois.forEach((p, i) => {
+        landmarks[i].visible = p.seen !== 'hidden';
+        landmarks[i].getObjectByName('site')!.visible = p.seen === 'known';
+      });
       groundMat.uniforms.uFrost.value = frostForDay(w.day);
-      hearth.update(time, w.hearth.lit);
+      hearth.update(time, w.hearth.lit, w.hearth.level);
       hearthLight.visible = w.hearth.lit;
       hearthLight.intensity = baseIntensity * (1 + Math.sin(time * 11) * 0.05 + Math.sin(time * 27) * 0.03);
 
       const alive = new Set<number>();
+      const wallAt = new Set(w.buildings.filter((b) => WALL_TYPES.includes(b.type)).map((b) => b.y * width + b.x));
       for (const b of w.buildings) {
         alive.add(b.id);
-        if (buildingMeshes.has(b.id)) continue;
-        const g = createBuildingMesh(b.type, b.w, b.h);
+        const isWall = WALL_TYPES.includes(b.type);
+        const i = b.y * width + b.x;
+        const mask = isWall ? (wallAt.has(i + 1) ? WALL_EAST : 0) | (wallAt.has(i - 1) ? WALL_WEST : 0) | (wallAt.has(i + width) ? WALL_SOUTH : 0) | (wallAt.has(i - width) ? WALL_NORTH : 0) : 0;
+        if (buildingMeshes.has(b.id) && (!isWall || wallMasks.get(b.id) === mask)) continue;
+        if (buildingMeshes.has(b.id)) scene.remove(buildingMeshes.get(b.id)!);
+        wallMasks.set(b.id, mask);
+        const g = createBuildingMesh(b.type, b.w, b.h, mask);
         g.position.set(b.x + (b.w - 1) / 2 - width / 2, 0, b.y + (b.h - 1) / 2 - height / 2);
         buildingMeshes.set(b.id, g);
         scene.add(g);
@@ -129,22 +152,28 @@ export function createWorldView(world: World, scene: THREE.Scene, fog: THREE.Fog
         const g = buildingMeshes.get(b.id)!;
         const light = g.getObjectByName('light');
         if (light) light.visible = b.lit;
+        for (let s = 1; s <= 3; s++) {
+          const stage = g.getObjectByName(`stage${s}`);
+          if (stage) stage.visible = s === b.level;
+        }
         const ship = g.getObjectByName('airship');
         if (ship) {
           for (const id of COMPONENT_IDS) ship.getObjectByName(id)!.visible = w.airship.built.includes(id);
           if (w.won && !launchedAt) launchedAt = time;
           // The airship climbs away after launch.
-          ship.position.y = 3.6 + (launchedAt ? (time - launchedAt) ** 2 * 0.6 : 0);
+          ship.position.y = 3.3 + (launchedAt ? (time - launchedAt) ** 2 * 0.6 : 0);
         }
         const max = BUILDINGS[b.type].hp;
         if (b.hp < max) barList.push({ x: b.x + (b.w - 1) / 2 - width / 2, z: b.y + (b.h - 1) / 2 - height / 2, y: 2, fraction: b.hp / max, enemy: false });
       }
       if (w.hearth.hp < hearthStage(w).hp) barList.push({ x: 0, z: 0, y: 3.5, fraction: w.hearth.hp / hearthStage(w).hp, enemy: false });
-      for (const e of w.enemies) {
+      // Monsters under fog of war stay unseen.
+      const seen = w.enemies.filter((e) => w.revealed[Math.round(e.y) * width + Math.round(e.x)] === 1);
+      for (const e of seen) {
         const max = ENEMIES[e.type].hp;
         if (e.hp < max) barList.push({ x: e.px + (e.x - e.px) * alpha - width / 2, z: e.py + (e.y - e.py) * alpha - height / 2, y: e.type === 'brute' ? 1.8 : 1.2, fraction: e.hp / max, enemy: true });
       }
-      enemies.update(w.enemies, alpha, width / 2, height / 2, time);
+      enemies.update(seen, alpha, width / 2, height / 2, time);
       camera.getWorldDirection(viewDir);
       bars.update(barList, Math.atan2(-viewDir.x, -viewDir.z));
 
