@@ -8,8 +8,9 @@ import type { World } from '../sim/world';
 import { createGroundMaterial } from './groundShader';
 import { createHearthLight } from './lighting';
 import { createBars, type Bar } from './meshes/bars';
-import { createBuildingMesh, createColonistMesh, createLandmark } from './meshes/buildings';
+import { createBuildingMesh, createLandmark } from './meshes/buildings';
 import { createEnemyMeshes } from './meshes/enemies';
+import { COAT_COLORS, COLONIST_RIG, createFigureSet, type Figure } from './meshes/figures';
 import { createHearthMesh } from './meshes/hearth';
 import { buildProps, colorPropsByWarmth } from './meshes/props';
 import { createSnow } from './meshes/snow';
@@ -55,9 +56,10 @@ export function createWorldView(world: World, scene: THREE.Scene, fog: THREE.Fog
   let mapRev = world.mapRev;
 
   const buildingMeshes = new Map<number, THREE.Group>();
-  const colonists = createColonistMesh(64);
-  scene.add(colonists);
-  const m = new THREE.Matrix4();
+  // Characters are drawn a little larger than true scale so they read from the isometric camera.
+  const colonists = createFigureSet(COLONIST_RIG, 64, 1.3);
+  scene.add(colonists.group);
+  const colonistHeading = new Map<number, number>();
   let launchedAt = 0;
   for (const p of world.pois) {
     const g = createLandmark();
@@ -141,18 +143,19 @@ export function createWorldView(world: World, scene: THREE.Scene, fog: THREE.Fog
         const max = ENEMIES[e.type].hp;
         if (e.hp < max) barList.push({ x: e.px + (e.x - e.px) * alpha - width / 2, z: e.py + (e.y - e.py) * alpha - height / 2, y: e.type === 'brute' ? 1.8 : 1.2, fraction: e.hp / max, enemy: true });
       }
-      enemies.update(w.enemies, alpha, width / 2, height / 2);
+      enemies.update(w.enemies, alpha, width / 2, height / 2, time);
       camera.getWorldDirection(viewDir);
       bars.update(barList, Math.atan2(-viewDir.x, -viewDir.z));
 
-      let n = 0;
+      const people: Figure[] = [];
       for (const c of w.colonists) {
         if (c.asleep) continue;
-        m.makeTranslation(c.px + (c.x - c.px) * alpha - width / 2, 0, c.py + (c.y - c.py) * alpha - height / 2);
-        colonists.setMatrixAt(n++, m);
+        const dx = c.x - c.px;
+        const dy = c.y - c.py;
+        if (dx || dy) colonistHeading.set(c.id, Math.atan2(dx, dy));
+        people.push({ id: c.id, x: c.px + dx * alpha - width / 2, z: c.py + dy * alpha - height / 2, yaw: colonistHeading.get(c.id) ?? 0, moving: dx !== 0 || dy !== 0 });
       }
-      colonists.count = n;
-      colonists.instanceMatrix.needsUpdate = true;
+      colonists.update(people, time, 9, (id) => COAT_COLORS[id % COAT_COLORS.length]);
 
       snow.update(time, pixelsPerUnit, camera.getWorldDirection(viewDir));
     },

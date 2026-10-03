@@ -10,6 +10,7 @@ import { hearthUpgradeError, pushCommand } from '../sim/commands';
 import { capacity, currentPhase, missing, stockTotal } from '../sim/query';
 import type { BuildingStatus, World } from '../sim/world';
 import { currentHint } from '../data/hints';
+import { INTRO } from '../data/story';
 import { menuHtml } from './menu';
 import { rightPanel, type Tab } from './panels';
 import type { Settings } from './settings';
@@ -27,6 +28,8 @@ export interface UiState {
   poi: number | null;
   squad: number[];
   menu: boolean;
+  /** The intro story is open. The game waits until it closes. */
+  intro: boolean;
 }
 
 /** What the HUD asks the main loop to do. */
@@ -59,7 +62,7 @@ export function createHud(root: HTMLElement, state: UiState, world: () => World,
     'beforeend',
     `<div id="hud"><div id="topbar" class="panel"><div id="top"></div><div id="controls"></div></div><div id="left"><div id="selection" class="panel"></div><div id="log" class="panel"></div></div>
      <div id="center"><div id="forecast" class="panel"></div><div id="hint" class="panel"></div></div>
-     <div id="right" class="panel"></div><div id="build" class="panel"></div></div><div id="over" class="panel"></div><div id="menu" class="panel"></div>`,
+     <div id="right" class="panel"></div><div id="build" class="panel"></div></div><div id="over" class="panel"></div><div id="menu" class="panel"></div><div id="intro"></div>`,
   );
   const el = (id: string) => document.getElementById(id)!;
   const last = new Map<string, string>();
@@ -93,6 +96,8 @@ export function createHud(root: HTMLElement, state: UiState, world: () => World,
     if (act === 'recall') pushCommand(world().commands, { type: 'recall', id: Number(arg) });
     if (act === 'focus') actions.focus(Number(arg), Number(arg2));
     if (act === 'menu') [state.menu, note] = [!state.menu, ''];
+    if (act === 'story') [state.intro, state.menu] = [true, false];
+    if (act === 'begin') state.intro = false;
     if (act === 'save') note = actions.save();
     if (act === 'load') actions.load();
     if (act === 'new') actions.newRun();
@@ -150,6 +155,12 @@ export function createHud(root: HTMLElement, state: UiState, world: () => World,
       const hint = actions.settings.hints && !w.lost && !w.won ? currentHint(w) : null;
       set('hint', hint ? `<b>Next</b> ${hint.text}` : '');
       set('menu', state.menu ? menuHtml(actions.settings, actions.hasSave(), note) : '');
+      set(
+        'intro',
+        state.intro
+          ? `<div class="story"><h1>${INTRO.title}</h1>${INTRO.paragraphs.map((p) => `<p>${p}</p>`).join('')}<button data-act="begin">${INTRO.begin}</button></div>`
+          : '',
+      );
       set('selection', selectionHtml(w, state));
       set('right', rightPanel(w, state));
       set(

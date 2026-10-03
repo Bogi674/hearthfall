@@ -17,18 +17,19 @@ const HUD_INTERVAL_MS = 200;
 const LOAD_KEY = 'hearthfall.loadOnStart';
 
 /** A load swaps the whole map, so it reloads the page and starts from the save. */
-function startWorld(): World {
+function startWorld(): { world: World; loaded: boolean } {
   try {
     const pending = sessionStorage.getItem(LOAD_KEY);
     sessionStorage.removeItem(LOAD_KEY);
-    if (pending) return loadGame(pending);
+    if (pending) return { world: loadGame(pending), loaded: true };
   } catch {
     // Fall through to a new run.
   }
-  return createWorld(Number(new URLSearchParams(location.search).get('seed') ?? 1));
+  return { world: createWorld(Number(new URLSearchParams(location.search).get('seed') ?? 1)), loaded: false };
 }
 
-const world = startWorld();
+const start = startWorld();
+const world = start.world;
 const settings = loadSettings();
 const container = document.getElementById('app')!;
 const view = createView(container, world.map.width);
@@ -38,6 +39,8 @@ const audio = createAudio();
 const state: UiState = {
   placing: null, rotated: false, selected: null, speed: 1, paused: false, buildOpen: true,
   buildCat: 'Shelter', tab: 'colonists', poi: null, squad: [], menu: false,
+  // A new run opens with the story. A loaded save goes straight back to the game.
+  intro: !start.loaded,
 };
 const hud = createHud(document.body, state, () => world, {
   focus: (x, y) => view.rig.target.set(x - world.map.width / 2, 0, y - world.map.height / 2),
@@ -70,7 +73,7 @@ let lastHud = 0;
 function frame(now: number): void {
   const frameMs = now - last;
   last = now;
-  const running = !state.paused && !state.menu && !world.lost && !world.won;
+  const running = !state.paused && !state.menu && !state.intro && !world.lost && !world.won;
   const result = fixedStep(running ? accumulator : 0, running ? frameMs * state.speed : 0, TICK_MS, MAX_STEPS_PER_FRAME);
   accumulator = result.accumulator;
   for (let i = 0; i < result.steps; i++) {

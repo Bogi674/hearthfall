@@ -2,6 +2,14 @@
 
 Newest entries first. Each entry names the milestone it belongs to.
 
+## 2026-10-03 (Polish after M6: characters and intro story)
+
+- Colonists and monsters are now rigged figures instead of a capsule and a box (`src/render/meshes/figures.ts`). Legs and arms swing while they walk.
+- Colonists have a head, a knit cap, a scarf, a coat in one of four colors, arms, legs, and a pack.
+- The Shambler is hunched with arms reaching forward. The Runner leans into a sprint. The Brute has a wide torso, huge arms, and shoulder spikes. The Horde Mother is a bloated body on four legs with spines and glowing sacs. All monsters keep glowing Blight eyes, and their wounds glow softly.
+- Added an intro story (`src/data/story.ts`). It opens before every new run with the game paused, and the menu has a Story button to read it again. A loaded save skips it.
+- Added `docs/screenshots/characters.jpg` and `docs/screenshots/intro.jpg`.
+
 ## 2026-10-02 (M6: Prototype Polish)
 
 - Added save and load as versioned JSON (`src/save/save.ts`). The menu saves to one slot in browser storage, and the game also saves at every dawn. Loading reloads the page and starts from the save.

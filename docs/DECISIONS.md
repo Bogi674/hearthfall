@@ -100,3 +100,10 @@ Design and architecture decisions that are not already in `docs/GAME_DESIGN.md`.
 - **Synthesized audio.** Section 13 allows placeholder audio. Web Audio noise and oscillators make fire, wind, and stingers without any sound files, which keeps the offline build to one file.
 - **Hints are data.** `src/data/hints.ts` lists each goal with its done condition. The HUD shows the first goal not yet met during days 1 and 2.
 - **Buttons act on pointer down.** The HUD re-renders panels when their text changes, up to five times a second. Acting on press means a click is never lost to a re-render.
+
+## 2026-10-03 (Characters and intro)
+
+- **Characters are rigs of simple parts.** Each part is one InstancedMesh shared by every figure of that kind, so 200 monsters still cost a few dozen draw calls. This follows the InstancedMesh rule for things that appear many times.
+- **Characters are drawn larger than true scale.** Colonists are 1.3 times and monsters 1.2 times their tile size, so they read from the isometric camera. This is render only and does not change the simulation.
+- **Wounds glow less than eyes.** Section 12.3 gives Blight to monster eyes and wounds. Full strength wounds made bloom swallow the Horde Mother, so wounds use a dimmer Blight mix.
+- **The intro pauses the game and is skipped on load.** A new run starts with the story. A loaded save returns straight to play.

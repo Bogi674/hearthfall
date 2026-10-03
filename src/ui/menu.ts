@@ -18,7 +18,8 @@ export function menuHtml(settings: Settings, hasSave: boolean, note: string): st
     `<button data-act="set:${key}">${label}: ${settings[key] ? 'On' : 'Off'}</button>`;
   return `<h2>Hearthfall</h2>
     <div class="menu-row"><button data-act="menu">Resume</button><button data-act="save">Save game</button>
-    <button data-act="load" ${hasSave ? '' : 'disabled'}>Load game</button><button data-act="new">New run</button></div>
+    <button data-act="load" ${hasSave ? '' : 'disabled'}>Load game</button><button data-act="new">New run</button>
+    <button data-act="story">Story</button></div>
     ${note ? `<p>${note}</p>` : ''}
     <h4>Settings</h4>
     <div class="menu-row">${toggle('autoPause', 'Auto pause at dusk')}${toggle('hints', 'Hints')}</div>

@@ -123,13 +123,6 @@ export function createBuildingMesh(type: BuildingType, w: number, h: number): TH
   return g;
 }
 
-export function createColonistMesh(max: number): THREE.InstancedMesh {
-  const geo = new THREE.CapsuleGeometry(0.2, 0.5, 3, 8).translate(0, 0.45, 0);
-  const mesh = new THREE.InstancedMesh(geo, new THREE.MeshStandardMaterial({ color: mixPalette(PALETTE.oldWood, PALETTE.lantern, 0.5) }), max);
-  mesh.count = 0;
-  return mesh;
-}
-
 export const GHOST_OK = PALETTE.lantern;
 export const GHOST_BAD = mixPalette(PALETTE.ember, PALETTE.warmShadow, 0.4);
 

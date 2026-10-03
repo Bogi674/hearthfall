@@ -41,3 +41,5 @@ Bugs, shortcuts, and loose ends that are known but not fixed yet.
 - The F1 debug panel from section 15.7 is not built. Dev builds expose `window.world` instead.
 - Hints cover only the first two days. Later goals rely on the Airship and Expeditions tabs explaining what is missing.
 - No human playtest has confirmed the M6 done line. The hints, tab texts, and score screen were checked in headless Chromium only.
+- Characters only have a walk cycle. There are no attack, work, or death animations yet.
+- The intro story opens on every new run. There is no setting to skip it, only the button to close it.
