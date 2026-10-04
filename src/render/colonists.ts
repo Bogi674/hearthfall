@@ -11,7 +11,7 @@ const TOOL_FOR: Record<WorkAnim, string | undefined> = {
   chop: 'axe', pick: 'pick', pry: 'crowbar', gather: undefined, stir: 'ladle', saw: 'saw', hammer: 'hammer', tend: 'poker',
 };
 /** Guards stand on the platform of these posts. */
-const POST_HEIGHT: Partial<Record<string, number>> = { watchtower: 1.7, gunNest: 1.1 };
+const POST_HEIGHT: Partial<Record<string, number>> = { watchtower: 2, gunNest: 1.28 };
 
 export function colonistFigures(w: World, alpha: number, heading: Map<number, number>): Figure[] {
   const { width, height } = w.map;
@@ -28,6 +28,7 @@ export function colonistFigures(w: World, alpha: number, heading: Map<number, nu
     let tool: string | undefined = c.weapon;
     let face: { x: number; y: number } | null = null;
     let y = 0;
+    let shift = 0;
     if (c.task === 'work' && job) {
       pose = BUILDINGS[job.type].work ?? 'hammer';
       tool = TOOL_FOR[pose];
@@ -39,13 +40,15 @@ export function colonistFigures(w: World, alpha: number, heading: Map<number, nu
       pose = 'guard';
       const post = c.duty === null ? undefined : byId.get(c.duty);
       y = post ? (POST_HEIGHT[post.type] ?? 0) : 0;
+      // Two guards on one post stand side by side.
+      shift = w.colonists.filter((o) => o.duty === c.duty && o.task === 'guard').indexOf(c) === 1 ? 0.3 : -0.15;
       // Guards look out, away from the house.
       face = { x: c.x * 2 - w.hearth.x, y: c.y * 2 - w.hearth.y };
     }
     if (moving) heading.set(c.id, Math.atan2(dx, dy));
     else if (face && Math.hypot(face.x - c.x, face.y - c.y) > 0.05) heading.set(c.id, Math.atan2(face.x - c.x, face.y - c.y));
     people.push({
-      id: c.id, x: c.px + dx * alpha - width / 2, y, z: c.py + dy * alpha - height / 2, yaw: heading.get(c.id) ?? 0, moving,
+      id: c.id, x: c.px + dx * alpha - width / 2 + shift, y, z: c.py + dy * alpha - height / 2, yaw: heading.get(c.id) ?? 0, moving,
       look: lookFor(w.seed, COLONIST_NAMES.indexOf(c.name)), pose, tool,
     });
   }

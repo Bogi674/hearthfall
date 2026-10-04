@@ -230,9 +230,15 @@ button.alarm.on {
   color: #ffc56b;
 }
 
+.colonist span {
+  white-space: nowrap;
+  margin-right: 8px;
+}
+
 .colonist small {
   text-align: right;
   min-width: 0;
+  overflow-wrap: normal;
 }
 
 .slot {

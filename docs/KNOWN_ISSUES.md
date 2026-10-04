@@ -60,5 +60,8 @@ Bugs, shortcuts, and loose ends that are known but not fixed yet.
 - The bot does not use the alarm. In tests the alarm cost more work time than the few raiders cost lives.
 - A save from an older version (2 or below) cannot be loaded. The title screen says so.
 - Save files are plain JSON and can be edited by hand.
+- A house room can face the wrong way for its first rendered frame before it turns away from the house.
+- The roof of the house is the brightest thing on screen, because the hearth point light sits right above it.
+- Trees near a work spot can hide the worker chopping them from the default camera angle.
 - Characters have walk and work animations, but no attack or death animations yet.
 - The intro story opens on every new run. There is no setting to skip it, only the button to close it.

@@ -152,3 +152,6 @@ Design and architecture decisions that are not already in `docs/GAME_DESIGN.md`.
 - **Vercel needs no config.** The Vercel project detects Vite, runs `npm run build`, and serves `dist`. Every push to `main` deploys to production.
 - **Watchtower costs wood.** It used to cost planks, which a new colony does not have, so the player could not build one early. It now costs 30 wood.
 - **The full run test uses seeds 2, 3, 5, and 6 when checked by hand, and 2, 3, and 5 in the test.** Construction labor and raids slow the simple bot. Seeds 1 and 4 end one airship part short at the night 10 Blood Moon.
+- **Building art is split by category** under `src/render/meshes/buildings/`, with `src/render/meshes/buildings.ts` as a short registry. Shared junk props live in `parts.ts` and shared materials and geometry in `kit.ts`, so a building reuses geometry instead of making new materials.
+- **Rooms face away from the house.** A room turns on the first frame it is drawn, using its world position and the hearth at the origin. This needs no extra state in the simulation.
+- **Ground glow comes from the light map only.** Building meshes no longer carry their own ground glow decals, since the light map already paints building light. Only the heater, lantern post, and lamp post keep a glow inside their `light` child.

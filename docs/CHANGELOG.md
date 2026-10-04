@@ -17,6 +17,7 @@ Newest entries first. Each entry names the milestone it belongs to.
 - **Build menu icons** for every building, with the reason a building cannot be built yet.
 - **Title screen** with Continue, New game on a chosen or random map, Load game, Import save file, Settings, and Story. The pause menu saves to three slots, loads, exports a save file, and returns to the title. Saves are version 3 and leave out data that is rebuilt on load.
 - **Rebalance.** Woodcutters cut 8 wood per cycle and trees hold 48. Salvage yards get 7 scrap and rubble holds 20. Sawmills and smelters work a little faster. The scripted full run launches by day 9 on seeds 2, 3, 5, and 6.
+- Added `docs/screenshots/m8-title.jpg`, `m8-compound.jpg`, `m8-workers.jpg`, `m8-house-stages.jpg`, `m8-buildings-1.jpg`, and `m8-buildings-2.jpg`.
 - New tests in `tests/compound.test.ts` cover construction, work spots, the cart, the house lot, bedrooms, breakers, the alarm, raids, the armory, fighting back, and tower guns.
 
 ## 2026-10-03 (M7.1: Scale, People, and Light)
@@ -29,7 +30,7 @@ Newest entries first. Each entry names the milestone it belongs to.
 - Light protects people in steps: Bright, Lit, Dim, and Fringe (section 5.3). Monsters do not attack people in the bright core. In the fringe they attack at reduced strength. Monsters also slow down the deeper they go into the light. This replaces the old Shambler and Runner rule.
 - Fog of war is no longer flat black. Near the known land it shows the ground as a darker grey drifting haze, with faint grey shapes of trees and ruins. Farther in it fades to pitch black.
 - Tests cover the light steps, the gradual warmth falloff, and the colonist looks.
-- Added `docs/screenshots/m8-start.jpg`, `m8-fog.jpg`, `m8-compound.jpg`, and `m8-people.jpg`.
+- Added `docs/screenshots/m7-1-start.jpg`, `m7-1-fog.jpg`, `m7-1-compound.jpg`, and `m7-1-people.jpg`.
 
 ## 2026-10-03 (M7: The Hearth House and the Compound)
 
