@@ -5,7 +5,7 @@ import { componentError, launchError } from '../src/sim/commands';
 import { placementError } from '../src/sim/placement';
 import { currentPhase } from '../src/sim/query';
 import { createWorld, stepWorld, type World } from '../src/sim/world';
-import { build } from './helpers';
+import { build, finish } from './helpers';
 
 const seconds = (w: World, s: number, each?: () => void) => {
   for (let i = 0; i < s * 10 && !w.lost && !w.won; i++) {
@@ -43,6 +43,8 @@ describe('M5 production', () => {
     const cold = w.warmth[i];
     expect(placementError(w, 'heater', x, y, false)).toBeNull();
     w.commands.push({ type: 'place', building: 'heater', x, y, rotated: false });
+    seconds(w, 0.1);
+    finish(w);
     seconds(w, 1);
     expect(w.warmth[i]).toBeGreaterThanOrEqual(BALANCE.warmth.warmThreshold);
     w.stock.fuel = 0;

@@ -4,15 +4,18 @@ import type { EnemyType } from '../data/enemies';
 import { COLONIST_NAMES } from '../data/colonists';
 import type { ItemId, PoiType } from '../data/pois';
 import type { ComponentId } from '../data/vehicle';
+import { WEAPON_IDS, type WeaponId } from '../data/weapons';
 import { NODE_AMOUNTS } from '../data/recipes';
 import { RESOURCES, type Amounts, type Resource } from '../data/resources';
 import { applyCommands, type Command } from './commands';
 import type { MapState } from './grid';
 import { generateMap } from './mapgen';
+import { placeBuilding } from './placement';
 import { createRng, type RngState } from './rng';
 import { jobsSystem } from './systems/jobs';
 import { needsSystem } from './systems/needs';
 import { combatSystem } from './systems/combat';
+import { constructionSystem } from './systems/construction';
 import { discoverySystem } from './systems/discovery';
 import { expeditionsSystem } from './systems/expeditions';
 import { hopeSystem } from './systems/hope';
@@ -36,7 +39,7 @@ export interface Hearth {
   hp: number;
 }
 
-export type BuildingStatus = 'ok' | 'night' | 'noWorkers' | 'noDefender' | 'noInput' | 'noFuel' | 'noResource' | 'tooCold' | 'storageFull';
+export type BuildingStatus = 'ok' | 'night' | 'noWorkers' | 'noDefender' | 'noInput' | 'noFuel' | 'noResource' | 'tooCold' | 'storageFull' | 'building' | 'sheltering';
 
 export interface Building {
   id: number;
@@ -58,7 +61,18 @@ export interface Building {
   lit: boolean;
   /** Upgrade stage for buildings that have stages, such as the Lookout Post. */
   level: number;
+  /** Seconds of builder work left. 0 once the building is finished (section 8.2). */
+  construct: number;
+  /** Node tile a gatherer is working on, or -1. Workers stand next to it. */
+  node: number;
+  /** Workers take shelter inside instead of working (section 9.7). */
+  shelter: boolean;
+  /** Weapon an armory crafts. */
+  craft: WeaponId;
 }
+
+/** What a colonist is doing right now. The renderer picks an animation from it. */
+export type Task = 'idle' | 'walk' | 'build' | 'work' | 'sleep' | 'guard' | 'shelter';
 
 export interface Colonist {
   id: number;
@@ -80,6 +94,12 @@ export interface Colonist {
   /** Expedition this colonist is away on. */
   expedition: number | null;
   asleep: boolean;
+  task: Task;
+  /** Construction site this colonist is building. */
+  site: number | null;
+  weapon: WeaponId;
+  /** Seconds until this colonist can hit or fire again. */
+  cooldown: number;
 }
 
 export interface World {
@@ -119,6 +139,10 @@ export interface World {
   revealRev: number;
   expeditions: Expedition[];
   items: Partial<Record<ItemId, number>>;
+  /** Spare weapons on the armory rack (section 9.6). */
+  weapons: Record<WeaponId, number>;
+  /** Everyone takes cover: workers shelter and defenders man their posts (section 9.7). */
+  alarm: boolean;
   /** Colony morale from 0 to 100 (section 6.5). */
   hope: number;
   /** Deaths since dusk, so dawn can reward a night without losses. */
@@ -144,6 +168,8 @@ export interface Enemy {
   hp: number;
   /** Seconds until the next hit. */
   cooldown: number;
+  /** Can damage walls, buildings, and the house. Rolled at spawn (section 9.4). */
+  breaker: boolean;
 }
 
 /** Forecast and spawn plan for one night (section 9.5). */
@@ -230,6 +256,8 @@ export function createWorld(seed: number): World {
     revealRev: 0,
     expeditions: [],
     items: {},
+    weapons: Object.fromEntries(WEAPON_IDS.map((id) => [id, 0])) as Record<WeaponId, number>,
+    alarm: false,
     hope: BALANCE.hope.start,
     deathsTonight: 0,
     airship: { built: [], building: null, progress: 0, launch: null },
@@ -240,8 +268,11 @@ export function createWorld(seed: number): World {
   };
   for (let i = 0; i < BALANCE.start.colonists; i++) {
     const a = (i / BALANCE.start.colonists) * Math.PI * 2;
-    addColonist(world, hearth.x + Math.cos(a) * 3.3, hearth.y + Math.sin(a) * 3.3);
+    addColonist(world, hearth.x + Math.cos(a) * BALANCE.colonist.idleRadius, hearth.y + Math.sin(a) * BALANCE.colonist.idleRadius);
   }
+  // The survivors arrived with a hand cart of supplies. It is the first storage (section 7.2).
+  const cart = BALANCE.start.cart;
+  placeBuilding(world, 'supplyCart', hearth.x + cart.x, hearth.y + cart.y, false, true);
   warmthSystem(world, 0);
   discoverySystem(world, 0);
   pathfindingSystem(world, 0);
@@ -259,6 +290,7 @@ export function addColonist(world: World, x: number, y: number): Colonist {
   const c: Colonist = {
     id: world.nextId++, name, x, y, px: x, py: y,
     health: 1, hunger: 1, rest: 1, warmth: 1, job: null, bed: null, duty: null, expedition: null, asleep: false,
+    task: 'idle', site: null, weapon: BALANCE.start.weapon, cooldown: 0,
   };
   world.colonists.push(c);
   return c;
@@ -281,6 +313,7 @@ export function stepWorld(world: World): void {
   warmthSystem(world, TICK_SECONDS);
   pathfindingSystem(world, TICK_SECONDS);
   jobsSystem(world, TICK_SECONDS);
+  constructionSystem(world, TICK_SECONDS);
   needsSystem(world, TICK_SECONDS);
   expeditionsSystem(world, TICK_SECONDS);
   discoverySystem(world, TICK_SECONDS);

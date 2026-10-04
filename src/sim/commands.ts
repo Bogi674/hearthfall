@@ -1,6 +1,7 @@
 // Player command queue. UI pushes commands here and the world applies them at the start of a tick.
 import { BALANCE } from '../data/balance';
 import { BUILDINGS, type BuildingType } from '../data/buildings';
+import { CRAFTABLE, type WeaponId } from '../data/weapons';
 import { ITEMS } from '../data/pois';
 import { RESOURCE_NAMES, type Resource } from '../data/resources';
 import { COMPONENT_IDS, COMPONENTS, LAST_NIGHT, type ComponentId } from '../data/vehicle';
@@ -17,7 +18,10 @@ export type Command =
   | { type: 'buildComponent'; component: ComponentId }
   | { type: 'launch' }
   | { type: 'upgradeHearth' }
-  | { type: 'upgradeBuilding'; id: number };
+  | { type: 'upgradeBuilding'; id: number }
+  | { type: 'setShelter'; id: number; on: boolean }
+  | { type: 'alarm'; on: boolean }
+  | { type: 'setCraft'; id: number; weapon: WeaponId };
 
 export function pushCommand(queue: Command[], command: Command): void {
   queue.push(command);
@@ -50,6 +54,15 @@ export function applyCommands(world: World): void {
         addLog(world, `The ${BUILDINGS[b.type].name} reaches stage ${b.level}.`, b);
       }
     }
+    if (c.type === 'setShelter' || c.type === 'setCraft') {
+      const b = world.buildings.find((b) => b.id === c.id);
+      if (b && c.type === 'setShelter') b.shelter = c.on;
+      if (b && c.type === 'setCraft' && BUILDINGS[b.type].armory && CRAFTABLE.includes(c.weapon) && b.craft !== c.weapon) [b.craft, b.progress, b.loaded] = [c.weapon, 0, false];
+    }
+    if (c.type === 'alarm' && world.alarm !== c.on) {
+      world.alarm = c.on;
+      addLog(world, c.on ? 'The alarm sounds. Everyone takes cover.' : 'All clear. Back to work.');
+    }
     if (c.type === 'launch' && !launchError(world)) {
       world.airship.launch = { elapsed: 0, fuel: 0 };
       // The launch is a night: skip to the start of the night phase.
@@ -66,7 +79,7 @@ export function applyCommands(world: World): void {
 
 /** Why this squad cannot leave, or null when it can (section 10.2). */
 export function expeditionError(world: World, poi: number, members: number[]): string | null {
-  if (!world.buildings.some((b) => b.type === 'gate')) return 'Build a Gate first';
+  if (!world.buildings.some((b) => b.type === 'gate' && b.construct <= 0)) return 'Build a Gate first';
   if (!world.pois[poi]) return 'Pick a place to search';
   if (world.pois[poi].seen === 'hidden') return 'Nobody knows where that is yet';
   if (members.length < 1 || members.length > BALANCE.expeditions.maxSquad) return `Pick 1 to ${BALANCE.expeditions.maxSquad} colonists`;
@@ -79,7 +92,7 @@ export function expeditionError(world: World, poi: number, members: number[]): s
 
 function sendExpedition(world: World, poiIndex: number, members: number[]): void {
   const poi = world.pois[poiIndex];
-  const gates = world.buildings.filter((b) => b.type === 'gate').map(center);
+  const gates = world.buildings.filter((b) => b.type === 'gate' && b.construct <= 0).map(center);
   const gate = gates.reduce((a, b) => (Math.hypot(b.x - poi.x, b.y - poi.y) < Math.hypot(a.x - poi.x, a.y - poi.y) ? b : a));
   const squad = world.colonists.filter((c) => members.includes(c.id));
   const id = world.nextId++;
@@ -96,7 +109,7 @@ function sendExpedition(world: World, poiIndex: number, members: number[]): void
 export function componentError(world: World, id: ComponentId): string | null {
   const def = COMPONENTS[id];
   const air = world.airship;
-  if (!world.buildings.some((b) => b.type === 'airshipDock')) return 'Build an Airship Dock first';
+  if (!world.buildings.some((b) => b.type === 'airshipDock' && b.construct <= 0)) return 'Build an Airship Dock first';
   if (air.built.includes(id)) return 'Built';
   if (air.building) return `The dock is busy with the ${COMPONENTS[air.building].name}`;
   if (def.needs && !air.built.includes(def.needs)) return `Needs the ${COMPONENTS[def.needs].name}`;
@@ -121,6 +134,7 @@ export function hearthUpgradeError(world: World): string | null {
 }
 
 export function buildingUpgradeError(world: World, b: Building): string | null {
+  if (b.construct > 0) return 'Still being built';
   const cost = BUILDINGS[b.type].upgrades?.[b.level - 1];
   if (!cost) return 'Fully upgraded';
   const short = missing(world, cost);

@@ -7,9 +7,9 @@ import { addLog, type World } from '../world';
 export function vehicleSystem(world: World, dt: number): void {
   const air = world.airship;
   const dock = world.buildings.find((b) => b.type === 'airshipDock');
-  if (dock && !air.launch) {
+  if (dock && dock.construct <= 0 && !air.launch) {
     const at = center(dock);
-    const crew = world.colonists.filter((c) => c.job === dock.id && Math.hypot(c.x - at.x, c.y - at.y) < 2);
+    const crew = world.colonists.filter((c) => c.job === dock.id && c.task === 'work');
     dock.status = !air.building ? 'ok' : crew.length === 0 ? 'noWorkers' : bandAt(world, at.x, at.y) === 'freezing' ? 'tooCold' : 'ok';
     if (air.building && dock.status === 'ok') {
       const cold = bandAt(world, at.x, at.y) === 'cold' ? BALANCE.production.coldSpeed : 1;

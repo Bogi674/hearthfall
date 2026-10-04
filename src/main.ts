@@ -3,7 +3,7 @@ import { bindCameraControls } from './input/cameraControls';
 import { bindPointer } from './input/pointer';
 import { createView } from './render/scene';
 import { createWorldView } from './render/sync';
-import { loadGame, readSave, storeSave } from './save/save';
+import { deleteSave, exportSave, latestSlot, loadGame, readSave, storeSave, type SlotId } from './save/save';
 import { fixedStep } from './sim/loop';
 import { currentPhase } from './sim/query';
 import { createWorld, stepWorld, TICKS_PER_SECOND, type World } from './sim/world';
@@ -16,6 +16,8 @@ const MAX_STEPS_PER_FRAME = 10;
 const HUD_INTERVAL_MS = 200;
 const LOAD_KEY = 'hearthfall.loadOnStart';
 
+const params = new URLSearchParams(location.search);
+
 /** A load swaps the whole map, so it reloads the page and starts from the save. */
 function startWorld(): { world: World; loaded: boolean } {
   try {
@@ -25,7 +27,20 @@ function startWorld(): { world: World; loaded: boolean } {
   } catch {
     // Fall through to a new run.
   }
-  return { world: createWorld(Number(new URLSearchParams(location.search).get('seed') ?? 1)), loaded: false };
+  return { world: createWorld(Number(params.get('seed') ?? 1)), loaded: false };
+}
+
+/** Carries a save across the reload. Returns a note when the save cannot be used. */
+function startFrom(text: string | null): string {
+  if (!text) return 'That slot is empty.';
+  try {
+    loadGame(text);
+    sessionStorage.setItem(LOAD_KEY, text);
+  } catch (e) {
+    return e instanceof Error && e.message.includes('version') ? e.message : 'Loading is blocked in this browser.';
+  }
+  location.href = location.pathname;
+  return '';
 }
 
 const start = startWorld();
@@ -39,24 +54,35 @@ const audio = createAudio();
 const state: UiState = {
   placing: null, rotated: false, selected: null, speed: 1, paused: false, buildOpen: true,
   buildCat: 'Shelter', tab: 'colonists', poi: null, squad: [], menu: false,
-  // A new run opens with the story. A loaded save goes straight back to the game.
-  intro: !start.loaded,
+  // The page opens on the title screen. A new game opens with the story. A loaded save goes straight back to the game.
+  title: !start.loaded && !params.has('play'),
+  intro: !start.loaded && params.has('play'),
+  view: 'main',
+  seed: String(world.seed),
 };
 const hud = createHud(document.body, state, () => world, {
   focus: (x, y) => view.rig.target.set(x - world.map.width / 2, 0, y - world.map.height / 2),
-  save: () => (storeSave(world) ? `Saved on day ${world.day}.` : 'Saving is blocked in this browser.'),
-  load: () => {
-    const text = readSave();
-    if (!text) return;
-    try {
-      sessionStorage.setItem(LOAD_KEY, text);
-      location.reload();
-    } catch {
-      // Without session storage the save cannot be carried across the reload.
-    }
+  save: (slot) => (storeSave(world, slot) ? `Saved on day ${world.day}.` : 'Saving is blocked in this browser.'),
+  load: (slot) => hud.say(startFrom(readSave(slot))),
+  remove: (slot) => deleteSave(slot),
+  continueRun: () => {
+    const slot: SlotId | null = latestSlot();
+    if (slot) hud.say(startFrom(readSave(slot)));
   },
-  newRun: () => (location.search = `?seed=${Math.floor(Math.random() * 1e9)}`),
-  hasSave: () => readSave() !== null,
+  hasSave: () => latestSlot() !== null,
+  newGame: (seed) => {
+    if (seed === world.seed && world.tick === 0) [state.title, state.intro] = [false, true];
+    else location.search = `?seed=${seed}&play=1`;
+  },
+  exportSave: () => exportSave(world),
+  importSave: () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json,application/json';
+    input.onchange = () => input.files?.[0]?.text().then((text) => hud.say(startFrom(text) || ''), () => hud.say('That file could not be read.'));
+    input.click();
+  },
+  toTitle: () => (location.href = location.pathname),
   settings,
   settingsChanged: () => storeSettings(settings),
 });
@@ -73,7 +99,7 @@ let lastHud = 0;
 function frame(now: number): void {
   const frameMs = now - last;
   last = now;
-  const running = !state.paused && !state.menu && !state.intro && !world.lost && !world.won;
+  const running = !state.paused && !state.menu && !state.intro && !state.title && !world.lost && !world.won;
   const result = fixedStep(running ? accumulator : 0, running ? frameMs * state.speed : 0, TICK_MS, MAX_STEPS_PER_FRAME);
   accumulator = result.accumulator;
   for (let i = 0; i < result.steps; i++) {

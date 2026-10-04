@@ -121,7 +121,7 @@ Design and architecture decisions that are not already in `docs/GAME_DESIGN.md`.
 - **Idle colonists stand 3.3 tiles from the house.** At the old radius they stood inside the house walls.
 - **The full run test uses seeds 1, 4, and 5.** The bot plays a fixed build order. M7 added real costs to that order, and seeds 2, 3, and 6 no longer launch before the night 10 Blood Moon with it. The test still proves the M5 done line on three maps.
 
-## 2026-10-03 (M8)
+## 2026-10-03 (M7.1)
 
 - **Map 128 by 128.** This was already the full game target in section 4. Distances to places grow by about 1.5 times. Squads walk a third faster, so the longest trip still fits in one day.
 - **Forest density is anchored to a fixed distance.** Tree density used to ramp up relative to the map size. On the bigger map that pushed the woods so far out that woodcutters stood 40 tiles from home. Now the forest starts 17 tiles out on any map size.
@@ -134,3 +134,21 @@ Design and architecture decisions that are not already in `docs/GAME_DESIGN.md`.
 - **Looks are data, colors live in materials.** `src/data/looks.ts` lists the twenty designs by color name. `LOOK_COLORS` in `src/render/materials.ts` defines those colors once. Skin and hair need natural tones outside the eight palette colors, so they are kept muted and warm.
 - **The name picks woman or man, the seed picks the design.** Names already alternate between women and men. A look is derived in the renderer from the name and the seed, so no new state is saved and old saves still load.
 - **One rig for every look.** Each style is a part that shows only for looks that ask for it. Hidden parts are zero size instances, and parts nobody wears are skipped. This keeps the shared InstancedMesh approach from the character decision.
+
+## 2026-10-04 (M8)
+
+- **The earlier "M8" is now M7.1.** The user asked for this batch to be M8. The previous scale, people, and light work was a follow up to M7, so it was renamed M7.1 in the design document and changelog.
+- **Light steps are shares of the light radius, and light ends at the radius.** The user gave core to 70 percent, lit to 80, dim to 90, and fringe from 90 percent to where the light vanishes. The light now vanishes at the radius, so the visible pool and the protection match. Warmth still fades past the radius, so the snow edge stays soft.
+- **Light is drawn from a light map, not the warmth map.** Buildings and lamps give light without warmth. The renderer paints a light texture from the same light sources the combat system uses (`lightSources` in `src/sim/query.ts`).
+- **Day raids.** The emergency shelter only matters if workers can be in danger while they work. Waves only come at night, when nobody works, so a small raid of Shamblers and Runners now prowls in at two minutes into each day from day 3.
+- **Hunters wait at walls.** Monsters that cannot break buildings chase exposed people within 10 tiles and otherwise follow the flow field. At a wall they stop. Walls therefore fully stop hunters, which keeps walls worth building.
+- **Light softens damage to people only.** If light protected buildings, the house would be unbreakable in its own core.
+- **Construction uses colonists without a job.** A production building's crew builds it first. Everyone else without a job helps the nearest site. There is no separate builder role to manage, which keeps the prototype simple.
+- **Work spots in the simulation.** Production only counts workers who stand at their spot. This makes the animation honest: a worker you see walking is not producing yet.
+- **Rooms are buildings on a reserved lot.** Rooms reuse the building system for construction, workers, light, and shelter. The 7 by 7 lot around the hearth is reserved for them, so the player decides the layout of the house.
+- **One person rig with every tool.** Tools and weapons are parts on the right hand of the person rig, shown only when a figure holds them. Arms take a pose per trade when the figure stands still.
+- **Weapons on a rack, not in the stockpile.** Spare weapons are counted in `world.weapons`, not as resources, so they do not crowd the top bar or use storage.
+- **Saves stay in the browser, with save files for moving runs.** The game is single player and works offline. Browser storage with an autosave and three slots covers one device. Export and import of a save file covers moving between browsers and devices, and works in the offline file. Cloud saves on Vercel storage would need player accounts and a server, and would break rule 8 for the offline file, so they were not added.
+- **Vercel needs no config.** The Vercel project detects Vite, runs `npm run build`, and serves `dist`. Every push to `main` deploys to production.
+- **Watchtower costs wood.** It used to cost planks, which a new colony does not have, so the player could not build one early. It now costs 30 wood.
+- **The full run test uses seeds 2, 3, 5, and 6 when checked by hand, and 2, 3, and 5 in the test.** Construction labor and raids slow the simple bot. Seeds 1 and 4 end one airship part short at the night 10 Blood Moon.

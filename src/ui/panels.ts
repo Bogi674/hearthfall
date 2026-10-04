@@ -2,6 +2,7 @@
 import { BUILDINGS } from '../data/buildings';
 import { ITEMS, POIS } from '../data/pois';
 import { COMPONENT_IDS, COMPONENTS, LAST_NIGHT } from '../data/vehicle';
+import { WEAPONS } from '../data/weapons';
 import { RESOURCE_NAMES, type Resource } from '../data/resources';
 import { componentError, expeditionError, launchError } from '../sim/commands';
 import { currentPhase, directionFromHearth } from '../sim/query';
@@ -24,12 +25,21 @@ export function rightPanel(w: World, state: UiState): string {
 }
 
 function colonists(w: World): string {
-  const work = currentPhase(w).work;
+  const name = (id: number | null) => {
+    const b = w.buildings.find((b) => b.id === id);
+    return b ? BUILDINGS[b.type].name : '';
+  };
   return `${w.colonists
     .map((c) => {
-      const job = w.buildings.find((b) => b.id === c.job);
-      const task = c.expedition !== null ? 'On expedition' : c.asleep ? 'Sleeping' : !work && c.duty !== null ? 'On watch' : job && work ? BUILDINGS[job.type].name : 'Idle';
-      return `<div class="colonist"><span>${c.name}</span><small>${task}</small>
+      const task =
+        c.expedition !== null ? 'On expedition'
+        : c.task === 'sleep' ? 'Sleeping'
+        : c.task === 'shelter' ? 'Taking shelter'
+        : c.task === 'guard' ? `On watch at the ${name(c.duty)}`
+        : c.task === 'build' || c.site !== null ? `Building the ${name(c.site)}`
+        : c.job !== null && currentPhase(w).work ? name(c.job)
+        : 'Idle';
+      return `<div class="colonist"><span>${c.name}</span><small>${task}, ${WEAPONS[c.weapon].name.toLowerCase()}</small>
         <div class="bars">${bar(c.health, 'Health')}${bar(c.hunger, 'Hunger')}${bar(c.rest, 'Rest')}${bar(c.warmth, 'Warmth')}</div></div>`;
     })
     .join('')}<p class="legend">Bars: health, hunger, rest, warmth</p>`;

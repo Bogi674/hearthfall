@@ -1,20 +1,29 @@
-// Worker and bed assignment, and colonist movement. Colonists walk in straight lines to their target.
+// Worker, defender, builder, and bed assignment, and colonist movement (sections 6 and 8.2).
+// Colonists walk in straight lines to a spot and get a task there that the renderer animates.
+// Workers stand where the work is: next to the tree being cut, at the stove, or inside a building.
 import { BALANCE } from '../../data/balance';
 import { BUILDINGS } from '../../data/buildings';
 import { LAST_NIGHT } from '../../data/vehicle';
-import { bandAt, center, currentPhase } from '../query';
-import type { World } from '../world';
+import { bandAt, center, currentPhase, isBuilt } from '../query';
+import type { Building, Colonist, Task, World } from '../world';
 
 const C = BALANCE.colonist;
-/** Idle colonists wait in a ring just outside the Hearth House. */
-const IDLE_RADIUS = 3.3;
+/** Where workers stand inside indoor buildings, relative to the center. */
+const INDOOR_SPOTS = [[-0.35, 0.25], [0.35, 0.25], [0, -0.3]];
+
+interface Plan {
+  x: number;
+  y: number;
+  task: Task;
+  site?: number;
+}
 
 export function jobsSystem(world: World, dt: number): void {
   const byId = new Map(world.buildings.map((b) => [b.id, b]));
   for (const c of world.colonists) {
     if (c.job !== null && !byId.has(c.job)) c.job = null;
-    if (c.bed !== null && !byId.has(c.bed)) c.bed = null;
     if (c.duty !== null && !byId.has(c.duty)) c.duty = null;
+    if (c.bed !== null && (!byId.has(c.bed) || !isBuilt(byId.get(c.bed)!))) c.bed = null;
   }
 
   for (const b of world.buildings) {
@@ -27,7 +36,7 @@ export function jobsSystem(world: World, dt: number): void {
       if (!idle) break;
       idle[slot] = b.id;
     }
-    const beds = BUILDINGS[b.type].beds ?? 0;
+    const beds = isBuilt(b) ? (BUILDINGS[b.type].beds ?? 0) : 0;
     let used = world.colonists.filter((c) => c.bed === b.id).length;
     for (const c of world.colonists) {
       if (used >= beds) break;
@@ -38,31 +47,126 @@ export function jobsSystem(world: World, dt: number): void {
     }
   }
 
-  const work = currentPhase(world).work;
-  const launch = world.airship.launch;
-  const dock = world.buildings.find((b) => b.type === 'airshipDock');
-  // Colonists board in the final seconds of The Last Night (section 11.1).
-  // Defenders on night duty hold their post, so the player chooses who stays behind.
-  const boardingTime = launch && dock && launch.elapsed >= LAST_NIGHT.seconds - LAST_NIGHT.boardSeconds;
+  const crewIndex = new Map<number, number>();
+  const crewSeen = new Map<number, number>();
+  for (const c of world.colonists) {
+    if (c.job === null) continue;
+    const n = crewSeen.get(c.job) ?? 0;
+    crewIndex.set(c.id, n);
+    crewSeen.set(c.job, n + 1);
+  }
+  const siteLoad = new Map<number, number>();
+  const sites = world.buildings.filter((b) => !isBuilt(b));
+
   for (const c of world.colonists) {
     if (c.expedition !== null) continue;
-    const boarding = boardingTime && c.duty === null;
-    const place = boarding ? dock!.id : work ? c.job : (c.duty ?? c.bed);
-    let b = place === null ? undefined : byId.get(place);
-    // Nobody stands at a job that is too cold to work. They wait by the hearth.
-    if (b && work && !boarding && bandAt(world, center(b).x, center(b).y) === 'freezing') b = undefined;
-    const a = c.id * 2.4;
-    const target = b ? center(b) : { x: world.hearth.x + Math.cos(a) * IDLE_RADIUS, y: world.hearth.y + Math.sin(a) * IDLE_RADIUS };
+    const plan = planFor(world, c, byId, sites, siteLoad, crewIndex.get(c.id) ?? 0);
+    c.site = plan.site ?? null;
+    if (plan.site !== undefined) siteLoad.set(plan.site, (siteLoad.get(plan.site) ?? 0) + 1);
     c.px = c.x;
     c.py = c.y;
-    const dx = target.x - c.x;
-    const dy = target.y - c.y;
+    const dx = plan.x - c.x;
+    const dy = plan.y - c.y;
     const d = Math.hypot(dx, dy);
     const step = Math.min(d, C.speed * dt);
     if (d > 0) {
       c.x += (dx / d) * step;
       c.y += (dy / d) * step;
     }
-    c.asleep = !boarding && !work && c.duty === null && b !== undefined && d - step < C.arriveDistance;
+    const arrived = d - step < 0.05;
+    c.task = arrived ? plan.task : 'walk';
+    c.asleep = c.task === 'sleep';
   }
+}
+
+function planFor(world: World, c: Colonist, byId: Map<number, Building>, sites: Building[], siteLoad: Map<number, number>, index: number): Plan {
+  const work = currentPhase(world).work;
+  const launch = world.airship.launch;
+  const dock = world.buildings.find((b) => b.type === 'airshipDock');
+  // Colonists board in the final seconds of The Last Night (section 11.1).
+  // Defenders on night duty hold their post, so the player chooses who stays behind.
+  if (launch && dock && launch.elapsed >= LAST_NIGHT.seconds - LAST_NIGHT.boardSeconds && c.duty === null) return { ...center(dock), task: 'idle' };
+
+  const job = c.job === null ? undefined : byId.get(c.job);
+  const duty = c.duty === null ? undefined : byId.get(c.duty);
+  // The alarm sends defenders to their posts and everyone else under a roof (section 9.7).
+  if (world.alarm && duty && isBuilt(duty)) return { ...center(duty), task: 'guard' };
+  if (world.alarm || (work && job?.shelter)) return { ...shelterFor(world, c, job, byId), task: 'shelter' };
+
+  if (!work) {
+    if (duty && isBuilt(duty)) return { ...center(duty), task: 'guard' };
+    const bed = c.bed === null ? undefined : byId.get(c.bed);
+    return bed ? { ...center(bed), task: 'sleep' } : idleSpot(world, c);
+  }
+
+  if (job && !isBuilt(job)) return { ...buildSpot(job, siteLoad.get(job.id) ?? 0), task: 'build', site: job.id };
+  // Nobody stands at a job that is too cold to work. They wait by the hearth.
+  if (job && bandAt(world, center(job).x, center(job).y) !== 'freezing') return { ...workSpot(world, job, index), task: 'work' };
+  if (!job) {
+    const at = { x: c.x, y: c.y };
+    const site = sites
+      .filter((s) => (siteLoad.get(s.id) ?? 0) < C.buildersPerSite)
+      .reduce<Building | null>((best, s) => (!best || dist(center(s), at) < dist(center(best), at) ? s : best), null);
+    if (site) return { ...buildSpot(site, siteLoad.get(site.id) ?? 0), task: 'build', site: site.id };
+  }
+  return idleSpot(world, c);
+}
+
+const dist = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y);
+
+function idleSpot(world: World, c: Colonist): Plan {
+  const a = c.id * 2.4;
+  return { x: world.hearth.x + Math.cos(a) * C.idleRadius, y: world.hearth.y + Math.sin(a) * C.idleRadius, task: 'idle' };
+}
+
+/** Builders stand around the edge of the site. */
+function buildSpot(b: Building, n: number): { x: number; y: number } {
+  const at = center(b);
+  const a = n * 2.1 + 0.4;
+  const r = Math.max(b.w, b.h) / 2 + 0.3;
+  return { x: at.x + Math.cos(a) * r, y: at.y + Math.sin(a) * r };
+}
+
+/** Where a worker stands to work (section 12.4). */
+function workSpot(world: World, b: Building, index: number): { x: number; y: number } {
+  const def = BUILDINGS[b.type];
+  const at = center(b);
+  if (b.node >= 0) {
+    // Gatherers ring the tree, ruin, or rubble they are working on.
+    const a = index * 2.1 + 0.7;
+    const nx = b.node % world.map.width;
+    const ny = (b.node - nx) / world.map.width;
+    return { x: nx + Math.cos(a) * 0.65, y: ny + Math.sin(a) * 0.65 };
+  }
+  if (def.work === 'gather') {
+    // Foragers roam the brush around the hut, moving to a new patch now and then.
+    const patch = Math.floor(world.tick / 120) + index * 3;
+    const a = patch * 2.39996;
+    return { x: at.x + Math.cos(a) * (2 + (patch % 3) * 0.8), y: at.y + Math.sin(a) * (2 + (patch % 3) * 0.8) };
+  }
+  if (def.indoor) {
+    const [dx, dy] = INDOOR_SPOTS[index % INDOOR_SPOTS.length];
+    return { x: at.x + dx, y: at.y + dy };
+  }
+  const a = index * 2.1 + 0.8;
+  const r = Math.max(b.w, b.h) / 2 + 0.35;
+  return { x: at.x + Math.cos(a) * r, y: at.y + Math.sin(a) * r };
+}
+
+/** The colonist's own building if it can hold people, else their bed, else the nearest shelter, else the house. */
+function shelterFor(world: World, c: Colonist, job: Building | undefined, byId: Map<number, Building>): { x: number; y: number } {
+  const bed = c.bed === null ? undefined : byId.get(c.bed);
+  const own = [job, bed].find((b) => b && canShelter(b));
+  if (own) return center(own);
+  let best: Building | null = null;
+  for (const b of world.buildings) {
+    if (canShelter(b) && (!best || dist(center(b), c) < dist(center(best), c))) best = b;
+  }
+  return best && dist(center(best), c) < dist(world.hearth, c) ? center(best) : { x: world.hearth.x, y: world.hearth.y };
+}
+
+/** Finished buildings with room for people. Walls, traps, posts, and towers are not shelters. */
+export function canShelter(b: Building): boolean {
+  const def = BUILDINGS[b.type];
+  return isBuilt(b) && b.hp > 0 && !def.nightDuty && (def.indoor === true || (def.beds ?? 0) > 0 || (def.storage ?? 0) > 0 || (def.workers > 0 && b.w * b.h >= 4));
 }

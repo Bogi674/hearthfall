@@ -2,7 +2,24 @@
 
 Newest entries first. Each entry names the milestone it belongs to.
 
-## 2026-10-03 (M8: Scale, People, and Light)
+## 2026-10-04 (M8: The Living Compound)
+
+- **Construction.** Placed buildings are construction sites. Their own workers build them first, and colonists without a job help at the nearest site. The building rises inside scaffolding on screen. Every building has a build time in `src/data/buildings.ts`.
+- **Work at the work.** Woodcutters stand at the tree they chop, quarry workers at the ruin, salvagers at the rubble, and foragers roam the brush. Cooks, sawyers, smiths, and mechanics work inside their building. Each trade has its own animation and tool: axe, pick, crowbar, basket, ladle, saw, hammer, and poker. Builders hammer.
+- **Supply Cart.** The colony starts with a hand cart of supplies by the house that holds the first 300 storage.
+- **House rooms.** The 7 by 7 lot around the house is kept for rooms: Bedroom, Storeroom, House Kitchen, Infirmary, Armory, and Rooftop Gun Nest. Rooms are tough and safe, and bedrooms and the infirmary speed up rest and healing.
+- **Light.** Light steps now sit at 70, 80, 90, and 100 percent of each light's radius. The ground shows a light map that is full in the core and fades to dark at the radius. Every finished building has a small free glow. Added the Lamp Post with radius 6.
+- **Monsters.** Each monster is rolled at spawn as a breaker or a hunter. Hunters cannot hurt buildings and chase people in the open. From day 3 a small raid prowls in by day.
+- **Shelter and alarm.** People inside a standing building are safe. Buildings have a Take shelter button for their workers. The Alarm button sends everyone under a roof and every defender to their gun.
+- **Weapons.** Every colonist starts with a pipe club and fights back. The Armory crafts spears, crossbows, and hunting rifles onto a rack, and colonists pick up the best one.
+- **Watchtower guns.** A watchtower has two makeshift guns, one per defender, and upgrades to heavy guns. It now costs 30 wood, so it can be built early. The old plank cost was why it could not be placed at the start.
+- **Buildings redesigned** in a patched up post apocalyptic style, each with its own silhouette. The house goes from a roofless ruin to a fortified lodge.
+- **Build menu icons** for every building, with the reason a building cannot be built yet.
+- **Title screen** with Continue, New game on a chosen or random map, Load game, Import save file, Settings, and Story. The pause menu saves to three slots, loads, exports a save file, and returns to the title. Saves are version 3 and leave out data that is rebuilt on load.
+- **Rebalance.** Woodcutters cut 8 wood per cycle and trees hold 48. Salvage yards get 7 scrap and rubble holds 20. Sawmills and smelters work a little faster. The scripted full run launches by day 9 on seeds 2, 3, 5, and 6.
+- New tests in `tests/compound.test.ts` cover construction, work spots, the cart, the house lot, bedrooms, breakers, the alarm, raids, the armory, fighting back, and tower guns.
+
+## 2026-10-03 (M7.1: Scale, People, and Light)
 
 - The map grows from 80 by 80 to 128 by 128 tiles. The town spreads out to 40 tiles with more ruined houses, more side streets, and four frozen ponds. The forest still starts to thicken about 17 tiles out, so wood stays close.
 - Points of interest are farther away. The Farmhouse is 24 tiles out and the Old Airfield is 54. Squads walk 1.6 tiles per second instead of 1.2. The start reveal grows to 18 tiles. Squads reveal 6 tiles around them and find places within 8 tiles. Lookout sight is now 44, 56, and 66 tiles.

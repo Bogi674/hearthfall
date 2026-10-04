@@ -1,21 +1,20 @@
 import * as THREE from 'three';
 import { BALANCE } from '../data/balance';
 import { BUILDINGS } from '../data/buildings';
-import { COLONIST_NAMES } from '../data/colonists';
-import { lookFor } from '../data/looks';
 import { COMPONENT_IDS } from '../data/vehicle';
 import { ENEMIES } from '../data/enemies';
 import { Tile } from '../sim/grid';
-import { hearthStage } from '../sim/query';
-import { baselineWarmth } from '../sim/systems/warmth';
+import { hearthStage, isBuilt, lightSources } from '../sim/query';
 import type { World } from '../sim/world';
 import { FOG_DEPTH_TILES, fogDistance } from './fogOfWar';
+import { paintLight } from './lightMap';
 import { createGroundMaterial } from './groundShader';
 import { createHearthLight } from './lighting';
 import { createBars, type Bar } from './meshes/bars';
-import { createBuildingMesh, createLandmark, WALL_EAST, WALL_NORTH, WALL_SOUTH, WALL_TYPES, WALL_WEST } from './meshes/buildings';
+import { createBuildingMesh, createConstructionSite, createLandmark, WALL_EAST, WALL_NORTH, WALL_SOUTH, WALL_TYPES, WALL_WEST } from './meshes/buildings';
 import { createEnemyMeshes } from './meshes/enemies';
-import { createFigureSet, type Figure } from './meshes/figures';
+import { colonistFigures } from './colonists';
+import { createFigureSet } from './meshes/figures';
 import { PERSON_RIG } from './meshes/people';
 import { createHearthMesh } from './meshes/hearth';
 import { buildProps, colorPropsByWarmth } from './meshes/props';
@@ -56,7 +55,12 @@ export function createWorldView(world: World, scene: THREE.Scene, fog: THREE.Fog
   fogTex.magFilter = THREE.LinearFilter;
   fogTex.minFilter = THREE.LinearFilter;
 
-  const groundMat = createGroundMaterial({ warmth: warmthTex, tiles: tilesTex, fogDepth: fogTex }, mapSize, warmThreshold, fog);
+  const lightTex = new THREE.DataTexture(new Uint8Array(width * height), width, height, THREE.RedFormat);
+  lightTex.magFilter = THREE.LinearFilter;
+  lightTex.minFilter = THREE.LinearFilter;
+  let lightKey = '';
+
+  const groundMat = createGroundMaterial({ warmth: warmthTex, tiles: tilesTex, fogDepth: fogTex, light: lightTex }, mapSize, warmThreshold, fog);
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(width + 80, height + 80).rotateX(-Math.PI / 2), groundMat);
   ground.position.set(-0.5, 0, -0.5);
   scene.add(ground);
@@ -129,7 +133,13 @@ export function createWorldView(world: World, scene: THREE.Scene, fog: THREE.Fog
         landmarks[i].getObjectByName('site')!.visible = p.seen === 'known';
       });
       groundMat.uniforms.uFrost.value = frostForDay(w.day);
-      groundMat.uniforms.uBase.value = baselineWarmth(w.temperature) / 100;
+      const lights = lightSources(w);
+      const key = lights.map((l) => `${l.x},${l.y},${l.r}`).join(';');
+      if (key !== lightKey) {
+        lightKey = key;
+        paintLight(lights, width, height, lightTex.image.data as Uint8Array);
+        lightTex.needsUpdate = true;
+      }
       groundMat.uniforms.uTime.value = time;
       hearth.update(time, w.hearth.lit, w.hearth.level);
       hearthLight.visible = w.hearth.lit;
@@ -145,7 +155,10 @@ export function createWorldView(world: World, scene: THREE.Scene, fog: THREE.Fog
         if (buildingMeshes.has(b.id) && (!isWall || wallMasks.get(b.id) === mask)) continue;
         if (buildingMeshes.has(b.id)) scene.remove(buildingMeshes.get(b.id)!);
         wallMasks.set(b.id, mask);
-        const g = createBuildingMesh(b.type, b.w, b.h, mask);
+        // The building sits in a wrapper so a construction site can rise around it (section 8.2).
+        const g = new THREE.Group();
+        g.add(createBuildingMesh(b.type, b.w, b.h, mask));
+        if (!isBuilt(b)) g.add(createConstructionSite(b.w, b.h));
         g.position.set(b.x + (b.w - 1) / 2 - width / 2, 0, b.y + (b.h - 1) / 2 - height / 2);
         buildingMeshes.set(b.id, g);
         scene.add(g);
@@ -158,6 +171,9 @@ export function createWorldView(world: World, scene: THREE.Scene, fog: THREE.Fog
       const barList: Bar[] = [];
       for (const b of w.buildings) {
         const g = buildingMeshes.get(b.id)!;
+        const [body, site] = g.children;
+        body.scale.y = isBuilt(b) ? 1 : 0.08 + 0.92 * (1 - b.construct / BUILDINGS[b.type].build);
+        if (site && isBuilt(b)) g.remove(site);
         const light = g.getObjectByName('light');
         if (light) light.visible = b.lit;
         for (let s = 1; s <= 3; s++) {
@@ -185,15 +201,7 @@ export function createWorldView(world: World, scene: THREE.Scene, fog: THREE.Fog
       camera.getWorldDirection(viewDir);
       bars.update(barList, Math.atan2(-viewDir.x, -viewDir.z));
 
-      const people: Figure[] = [];
-      for (const c of w.colonists) {
-        if (c.asleep) continue;
-        const dx = c.x - c.px;
-        const dy = c.y - c.py;
-        if (dx || dy) colonistHeading.set(c.id, Math.atan2(dx, dy));
-        people.push({ id: c.id, x: c.px + dx * alpha - width / 2, z: c.py + dy * alpha - height / 2, yaw: colonistHeading.get(c.id) ?? 0, moving: dx !== 0 || dy !== 0, look: lookFor(w.seed, COLONIST_NAMES.indexOf(c.name)) });
-      }
-      colonists.update(people, time, 9);
+      colonists.update(colonistFigures(w, alpha, colonistHeading), time, 9);
 
       snow.update(time, pixelsPerUnit, camera.getWorldDirection(viewDir));
     },

@@ -46,7 +46,7 @@ describe('production', () => {
     world.stock.rawFood = 0;
     expect(build(world, 'kitchen')).toBe(true);
     for (let i = 0; i < 300; i++) stepWorld(world);
-    expect(world.buildings[0].status).toBe('noInput');
+    expect(world.buildings.find((b) => b.type === 'kitchen')!.status).toBe('noInput');
   });
 
   it('placement rejects overlap and unaffordable buildings with a reason', () => {

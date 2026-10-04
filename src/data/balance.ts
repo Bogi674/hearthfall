@@ -5,7 +5,11 @@ export const BALANCE = {
   start: {
     colonists: 8,
     stock: { wood: 60, scrap: 10, rawFood: 30, meals: 16, fuel: 40 },
-    storage: 300,
+    /** Storage without any building. The Supply Cart holds the rest. */
+    storage: 0,
+    /** Where the Supply Cart stands, relative to the hearth. */
+    cart: { x: -1, y: 4 },
+    weapon: 'pipe',
   },
   /** Section 3.2. Phases run in this order and repeat every day. */
   phases: [
@@ -66,11 +70,17 @@ export const BALANCE = {
     ],
     /** The run is lost after the hearth is out this long. */
     outLossSeconds: 60,
+    /** Tiles kept for house rooms in every direction from the hearth (section 5.5). */
+    lot: 3,
   },
   colonist: {
     /** Tiles per second. */
     speed: 3,
     arriveDistance: 0.6,
+    /** Idle colonists wait in a ring this far from the hearth, outside the house lot. */
+    idleRadius: 4.6,
+    /** Builders per construction site. */
+    buildersPerSite: 3,
   },
   /** Section 6.3. Durations are seconds to drain or fill the whole bar. */
   needs: {
@@ -99,6 +109,11 @@ export const BALANCE = {
     nightsPerEdge: 4,
     /** Monsters spawn on the sides of a square this many tiles out from the hearth. */
     spawnDistance: 42,
+    /** From this day a small raid prowls in at this many seconds into the day (section 9.5). */
+    raidFromDay: 3,
+    raidAt: 120,
+    /** Raid threat as a share of the coming night's threat. */
+    raidShare: 0.25,
   },
   /** Flow field costs per tile (section 9.3). Impassable tiles are not entered. */
   paths: {
@@ -116,9 +131,8 @@ export const BALANCE = {
     attackInterval: 1,
     /** Enemies hit colonists within this many tiles. */
     reach: 0.7,
-    towerRange: 6,
-    towerDamage: 15,
-    towerInterval: 0.8,
+    /** Monsters that cannot break buildings hunt people this close. */
+    huntRadius: 10,
     trapDps: 20,
     trapWearPerSecond: 3,
   },
@@ -128,10 +142,10 @@ export const BALANCE = {
    */
   light: {
     steps: [
-      { name: 'Bright', reach: 0.5, damage: 0, speed: 0.6 },
+      { name: 'Bright', reach: 0.7, damage: 0, speed: 0.6 },
       { name: 'Lit', reach: 0.8, damage: 0.25, speed: 0.75 },
-      { name: 'Dim', reach: 1, damage: 0.5, speed: 0.85 },
-      { name: 'Fringe', reach: 1.4, damage: 0.75, speed: 1 },
+      { name: 'Dim', reach: 0.9, damage: 0.5, speed: 0.85 },
+      { name: 'Fringe', reach: 1, damage: 0.75, speed: 1 },
     ],
   },
   /** Fog of war and discovery (sections 4 and 10.4). */

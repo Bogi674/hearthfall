@@ -10,6 +10,8 @@ export interface GroundTextures {
   tiles: THREE.DataTexture;
   /** Fog of war depth: 0 on revealed tiles, rising to 255 deep in the unknown. Linear filtered. */
   fogDepth: THREE.DataTexture;
+  /** Light from the hearth, lamps, and buildings, 0 to 255 per tile (section 5.3). Linear filtered. */
+  light: THREE.DataTexture;
 }
 
 export function createGroundMaterial(
@@ -23,7 +25,7 @@ export function createGroundMaterial(
       uWarmth: { value: textures.warmth },
       uTiles: { value: textures.tiles },
       uFogDepth: { value: textures.fogDepth },
-      uBase: { value: 0.3 },
+      uLight: { value: textures.light },
       uTime: { value: 0 },
       uMapSize: { value: mapSize },
       uWarmT: { value: warmThreshold / 100 },
@@ -51,7 +53,7 @@ void main() {
 uniform sampler2D uWarmth;
 uniform sampler2D uTiles;
 uniform sampler2D uFogDepth;
-uniform float uBase;
+uniform sampler2D uLight;
 uniform float uTime;
 uniform vec2 uMapSize;
 uniform float uWarmT;
@@ -85,13 +87,13 @@ void main() {
   float water = smoothstep(0.3, 0.7, tiles.g);
   float grain = noise(vXZ * 0.35) * 0.5 + noise(vXZ * 1.7) * 0.35 + noise(vXZ * 6.0) * 0.15;
 
-  // Warm side: dry earth in a pool of firelight that is brightest at the core.
-  // Light fades like real light: strong at the core, then a long soft falloff into the dark.
-  float light = clamp((w - uBase) / (1.0 - uBase), 0.0, 1.0);
+  // Warm side: dry earth lit by the light map. Light is full in the core of each light and
+  // fades to dark at its radius, in the same steps that protect people (section 5.3).
+  float light = texture2D(uLight, uv).r;
   float heat = smoothstep(uWarmT, 1.0, w);
   vec3 earth = mix(uWarmShadow, uOldWood, 0.3 + 0.5 * grain);
   earth = mix(earth, uWarmShadow * 1.3, road * 0.6);
-  vec3 warm = earth * (0.65 + 0.75 * heat) + uLantern * 0.06 * heat + uEmber * 0.22 * heat * heat * heat;
+  vec3 warm = earth * (0.3 + 1.05 * light) + uLantern * 0.06 * light + uEmber * 0.22 * heat * heat * heat;
 
   // Cold side: blue ground under snow that grows with the frost amount.
   vec3 dirt = mix(uDeepCold, uNightBlue, 0.4 + 0.6 * grain);
@@ -103,10 +105,10 @@ void main() {
   vec3 ice = mix(uNightBlue, uFrostCol, 0.1 + 0.08 * noise(vXZ * 0.8));
   cold = mix(cold, ice, water);
 
-  float t = smoothstep(0.02, 0.62, light);
-  // Snow just outside the light still catches a little of the fire.
-  cold += uEmber * 0.12 * smoothstep(0.0, 0.5, light);
-  vec3 color = mix(cold, warm * (0.55 + 0.45 * t), t * t * (3.0 - 2.0 * t));
+  // Lamps outside the warm circle light the snow too.
+  cold = cold * (1.0 + 0.6 * light) + uEmber * 0.16 * light;
+  float dry = smoothstep(uWarmT - 0.1, uWarmT + 0.02, w);
+  vec3 color = mix(cold, warm, dry);
 
   color = mix(color, uFogColor, smoothstep(uFogNear, uFogFar, length(vXZ)));
   // Fog of war (section 4): close to the known land the ground shows through a grey drifting haze.

@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import type { Pointer } from '../input/pointer';
 import { POIS } from '../data/pois';
 import type { World } from '../sim/world';
-import { STATUS_TEXT } from './hud';
+import { STATUS_TEXT } from './selection';
 
 export function createLabels(root: HTMLElement): { update(world: World, camera: THREE.Camera, pointer: Pointer): void } {
   const layer = document.createElement('div');

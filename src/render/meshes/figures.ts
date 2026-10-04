@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import type { WorkAnim } from '../../data/buildings';
 import type { EnemyType } from '../../data/enemies';
 import type { Look, LookColor } from '../../data/looks';
 import { LOOK_COLORS, mixPalette, PALETTE } from '../materials';
@@ -24,17 +25,44 @@ export interface Part {
   swing?: number;
   /** Per figure color, taken from this slot of the figure's look. */
   tint?: LookSlot;
-  /** Shown only for looks that match, such as a hair style or a kind of coat. */
-  when?: (look: Look) => boolean;
+  /** Shown only for figures that match, such as a hair style, a kind of coat, or a tool in hand. */
+  when?: (look: Look, f: Figure) => boolean;
+  /** Arm side, 1 right and -1 left. Arms follow the figure's pose when it stands still. */
+  arm?: number;
 }
+
+/** What a standing figure is doing. Work poses come from the building it works at (section 12.4). */
+export type Pose = 'stand' | 'guard' | WorkAnim;
+
+/** Rises fast and falls back, like a swing of an axe. */
+const pulse = (t: number, rate: number) => ((Math.sin(t * rate) + 1) / 2) ** 2;
+
+/** Arm angle around the x axis for each pose. Negative raises the arm forward and up. */
+const ARM_POSES: Record<Pose, (side: number, t: number) => number> = {
+  stand: (side, t) => 0.05 * Math.sin(t * 1.3 + side),
+  guard: () => -1.35,
+  chop: (_, t) => -2.5 + 2 * pulse(t, 4.5),
+  pick: (_, t) => -2.5 + 2.1 * pulse(t, 3.5),
+  hammer: (side, t) => (side > 0 ? -1.9 + 1.2 * pulse(t, 6) : -0.7),
+  saw: (_, t) => -1.25 + 0.3 * Math.sin(t * 6),
+  stir: (side, t) => (side > 0 ? -1 + 0.25 * Math.sin(t * 4) : -0.5),
+  pry: (_, t) => -0.8 + 0.35 * Math.sin(t * 3),
+  gather: (side, t) => (side > 0 ? -0.7 + 0.5 * pulse(t, 2.5) : -0.9),
+  tend: (side, t) => (side > 0 ? -1.1 + 0.4 * Math.sin(t * 2.5) : -0.3),
+};
 
 export interface Figure {
   id: number;
   x: number;
+  /** Height above the ground, for guards up on a tower. */
+  y?: number;
   z: number;
   yaw: number;
   moving: boolean;
   look?: Look;
+  pose?: Pose;
+  /** Tool or weapon in hand. Rig parts pick it up through their when test. */
+  tool?: string;
 }
 
 export const block = new RoundedBoxGeometry(1, 1, 1, 2, 0.12);
@@ -148,16 +176,17 @@ export function createFigureSet(rig: Part[], max: number, scale = 1): FigureSet 
       shown.forEach((f, i) => {
         const look = f.look;
         s.set(scale * (look?.build ?? 1), scale * (look?.height ?? 1), scale * (look?.build ?? 1));
-        base.compose(v.set(f.x, 0, f.z), q.setFromAxisAngle(up, f.yaw), s);
+        base.compose(v.set(f.x, f.y ?? 0, f.z), q.setFromAxisAngle(up, f.yaw), s);
         const phase = f.moving ? Math.sin(time * stride + f.id * 1.7) : 0;
         rig.forEach((p, k) => {
-          if (p.when && !(look && p.when(look))) {
+          if (p.when && !(look && p.when(look, f))) {
             meshes[k].setMatrixAt(i, hidden);
             return;
           }
           used[k] = true;
           const r = p.rot ?? [0, 0, 0];
-          e.set(r[0] + (p.swing ?? 0) * phase, r[1], r[2]);
+          const pose = p.arm && !f.moving ? ARM_POSES[f.pose ?? 'stand'](p.arm, time + f.id * 0.37) : 0;
+          e.set(r[0] + (p.swing ?? 0) * phase + pose, r[1], r[2]);
           // Pivot, then rotation, then the offset along the limb, then the part's own size.
           local.compose(v.set(...p.at), q.setFromEuler(e), one);
           tail.compose(v.set(...(p.offset ?? [0, 0, 0])), none, size.set(...p.size));

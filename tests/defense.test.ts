@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { ENEMIES } from '../src/data/enemies';
-import { placementError } from '../src/sim/placement';
+import { placeBuilding, placementError } from '../src/sim/placement';
 import { currentPhase, DAY_SECONDS, nightThreat } from '../src/sim/query';
 import { combatSystem } from '../src/sim/systems/combat';
 import { BLOCKED } from '../src/sim/systems/pathfinding';
 import { createWorld, stepWorld, TICKS_PER_SECOND, type World } from '../src/sim/world';
-import { build, runDays } from './helpers';
+import { build, finish, runDays } from './helpers';
 
 const at = (w: World, x: number, y: number) => y * w.map.width + x;
 const stepSeconds = (w: World, s: number) => {
@@ -25,7 +25,8 @@ const ring = (w: World, r: number) => {
   return tiles;
 };
 const placeAll = (w: World, type: 'woodenBarricade' | 'spikeTrap', tiles: [number, number][]) => {
-  for (const [x, y] of tiles) if (!placementError(w, type, x, y, false)) w.commands.push({ type: 'place', building: type, x, y, rotated: false });
+  for (const [x, y] of tiles) if (!placementError(w, type, x, y, false)) placeBuilding(w, type, x, y, false);
+  finish(w);
 };
 
 describe('waves', () => {
@@ -73,19 +74,19 @@ describe('flow field', () => {
   it('prices walls high but keeps a walled base reachable', () => {
     const world = createWorld(1);
     world.stock.wood = 1000;
-    placeAll(world, 'woodenBarricade', ring(world, 3));
+    placeAll(world, 'woodenBarricade', ring(world, 5));
     stepWorld(world);
     const f = world.flow.normal;
-    expect(f[at(world, world.hearth.x + 5, world.hearth.y)]).toBeGreaterThan(40);
-    expect(f[at(world, world.hearth.x + 5, world.hearth.y)]).toBeLessThan(BLOCKED);
+    expect(f[at(world, world.hearth.x + 7, world.hearth.y)]).toBeGreaterThan(40);
+    expect(f[at(world, world.hearth.x + 7, world.hearth.y)]).toBeLessThan(BLOCKED);
   });
 
   it('monsters attack the wall that blocks them', () => {
     const world = createWorld(1);
     world.stock.wood = 1000;
-    placeAll(world, 'woodenBarricade', ring(world, 3));
+    placeAll(world, 'woodenBarricade', ring(world, 5));
     stepWorld(world);
-    world.enemies.push({ id: 999, type: 'shambler', x: world.hearth.x + 7, y: world.hearth.y, px: 0, py: 0, hp: 40, cooldown: 0 });
+    world.enemies.push({ id: 999, type: 'shambler', x: world.hearth.x + 9, y: world.hearth.y, px: 0, py: 0, hp: 40, cooldown: 0, breaker: true });
     stepSeconds(world, 30);
     expect(world.buildings.some((b) => b.hp < 100)).toBe(true);
     expect(world.hearth.hp).toBe(4000);
@@ -103,8 +104,8 @@ describe('defender duty', () => {
     toNight(world);
     stepSeconds(world, 5);
     expect(guard.asleep).toBe(false);
-    const tower = world.buildings[0];
-    world.enemies.push({ id: 998, type: 'runner', x: tower.x + 3, y: tower.y + 3, px: 0, py: 0, hp: 25, cooldown: 0 });
+    const tower = world.buildings.find((b) => b.type === 'watchtower')!;
+    world.enemies.push({ id: 998, type: 'runner', x: tower.x + 3, y: tower.y + 3, px: 0, py: 0, hp: 25, cooldown: 0, breaker: true });
     stepSeconds(world, 3);
     expect(world.enemies.find((e) => e.id === 998)).toBeUndefined();
   });
@@ -159,13 +160,13 @@ describe('light', () => {
     const c = w.colonists[0];
     w.colonists = [c];
     [c.x, c.y] = [w.hearth.x + d, w.hearth.y];
-    w.enemies = [{ id: 999, type: 'shambler', x: c.x + 0.3, y: c.y, px: c.x + 0.3, py: c.y, hp: 40, cooldown: 0 }];
+    w.enemies = [{ id: 999, type: 'shambler', x: c.x - 0.3, y: c.y, px: c.x - 0.3, py: c.y, hp: 1000, cooldown: 0, breaker: true }];
     for (let i = 0; i < 100; i++) combatSystem(w, 0.1);
     return 1 - c.health;
   };
 
   it('protects people more the closer they are to the fire', () => {
-    const [bright, dim, fringe, dark] = [2, 7, 10, 20].map(lossAt);
+    const [bright, dim, fringe, dark] = [2, 7, 7.8, 20].map(lossAt);
     expect(bright).toBe(0);
     expect(dim).toBeGreaterThan(0);
     expect(fringe).toBeGreaterThan(dim);

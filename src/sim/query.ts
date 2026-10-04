@@ -31,8 +31,45 @@ export function center(b: Building): { x: number; y: number } {
   return { x: b.x + (b.w - 1) / 2, y: b.y + (b.h - 1) / 2 };
 }
 
+/** True once builders have finished it (section 8.2). Sites do nothing until then. */
+export const isBuilt = (b: Building) => b.construct <= 0;
+
 export function capacity(world: World): number {
-  return world.buildings.reduce<number>((s, b) => s + (BUILDINGS[b.type].storage ?? 0), BALANCE.start.storage);
+  return world.buildings.reduce<number>((s, b) => s + (isBuilt(b) ? (BUILDINGS[b.type].storage ?? 0) : 0), BALANCE.start.storage);
+}
+
+export interface LightSource {
+  x: number;
+  y: number;
+  r: number;
+}
+
+/** Every light in the colony: the hearth, lit lanterns and heaters, and the small glow of finished buildings (section 5.3). */
+export function lightSources(world: World): LightSource[] {
+  const out: LightSource[] = [];
+  if (world.hearth.lit) out.push({ x: world.hearth.x, y: world.hearth.y, r: hearthStage(world).radius });
+  for (const b of world.buildings) {
+    if (!isBuilt(b)) continue;
+    const def = BUILDINGS[b.type];
+    let r = def.glow ?? 0;
+    if (b.lit && def.light) r = Math.max(r, def.light.radius);
+    if (b.lit && def.heat) r = Math.max(r, def.heat.radius);
+    if (r > 0) out.push({ ...center(b), r });
+  }
+  return out;
+}
+
+export type LightStep = (typeof BALANCE.light.steps)[number];
+
+/** The strongest light step over a point, or null in the dark. Steps are shares of each light's radius. */
+export function lightStepAt(sources: LightSource[], x: number, y: number): LightStep | null {
+  let best: LightStep | null = null;
+  for (const l of sources) {
+    const d = Math.hypot(x - l.x, y - l.y) / l.r;
+    const step = BALANCE.light.steps.find((s) => d <= s.reach);
+    if (step && (!best || step.damage < best.damage)) best = step;
+  }
+  return best;
 }
 
 export function stockTotal(world: World): number {

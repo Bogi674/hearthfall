@@ -30,7 +30,7 @@ export function warmthSystem(world: World, dt: number): void {
   const sources = h.lit ? [{ x: h.x, y: h.y, r: hearthRadius(world) }] : [];
   for (const b of world.buildings) {
     const heat = BUILDINGS[b.type].heat;
-    if (!heat) continue;
+    if (!heat || b.construct > 0) continue;
     const fuel = (heat.fuelPerMinute / 60) * dt;
     b.lit = world.stock.fuel >= fuel;
     world.stock.fuel = Math.max(0, world.stock.fuel - fuel);

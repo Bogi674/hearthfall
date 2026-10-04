@@ -34,6 +34,7 @@ export function discoverySystem(world: World, _dt: number): void {
   for (const b of world.buildings) {
     const def = BUILDINGS[b.type];
     const at = center(b);
+    if (b.construct > 0) continue;
     if (def.nightDuty) reveal(world, at.x, at.y, D.watchtowerReveal);
     if (!def.sight) continue;
     reveal(world, at.x, at.y, D.lookoutReveal);

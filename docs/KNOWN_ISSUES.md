@@ -14,7 +14,7 @@ Bugs, shortcuts, and loose ends that are known but not fixed yet.
 - The release step needs the workflow token to have write access to contents. The workflow asks for it, but an organization or repository setting that forces read only tokens would make the release step fail.
 - The offline file is about 570 kB, almost all Three.js. It grows with every inlined asset because everything is base64 encoded into one file.
 - Colonists walk in straight lines through trees and walls. There is no colonist pathfinding.
-- Buildings cannot be demolished or moved yet. A gatherer with nothing left nearby stays on the map.
+- Buildings and construction sites cannot be demolished or moved yet. A gatherer with nothing left nearby stays on the map.
 - Cold snaps, hearth modes, and the hearth stoker slot are not built yet.
 - The game over screen, new run, and load all reload the page.
 - The HUD has been checked at 1440 by 900. Very small windows can squeeze the side panels.
@@ -36,11 +36,11 @@ Bugs, shortcuts, and loose ends that are known but not fixed yet.
 - Loot that does not fit in storage when a squad returns is lost. The return message only lists what was kept.
 - Colonists away on expeditions still eat from the stockpile, since hauling is abstracted.
 - **Design conflict.** The threat formula `10 * 1.32^(n - 1)` gives about 10000 threat on night 26, where the run arc in section 3.3 puts the late game. Only a launch around day 8 to 10 is survivable now. The full game arc needs a different curve or a cap.
-- The scripted full run launches by day 9 on seeds 1, 3, 4, 5, and 6. On seed 2 it never finishes the airship in 14 days. The test checks seeds 1, 4, and 5 to keep the test time down.
+- The scripted full run launches by day 9 on seeds 2, 3, 5, and 6. On seeds 1 and 4 it ends one airship part short and loses to the night 10 Blood Moon. The test checks seeds 2, 3, and 5 to keep the test time down.
 - The Last Night always starts at the start of a night, even when launched by day.
 - The airship model is placeholder boxes and a sphere, and the launch climb is a simple render animation.
 - Desertion is recorded in the list of the dead with the cause "deserted the colony".
-- There is one save slot. Saving is unavailable when the browser blocks storage, and the menu says so.
+- Saving to a slot is unavailable when the browser blocks storage, and the menu says so. Export to a file still works.
 - Audio is synthesized placeholder sound. Volume is the only audio setting.
 - The F1 debug panel from section 15.7 is not built. Dev builds expose `window.world` instead.
 - Hints cover only the first two days. Later goals rely on the Airship and Expeditions tabs explaining what is missing.
@@ -51,5 +51,14 @@ Bugs, shortcuts, and loose ends that are known but not fixed yet.
 - Light steps protect people only. Monsters still hit walls and the house at full strength, even in the bright core.
 - The fog haze is drawn from a distance map that the renderer rebuilds every time tiles are revealed. It is fast on a 128 by 128 map but would need a smarter update on a much larger map.
 - Monster speed in light uses the same steps for every type, so the old Runner only slow is gone.
-- Characters only have a walk cycle. There are no attack, work, or death animations yet.
+- Hunters stop at walls and wait. They do not look for gates or gaps, and they leave at dawn.
+- A raid can reach a worker before the player sees it, since monsters in the fog are not drawn.
+- Builders and workers still walk in straight lines through walls and buildings.
+- Colonists inside house rooms and sheltering colonists are hidden. There is no indoor view.
+- Tower guards stand at a fixed height on the platform. If a tower model changes height, the guard height in `src/render/colonists.ts` must change too.
+- Weapons have no attack animation. Colonists fight while standing in their work pose.
+- The bot does not use the alarm. In tests the alarm cost more work time than the few raiders cost lives.
+- A save from an older version (2 or below) cannot be loaded. The title screen says so.
+- Save files are plain JSON and can be edited by hand.
+- Characters have walk and work animations, but no attack or death animations yet.
 - The intro story opens on every new run. There is no setting to skip it, only the button to close it.

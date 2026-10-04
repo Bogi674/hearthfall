@@ -1,5 +1,6 @@
 import type { Hair, Look, Pants, Top } from '../../data/looks';
 import { mixPalette, PALETTE } from '../materials';
+import * as THREE from 'three';
 import { ball, block, cloth, disc, flare, limb, pair, std, type Part } from './figures';
 
 // Colonists as chunky low poly people (section 12.4). One rig holds every hair style, coat, and
@@ -61,9 +62,38 @@ const body: Part[] = [
 ];
 
 const arms: Part[] = [
-  ...pair((s) => ({ geo: limb, mat: cloth, tint: 'topColor', when: not(top('vest')), at: [s * 0.18, SHOULDER, 0], size: [0.09, 0.28, 0.09], rot: [0, 0, s * 0.12], swing: -s * 0.5 })),
-  ...pair((s) => ({ geo: limb, mat: cloth, tint: 'accent', when: top('vest'), at: [s * 0.18, SHOULDER, 0], size: [0.085, 0.28, 0.085], rot: [0, 0, s * 0.12], swing: -s * 0.5 })),
-  ...pair((s) => ({ geo: ball, mat: cloth, tint: 'skin', at: [s * 0.18, SHOULDER, 0], offset: [0, -0.3, 0], size: [0.08, 0.085, 0.08], rot: [0, 0, s * 0.12], swing: -s * 0.5 })),
+  ...pair((s) => ({ geo: limb, mat: cloth, tint: 'topColor', when: not(top('vest')), at: [s * 0.18, SHOULDER, 0], size: [0.09, 0.28, 0.09], rot: [0, 0, s * 0.12], swing: -s * 0.5, arm: s })),
+  ...pair((s) => ({ geo: limb, mat: cloth, tint: 'accent', when: top('vest'), at: [s * 0.18, SHOULDER, 0], size: [0.085, 0.28, 0.085], rot: [0, 0, s * 0.12], swing: -s * 0.5, arm: s })),
+  ...pair((s) => ({ geo: ball, mat: cloth, tint: 'skin', at: [s * 0.18, SHOULDER, 0], offset: [0, -0.3, 0], size: [0.08, 0.085, 0.08], rot: [0, 0, s * 0.12], swing: -s * 0.5, arm: s })),
+];
+
+// Tools and weapons ride on the hand. Each is drawn in hand space: the grip at the origin,
+// the rest along the arm (minus y), so a raised arm lifts the axe overhead.
+const wood = std(mixPalette(PALETTE.oldWood, PALETTE.lantern, 0.15));
+const iron = std(mixPalette(PALETTE.nightBlue, PALETTE.frost, 0.45));
+const wicker = std(mixPalette(PALETTE.oldWood, PALETTE.lantern, 0.4));
+const box = (w: number, h: number, d: number, y: number, z = 0) => new THREE.BoxGeometry(w, h, d).translate(0, y, z);
+const rod = (r: number, h: number, y: number, z = 0) => new THREE.CylinderGeometry(r, r, h, 6).translate(0, y, z);
+const TOOLS: Record<string, [THREE.BufferGeometry, THREE.Material][]> = {
+  axe: [[rod(0.018, 0.44, -0.14), wood], [box(0.025, 0.1, 0.13, -0.33, 0.05), iron]],
+  pick: [[rod(0.018, 0.44, -0.14), wood], [box(0.03, 0.035, 0.32, -0.34), iron]],
+  hammer: [[rod(0.016, 0.28, -0.08), wood], [box(0.05, 0.05, 0.13, -0.2), iron]],
+  saw: [[box(0.04, 0.08, 0.05, -0.02), wood], [box(0.008, 0.4, 0.08, -0.26, 0.02), iron]],
+  crowbar: [[rod(0.014, 0.5, -0.18), iron], [box(0.02, 0.02, 0.08, -0.43, 0.04), iron]],
+  ladle: [[rod(0.012, 0.36, -0.12), wood], [new THREE.SphereGeometry(0.045, 8, 6).translate(0, -0.31, 0.02), iron]],
+  poker: [[rod(0.012, 0.52, -0.2), iron], [box(0.04, 0.02, 0.02, -0.46, 0.02), iron]],
+  pipe: [[rod(0.024, 0.46, -0.16), iron]],
+  spear: [[rod(0.016, 0.95, -0.18), wood], [new THREE.ConeGeometry(0.03, 0.12, 6).rotateX(Math.PI).translate(0, -0.71, 0), iron]],
+  crossbow: [[box(0.04, 0.36, 0.05, -0.12), wood], [box(0.36, 0.03, 0.03, -0.26), wood], [box(0.012, 0.3, 0.012, -0.18, 0.035), iron]],
+  rifle: [[box(0.045, 0.5, 0.06, -0.12), wood], [rod(0.016, 0.36, -0.52), iron]],
+};
+const RIGHT_HAND = { at: [0.18, SHOULDER, 0] as [number, number, number], offset: [0, -0.3, 0] as [number, number, number], rot: [0, 0, 0.12] as [number, number, number] };
+const tools: Part[] = [
+  ...Object.entries(TOOLS).flatMap(([tool, pieces]) =>
+    pieces.map(([geo, mat]): Part => ({ geo, mat, ...RIGHT_HAND, size: [1, 1, 1], swing: -0.5, arm: 1, when: (_, f) => f.tool === tool })),
+  ),
+  // Foragers carry a basket in the left hand.
+  { geo: box(0.16, 0.1, 0.12, -0.06), mat: wicker, at: [-0.18, SHOULDER, 0], offset: [0, -0.3, 0], rot: [0, 0, -0.12], size: [1, 1, 1], swing: 0.5, arm: -1, when: (_, f) => f.pose === 'gather' },
 ];
 
 const head: Part[] = [
@@ -100,4 +130,4 @@ const hairParts: Part[] = [
   { geo: ball, mat: cloth, tint: 'accent', when: (l) => l.hat === 'beanie', at: [0, 1.01, -0.01], size: [0.07, 0.07, 0.07] },
 ];
 
-export const PERSON_RIG: Part[] = [...legs, ...body, ...arms, ...head, ...hairParts];
+export const PERSON_RIG: Part[] = [...legs, ...body, ...arms, ...tools, ...head, ...hairParts];

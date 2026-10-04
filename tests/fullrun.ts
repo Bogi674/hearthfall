@@ -130,7 +130,9 @@ export function fullRunPlayer() {
     const ready = COMPONENT_IDS.every((id) => w.airship.built.includes(id));
     const fuelTarget = w.airship.built.length >= 3 ? LAST_NIGHT.fuel + 80 : 80;
     if (ready) placeRing('spikeTrap', RING + 2, 60);
-    let free = w.colonists.filter((c) => c.expedition === null).length;
+    // Sites without a crew of their own need colonists without a job to build them.
+    const sites = w.buildings.filter((b) => b.construct > 0).length;
+    let free = w.colonists.filter((c) => c.expedition === null).length - Math.min(3, sites);
     const want: [BuildingType, number][] = [
       ['kitchen', s.meals < 30 ? 2 : s.meals < 60 ? 1 : 0],
       ['foragerHut', s.rawFood < 40 ? 2 : 0],
@@ -147,7 +149,7 @@ export function fullRunPlayer() {
     const crew = new Map<number, number>();
     for (const [type, total] of want) {
       let left = total;
-      for (const b of w.buildings.filter((b) => b.type === type && b.status !== 'noResource')) {
+      for (const b of w.buildings.filter((b) => b.type === type && b.status !== 'noResource' && b.construct <= 0)) {
         const k = Math.min(left, free, BUILDINGS[type].workers - (crew.get(b.id) ?? 0));
         crew.set(b.id, (crew.get(b.id) ?? 0) + k);
         left -= k;
@@ -155,6 +157,8 @@ export function fullRunPlayer() {
       }
     }
     for (const b of w.buildings) {
+      // One defender per tower, so most colonists still sleep at night.
+      if (b.type === 'watchtower' && b.workers !== 1) w.commands.push({ type: 'setWorkers', id: b.id, count: 1 });
       if (BUILDINGS[b.type].workers === 0 || BUILDINGS[b.type].nightDuty) continue;
       const k = crew.get(b.id) ?? 0;
       if (b.workers !== k) w.commands.push({ type: 'setWorkers', id: b.id, count: k });
@@ -174,7 +178,7 @@ export function fullRunPlayer() {
       const trip = (2 * (Math.hypot(p.x - g.x, p.y - g.y) + Math.hypot(g.x - w.hearth.x, g.y - w.hearth.y))) / BALANCE.expeditions.speed;
       if (phase.left > trip + BALANCE.expeditions.searchSeconds + 20) {
         const size = POIS[item[1]].danger >= 4 ? 3 : 2;
-        const members = w.colonists.filter((c) => c.expedition === null && c.duty === null).slice(-size).map((c) => c.id);
+        const members = w.colonists.filter((c) => c.expedition === null).slice(-size).map((c) => c.id);
         if (members.length === size) w.commands.push({ type: 'sendExpedition', poi, members });
       }
     }

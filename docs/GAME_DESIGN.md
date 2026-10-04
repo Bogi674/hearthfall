@@ -38,7 +38,7 @@ Place buildings, assign workers, watch resources flow, react to shortages.
 ### 3.2 Daily cycle
 | Phase | Duration at 1x | What happens |
 |---|---|---|
-| Day | 300 seconds | Colonists work. Expeditions travel. Building and production run at full speed. |
+| Day | 300 seconds | Colonists work and build. Expeditions travel. From day 3 a small raid can prowl in by day (section 9.5). |
 | Dusk | 60 seconds | Wave forecast becomes exact. Colonists not on night duty return to shelter. |
 | Night | 180 seconds | Wave attacks. Only defenders and night shift buildings work. |
 | Dawn | 30 seconds | Survivors return to work. Damage report and daily summary appear. |
@@ -99,16 +99,35 @@ The player can set the hearth to Low, Normal, or Overdrive. Low halves fuel use 
 
 | Step | Reach | Damage monsters deal to people | Monster speed |
 |---|---|---|---|
-| Bright | Up to 50 percent | None. Monsters do not go for people. | 60 percent |
-| Lit | Up to 80 percent | 25 percent | 75 percent |
-| Dim | Up to 100 percent | 50 percent | 85 percent |
-| Fringe | Up to 140 percent | 75 percent | Full |
-| Dark | Beyond | Full | Full |
+| Core | Up to 70 percent | None. Monsters do not go for people. | 60 percent |
+| Lit | 70 to 80 percent | 25 percent | 75 percent |
+| Dim | 80 to 90 percent | 50 percent | 85 percent |
+| Fringe | 90 percent to the edge, where the light vanishes | 75 percent | Full |
+| Dark | Beyond the radius | Full | Full |
 
 - In the fringe monsters start to attack, but they cannot fully hurt people. Light does not soften attacks on walls, buildings, or the house.
+- On screen each light is full strength in its core and fades to dark at its radius, matching the steps.
+- Every finished building has small lamps of its own with a glow radius of 1.5 to 3 tiles, free of fuel. Lantern Posts (radius 4) and Lamp Posts (radius 6) burn 1 fuel per night.
+- People inside a standing building are safe: sleepers in beds, workers inside indoor buildings, and anyone taking shelter (section 9.7). If the building falls, they are exposed.
 
 ### 5.4 Temperature schedule
 Outdoor temperature starts at minus 2 degrees on day 1 and drops by 1 degree per day. Cold snaps are announced one day ahead and drop the temperature by 10 extra degrees for one day.
+
+---
+
+### 5.5 Restoring the house: rooms
+The house is not only repaired in stages. The colony also builds rooms onto it, the way a survivor shelter grows from a ruin into a bunker. The 7 by 7 square of tiles around the hearth is the house lot. Only rooms can be built there, and rooms can only be built there.
+
+| Room | Cost | Function |
+|---|---|---|
+| Bedroom | 20 wood, 10 planks | 6 beds. Sleepers rest and heal 1.5 times faster |
+| Storeroom | 30 wood, 10 planks | Plus 400 storage |
+| House Kitchen | 20 planks, 10 stone | 2 cooks make meals indoors, a little faster than the Kitchen |
+| Infirmary | 30 planks, 5 parts | 3 beds where the wounded heal 3 times faster |
+| Armory | 30 planks, 10 metal | 1 worker crafts weapons (section 9.6) |
+| Rooftop Gun Nest | 20 planks, 25 metal, 5 parts | 2 defenders man heavy guns |
+
+Rooms are tougher than outside buildings (400 to 500 health) and every room is a safe shelter. A fully grown house with its rooms is a self sustained bunker: beds, food, storage, weapons, and guns behind one set of walls.
 
 ---
 
@@ -159,6 +178,7 @@ A colony wide value from 0 to 100, starting at 60.
 
 ### 7.2 Logistics
 - **Prototype.** Global stockpile limited by total storage capacity. Hauling is abstracted.
+- **Supply Cart.** The survivors arrive with a hand cart of supplies parked by the house. It holds the first 300 storage. Storage Sheds and the Storeroom add more.
 - **Later milestone.** Colonists physically haul between buildings and storage. Hand carts and simple conveyor lines become a mid game tech. This is where the Factorio flavor grows.
 
 ### 7.3 Production rules
@@ -174,7 +194,8 @@ Costs and numbers are starting values and live in data files.
 
 | Building | Cost | Workers | Function | Prototype |
 |---|---|---|---|---|
-| Hearth House | Start | 1 stoker | Warmth and light core, repaired in stages (section 5.2) | Yes |
+| Hearth House | Start | 1 stoker | Warmth and light core, repaired in stages (section 5.2), grows rooms (section 5.5) | Yes |
+| Supply Cart | Start | 0 | 300 storage | Yes |
 | Tent | 10 wood | 0 | Beds for 4 | Yes |
 | Bunkhouse | 30 planks, 10 stone | 0 | Beds for 10, small warmth bonus | Yes |
 | Storage Shed | 20 wood | 0 | Plus 200 capacity | Yes |
@@ -192,8 +213,23 @@ Costs and numbers are starting values and live in data files.
 | Airship Dock | 100 planks, 80 metal, 20 parts | 4 | Builds airship components | Yes |
 | Lookout Post | 20 wood, 10 planks | 0 | Spots far points of interest as rumors. Upgrades to stage 2 (30 planks, 10 stone) and stage 3 (40 planks, 15 metal) to see further | Yes |
 
+Workers work where the work is. Woodcutters stand at the tree they are chopping, quarry workers at the ruin, salvagers at the rubble, and foragers roam the brush. Cooks, sawyers, smiths, and mechanics work inside their building at its stove, saw, furnace, or bench.
+
+### 8.2 Construction
+- A placed building is a construction site. It does nothing until builders finish it.
+- Each building has a build time in seconds of work for one builder. Several builders add up.
+- A production building's own workers build it first. Colonists without a job help at the nearest site, up to 3 per site.
+- Builders work by day, swinging whatever tool they have. On screen the building rises inside scaffolding.
+
+| Build time | Buildings |
+|---|---|
+| 2 to 8 seconds | Barricades, traps, walls, gates, posts |
+| 10 to 20 seconds | Tents, sheds, camps, kitchens, heaters, towers |
+| 25 to 40 seconds | Sawmill, smelter, workshop, bunkhouse, rooms |
+| 60 seconds | Airship Dock |
+
 ### 8.1 The compound
-The colony grows from the house outward. Tents and workshops cluster around it. Walls join into a palisade or stone curtain around the core. Gates let squads out. Watchtowers and lantern posts stand on the walls as defense points. The goal is a compound that looks built by hand over many days.
+The colony grows from the house outward. Rooms grow onto the house. Tents and workshops cluster around it. Walls join into a palisade or stone curtain around the core. Gates let squads out. Watchtowers and lantern posts stand on the walls as defense points. The goal is a compound that looks built by hand over many days.
 
 ---
 
@@ -204,15 +240,17 @@ The colony grows from the house outward. Tents and workshops cluster around it. 
 |---|---|---|---|---|
 | Wooden Barricade | 5 wood | 100 | Blocks and redirects | Yes |
 | Reinforced Wall | 5 metal, 5 stone | 350 | Strong block | Yes |
-| Gate | 15 planks | 200 | Lets colonists and expeditions pass | Yes |
+| Gate | 10 wood, 5 planks | 200 | Lets colonists and expeditions pass | Yes |
 | Lantern Post | 5 wood, 1 fuel per night | 50 | Light radius 4, protects people in steps (section 5.3) | Yes |
+| Lamp Post | 10 scrap, 5 metal, 2 parts, 1 fuel per night | 90 | Light radius 6 | Yes |
 | Spike Trap | 10 wood | 80 | Damages enemies that walk over it | Yes |
-| Watchtower | 25 planks | 150 | Needs 1 defender, ranged attack, reveals fog in radius 8 | Yes |
+| Watchtower | 30 wood | 180 | Two makeshift guns (range 6, damage 12), one per defender. Upgrades to heavy guns (range 8, damage 26) for 20 metal and 5 parts. Reveals fog in radius 8 | Yes |
+| Rooftop Gun Nest | See section 5.5 | 500 | Two heavy guns on the house lot | Yes |
 | Fire Barrel | 10 metal, 3 fuel | 60 | Area burn when triggered | No |
 | Bolt Thrower | 20 metal, 10 parts | 250 | Needs 1 defender, heavy damage, slow | No |
 
 ### 9.2 Defender duty
-Colonists can be assigned to night duty at watchtowers and bolt throwers. Defenders skip sleep and lose rest, which creates a real tradeoff for the next day.
+Colonists can be assigned to night duty at watchtowers and gun nests. Each defender fires one mounted gun. Defenders skip sleep and lose rest, which creates a real tradeoff for the next day.
 
 ### 9.3 Enemy pathing
 - Enemies follow a flow field toward the hearth computed on the grid.
@@ -229,11 +267,33 @@ Colonists can be assigned to night duty at watchtowers and bolt throwers. Defend
 | Burrower | 5 | 120 | Medium | Ignores the first wall it reaches | No |
 | Horde Mother | 40 | 2000 | Slow | Final night boss, spawns Shamblers | No |
 
+- Not every monster can break buildings. Each one is rolled when it spawns: 40 percent of Shamblers, 20 percent of Runners, and every Brute and Horde Mother can damage walls, buildings, and the house.
+- The others cannot hurt buildings. They hunt people out in the open within 10 tiles, and wait at walls they cannot pass.
+
 ### 9.5 Wave formula
 - Threat points for night `n` equal `10 * 1.32^(n - 1)`, rounded.
 - Every fifth night is a Blood Moon with double threat points.
 - Points are spent on enemy types unlocked by that night: Runners from night 3, Brutes from night 6.
 - The forecast panel shows threat level, active spawn edges, and enemy types for the next night at dawn, and exact counts at dusk.
+- From day 3 a small raid prowls in two minutes into the day, worth a quarter of the coming night's threat, made of Shamblers and Runners only. It comes from the first active edge and stays until it is killed or dawn comes.
+
+### 9.6 Weapons
+Every colonist fights back against monsters in reach of their weapon, unless they are asleep, sheltering, or on a gun.
+
+| Weapon | Damage | Range | Seconds per hit | Cost | Craft time |
+|---|---|---|---|---|---|
+| Pipe Club | 5 | 0.9 | 1 | Everyone starts with one | |
+| Spear | 9 | 1.4 | 1 | 3 planks, 2 scrap | 15 |
+| Crossbow | 12 | 5 | 1.4 | 5 planks, 3 metal, 1 part | 25 |
+| Hunting Rifle | 22 | 7 | 1.6 | 8 metal, 4 parts | 40 |
+
+The Armory room crafts the weapon the player picks onto a rack. Colonists swap their weapon for the best spare on the rack.
+
+### 9.7 Shelter and the alarm
+- Every building with room for people is a shelter while it stands: rooms, beds, storage, and production buildings of 2 by 2 or more. Walls, posts, and towers are not.
+- A building's Take shelter button sends its workers inside until they are called back.
+- The Alarm button sends every colonist under a roof and every defender to their gun, by day or by night. All clear sends them back to work.
+- A sheltering colonist goes to their own building, then their bed, then the nearest shelter, then the house.
 
 ---
 
@@ -323,8 +383,10 @@ Orthographic camera at a classic isometric angle. Zoom with scroll. Rotate in 90
 - Real point lights are limited to 8, chosen by importance and distance to camera. All other light sources use emissive materials plus additive ground decals that fake light pools.
 - InstancedMesh for trees, rubble, walls, snow props, and enemies.
 - Procedural geometry first. Real models can replace it later without changing the simulation.
-- Target look: chunky stylized low poly, like a hand built diorama. Buildings have stone footings, timber framed plaster walls, overhanging gabled roofs with a ridge beam, chimneys, framed doors, and warm lit windows. Trees are tiered and slightly irregular. Rocks are rounded.
-- Colonists are small chunky low poly people in winter clothes. There are ten designs for women and ten for men. They differ in height, build, skin, hair style and color, beards, hats, coats, and trousers or skirts. Monsters share the chunky build with torn clothes, horns, spines, and Blight eyes.
+- Target look: chunky stylized low poly, like a hand built diorama. Trees are tiered and slightly irregular. Rocks are rounded.
+- Buildings look post apocalyptic: patched up but functional and safe. Corrugated metal, mismatched planks, tarps, rope, sandbags, tires, oil drums, crates, boarded windows with warm light leaking out. Every building has its own silhouette and shows its trade, such as the log pile and tool rack of a woodcutter camp.
+- The house grows like the shelter in a survival game ad: a roofless ruin, then tarps and sheets, then patched walls, then a fortified lodge with rooms built onto it.
+- Colonists are small chunky low poly people in winter clothes. There are ten designs for women and ten for men. They differ in height, build, skin, hair style and color, beards, hats, coats, and trousers or skirts. They animate their work: chopping with an axe, swinging a pick, prying scrap with a crowbar, gathering into a basket, stirring a pot, sawing, hammering, and tending the kiln. They carry their weapon when not working. Monsters share the chunky build with torn clothes, horns, spines, and Blight eyes.
 - The moon casts soft shadows from buildings, trees, and characters.
 - Soft vignette and a light film grain.
 
@@ -347,9 +409,10 @@ Orthographic camera at a classic isometric angle. Zoom with scroll. Rotate in 90
 
 ## 14. UI and UX
 
-- **Top bar.** Resources, colonist count, hope, temperature, day and time.
+- **Title screen.** Continue the latest save, start a new game on a chosen or random map, load a save slot, import a save file, settings, and the story.
+- **Top bar.** Resources, colonist count, hope, temperature, day and time, and the Alarm button.
 - **Forecast bar.** Next wave threat, spawn edges, and countdown.
-- **Build menu.** Bottom of screen, grouped into Shelter, Production, Defense, and Escape.
+- **Build menu.** Bottom of screen, grouped into House, Shelter, Production, Defense, and Escape. Every building has an icon, its cost, and the reason it cannot be built yet.
 - **Selection panel.** Shows details for the selected building, with worker plus and minus buttons.
 - **Colonist panel.** List of colonists with needs and current job.
 - **Expedition panel.** POI list, squad selection, and active expeditions.
@@ -440,6 +503,9 @@ docs/
 
 ### 15.5 Save and load
 Save the full simulation state as versioned JSON. Rendering state is rebuilt from simulation state on load.
+- Saves live in browser storage: an autosave at every dawn and three manual slots.
+- A save can be exported to a file and imported again, which moves a run between browsers and devices. It works the same in the offline file.
+- Flow fields and the warmth map are left out of a save and rebuilt on load.
 
 ### 15.6 Performance targets
 - 60 FPS on a mid range laptop with 40 colonists, 300 structures, and 200 enemies.
@@ -500,12 +566,22 @@ Each milestone must meet its acceptance criteria before the next starts.
 - Visual polish to the target look in section 12.4: buildings, the house, trees, rocks, ruins, characters, monsters, and moon shadows.
 - **Done when:** a screenshot reads as a cozy hand built compound around a repaired house in a cold dark world, and far places must be found before they can be searched.
 
-### M8: Scale, People, and Light
+### M7.1: Scale, People, and Light
 - The map grows to 128 by 128 tiles. Points of interest sit farther out, and squads walk faster to match (sections 4 and 10.4).
 - Twenty colonist designs, ten for women and ten for men (section 12.4).
 - Warmth and light fade gradually past their radius. Light protects people in steps (section 5.3).
 - Fog of war shows a grey haze near the known land that fades to black farther out (section 4).
 - **Done when:** a screenshot shows a soft light falloff, grey haze at the edge of the known land, and colonists that read as different people. The scripted full run still launches the airship by day 10.
+
+### M8: The Living Compound
+- Construction sites and builders (section 8.2). Workers work where the work is, with animations for every trade.
+- The Supply Cart and the Storeroom (section 7.2). House rooms on the house lot (section 5.5).
+- Light steps at 70, 80, 90, and 100 percent of each radius, and a light zone around every building (section 5.3).
+- Breakers and hunters, day raids, weapons, the Armory, tower guns, shelter, and the alarm (sections 9.4 to 9.7).
+- Lamp Post. A post apocalyptic look for every building and the house (section 12.4). Icons in the build menu.
+- Title screen with new game, random map, save slots, and save files (sections 14 and 15.5).
+- Rebalanced economy for construction labor.
+- **Done when:** a new player can start from the title screen, watch colonists build and work at their trade, grow the house with rooms, shelter from a day raid, arm the colony, and the scripted full run still launches the airship by day 10.
 
 ### Later milestones
 - Physical hauling, hand carts, and conveyor lines.

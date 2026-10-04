@@ -41,7 +41,18 @@ export function build(world: World, type: BuildingType, minDist = 0): boolean {
   if (!spot) return false;
   world.commands.push({ type: 'place', building: type, x: spot.x, y: spot.y, rotated: false });
   stepWorld(world);
+  finish(world);
+  stepWorld(world);
   return world.buildings.some((b) => b.type === type && b.x === spot.x && b.y === spot.y);
+}
+
+/** Finishes every construction site at once, for tests about what buildings do rather than how they go up. */
+export function finish(world: World): void {
+  for (const b of world.buildings) {
+    if (b.construct <= 0) continue;
+    [b.construct, b.status] = [0, 'ok'];
+    world.buildRev++;
+  }
 }
 
 /** Runs the world for whole days, calling the player once per simulated second. */

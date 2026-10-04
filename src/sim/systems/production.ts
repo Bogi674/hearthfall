@@ -1,26 +1,27 @@
 // Production buildings: workers, inputs, gathering from nodes, warmth, and storage (section 7.3).
 import { BALANCE } from '../../data/balance';
 import { BUILDINGS } from '../../data/buildings';
-import { RECIPES } from '../../data/recipes';
+import { RECIPES, type Recipe } from '../../data/recipes';
+import { WEAPONS } from '../../data/weapons';
 import type { Amounts } from '../../data/resources';
 import { Tile } from '../grid';
-import { bandAt, capacity, center, currentPhase, hopeSpeed, missing, pay, stockTotal } from '../query';
+import { bandAt, capacity, center, currentPhase, hopeSpeed, isBuilt, missing, pay, stockTotal } from '../query';
 import type { Building, World } from '../world';
 
 export function productionSystem(world: World, dt: number): void {
   const work = currentPhase(world).work;
   for (const b of world.buildings) {
-    const recipe = RECIPES[b.type];
-    if (!recipe) continue;
+    const recipe = recipeFor(b);
+    if (!recipe || !isBuilt(b)) continue;
     const slots = BUILDINGS[b.type].workers;
     const at = center(b);
-    const crew = world.colonists.filter(
-      (c) => c.job === b.id && Math.hypot(c.x - at.x, c.y - at.y) < BALANCE.colonist.arriveDistance,
-    );
+    const crew = world.colonists.filter((c) => c.job === b.id && c.task === 'work');
     const band = bandAt(world, at.x, at.y);
     const node = recipe.gather ? findNode(world, at, recipe.gather.tile, recipe.gather.radius) : -1;
+    b.node = node ?? -1;
 
     if (!work) b.status = 'night';
+    else if (b.shelter || world.alarm) b.status = 'sheltering';
     else if (crew.length === 0) b.status = 'noWorkers';
     else if (node === null) b.status = 'noResource';
     else if (band === 'freezing') b.status = 'tooCold';
@@ -36,7 +37,19 @@ export function productionSystem(world: World, dt: number): void {
   }
 }
 
+/** The recipe a building runs. An armory crafts whichever weapon it is set to (section 9.6). */
+function recipeFor(b: Building): Recipe | undefined {
+  if (!BUILDINGS[b.type].armory) return RECIPES[b.type];
+  const weapon = WEAPONS[b.craft];
+  return { cycle: weapon.craft, inputs: weapon.cost, outputs: {} };
+}
+
 function finishCycle(world: World, b: Building, outputs: Amounts, node: number | null): void {
+  if (BUILDINGS[b.type].armory) {
+    world.weapons[b.craft]++;
+    [b.progress, b.loaded] = [0, false];
+    return;
+  }
   const amount = Object.values(outputs).reduce((s, n) => s + n, 0);
   if (stockTotal(world) + amount > capacity(world)) {
     b.status = 'storageFull';

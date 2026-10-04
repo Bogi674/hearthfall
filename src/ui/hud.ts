@@ -1,18 +1,21 @@
 // DOM overlay: top bar, build menu, selection panel, colonist list, event log, and game over screen.
 // Reads world state and only changes the world through the command queue.
 import { BALANCE } from '../data/balance';
-import { BUILDING_TYPES, BUILDINGS, type BuildingCategory, type BuildingType } from '../data/buildings';
+import { type BuildingCategory, type BuildingType } from '../data/buildings';
 import { ENEMIES, ENEMY_TYPES } from '../data/enemies';
-import { RECIPES } from '../data/recipes';
-import { RESOURCE_NAMES, RESOURCES, type Amounts, type Resource } from '../data/resources';
+import { RESOURCE_NAMES, RESOURCES } from '../data/resources';
 import { COMPONENT_IDS, type ComponentId } from '../data/vehicle';
-import { buildingUpgradeError, hearthUpgradeError, pushCommand } from '../sim/commands';
-import { capacity, currentPhase, hearthStage, missing, stockTotal } from '../sim/query';
-import type { BuildingStatus, World } from '../sim/world';
+import type { WeaponId } from '../data/weapons';
+import type { SlotId } from '../save/save';
+import { pushCommand } from '../sim/commands';
+import { capacity, currentPhase, stockTotal } from '../sim/query';
+import type { World } from '../sim/world';
 import { currentHint } from '../data/hints';
 import { INTRO } from '../data/story';
-import { menuHtml } from './menu';
+import { buildMenuHtml } from './build';
+import { menuHtml, titleHtml, type MenuView } from './menu';
 import { rightPanel, type Tab } from './panels';
+import { selectionHtml } from './selection';
 import type { Settings } from './settings';
 
 export interface UiState {
@@ -30,39 +33,38 @@ export interface UiState {
   menu: boolean;
   /** The intro story is open. The game waits until it closes. */
   intro: boolean;
+  /** The title screen is open before a run starts. */
+  title: boolean;
+  view: MenuView;
+  /** Map number shown on the new game screen. */
+  seed: string;
 }
 
 /** What the HUD asks the main loop to do. */
 export interface HudActions {
   focus(x: number, y: number): void;
-  /** Saves and returns a short note for the menu. */
-  save(): string;
-  load(): void;
-  newRun(): void;
+  /** Saves to a slot and returns a short note for the menu. */
+  save(slot: SlotId): string;
+  load(slot: SlotId): void;
+  remove(slot: SlotId): void;
+  continueRun(): void;
   hasSave(): boolean;
+  newGame(seed: number): void;
+  exportSave(): void;
+  importSave(): void;
+  toTitle(): void;
   settings: Settings;
   settingsChanged(): void;
 }
 
-export const STATUS_TEXT: Partial<Record<BuildingStatus, string>> = {
-  noWorkers: 'No workers',
-  noDefender: 'No defender',
-  noFuel: 'No fuel to light',
-  noInput: 'Missing input',
-  noResource: 'Nothing to gather nearby',
-  tooCold: 'Too cold to work',
-  storageFull: 'Storage full',
-};
-
 const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
-const amounts = (a: Amounts) => Object.entries(a).map(([r, n]) => `${n} ${RESOURCE_NAMES[r as Resource]}`).join(' + ');
 
-export function createHud(root: HTMLElement, state: UiState, world: () => World, actions: HudActions): { update(): void } {
+export function createHud(root: HTMLElement, state: UiState, world: () => World, actions: HudActions): { update(): void; say(text: string): void } {
   root.insertAdjacentHTML(
     'beforeend',
     `<div id="hud"><div id="topbar" class="panel"><div id="top"></div><div id="controls"></div></div><div id="left"><div id="selection" class="panel"></div><div id="log" class="panel"></div></div>
      <div id="center"><div id="forecast" class="panel"></div><div id="hint" class="panel"></div></div>
-     <div id="right" class="panel"></div><div id="build" class="panel"></div></div><div id="over" class="panel"></div><div id="menu" class="panel"></div><div id="intro"></div>`,
+     <div id="right" class="panel"></div><div id="build" class="panel"></div></div><div id="over" class="panel"></div><div id="menu" class="panel"></div><div id="title"></div><div id="intro"></div>`,
   );
   const el = (id: string) => document.getElementById(id)!;
   const last = new Map<string, string>();
@@ -84,7 +86,7 @@ export function createHud(root: HTMLElement, state: UiState, world: () => World,
     if (act === 'build') state.placing = state.placing === arg ? null : (arg as BuildingType);
     if (act === 'speed') [state.speed, state.paused] = arg === '0' ? [state.speed, !state.paused] : [Number(arg), false];
     if (act === 'workers') pushCommand(world().commands, { type: 'setWorkers', id: Number(arg), count: Number(arg2) });
-    if (act === 'restart') location.reload();
+    if (act === 'restart') actions.toTitle();
     if (act === 'tab') state.tab = arg as Tab;
     if (act === 'cat') state.buildCat = arg as BuildingCategory;
     if (act === 'poi') state.poi = Number(arg);
@@ -95,12 +97,27 @@ export function createHud(root: HTMLElement, state: UiState, world: () => World,
     }
     if (act === 'recall') pushCommand(world().commands, { type: 'recall', id: Number(arg) });
     if (act === 'focus') actions.focus(Number(arg), Number(arg2));
-    if (act === 'menu') [state.menu, note] = [!state.menu, ''];
+    if (act === 'menu') [state.menu, state.view, note] = [!state.menu, 'main', ''];
+    if (act === 'view') [state.view, note] = [arg as MenuView, ''];
     if (act === 'story') [state.intro, state.menu] = [true, false];
     if (act === 'begin') state.intro = false;
-    if (act === 'save') note = actions.save();
-    if (act === 'load') actions.load();
-    if (act === 'new') actions.newRun();
+    if (act === 'saveslot') note = actions.save(arg as SlotId);
+    if (act === 'loadslot') actions.load(arg as SlotId);
+    if (act === 'delslot') actions.remove(arg as SlotId);
+    if (act === 'continue') actions.continueRun();
+    if (act === 'export') actions.exportSave();
+    if (act === 'import') actions.importSave();
+    if (act === 'title') actions.toTitle();
+    if (act === 'randomize') state.seed = String(Math.floor(Math.random() * 1e9));
+    if (act === 'start') {
+      const input = document.getElementById('seed') as HTMLInputElement | null;
+      const seed = Number.parseInt(input?.value ?? state.seed, 10);
+      if (Number.isFinite(seed) && seed >= 0) actions.newGame(seed);
+      else note = 'The map number must be a whole number.';
+    }
+    if (act === 'alarm') pushCommand(world().commands, { type: 'alarm', on: !world().alarm });
+    if (act === 'shelter') pushCommand(world().commands, { type: 'setShelter', id: Number(arg), on: arg2 === '1' });
+    if (act === 'craft') pushCommand(world().commands, { type: 'setCraft', id: Number(arg), weapon: arg2 as WeaponId });
     if (act === 'set') {
       const key = arg as 'autoPause' | 'hints';
       actions.settings[key] = !actions.settings[key];
@@ -118,6 +135,11 @@ export function createHud(root: HTMLElement, state: UiState, world: () => World,
   });
 
   const api = {
+    /** Shows a short note in the open menu or title screen. */
+    say(text: string) {
+      note = text;
+      api.update();
+    },
     update() {
       const w = world();
       const phase = currentPhase(w);
@@ -136,33 +158,23 @@ export function createHud(root: HTMLElement, state: UiState, world: () => World,
          <span>Airship ${w.airship.built.length}/${COMPONENT_IDS.length}</span>${RESOURCES.map((r) => `<span>${RESOURCE_NAMES[r]} ${Math.floor(w.stock[r])}</span>`).join('')}
          <span>Storage ${Math.floor(stockTotal(w))}/${capacity(w)}</span>${hearth}`,
       );
-      set('controls', `${speeds}<button data-act="menu">Menu</button>`);
-
-      const cats: BuildingCategory[] = ['Shelter', 'Production', 'Defense', 'Escape'];
-      set(
-        'build',
-        !state.buildOpen
-          ? ''
-          : `<div class="tabs">${cats.map((c) => `<button data-act="cat:${c}" class="${state.buildCat === c ? 'on' : ''}">${c}</button>`).join('')}</div>
-             <div class="group">${BUILDING_TYPES.filter((t) => BUILDINGS[t].category === state.buildCat)
-               .map(
-                 (t) =>
-                   `<button data-act="build:${t}" class="${state.placing === t ? 'on' : ''} ${missing(w, BUILDINGS[t].cost) ? 'poor' : ''}">${BUILDINGS[t].name}<small>${amounts(BUILDINGS[t].cost)}</small></button>`,
-               )
-               .join('')}</div>`,
-      );
+      const alarm = `<button data-act="alarm" class="${w.alarm ? 'alarm on' : 'alarm'}" title="Workers take shelter and defenders man the guns">${w.alarm ? 'All clear' : 'Alarm'}</button>`;
+      set('controls', `${alarm}${speeds}<button data-act="menu">Menu</button>`);
+      set('build', state.buildOpen ? buildMenuHtml(w, state.buildCat, state.placing) : '');
 
       set('forecast', forecastHtml(w));
       const hint = actions.settings.hints && !w.lost && !w.won ? currentHint(w) : null;
       set('hint', hint ? `<b>Next</b> ${hint.text}` : '');
-      set('menu', state.menu ? menuHtml(actions.settings, actions.hasSave(), note) : '');
+      set('menu', state.menu && !state.title ? menuHtml(state.view, actions.settings, note) : '');
+      set('title', state.title && !state.intro ? titleHtml(state.view, actions.settings, state.seed, actions.hasSave(), note) : '');
+      document.body.classList.toggle('on-title', state.title);
       set(
         'intro',
         state.intro
           ? `<div class="story"><h1>${INTRO.title}</h1>${INTRO.paragraphs.map((p) => `<p>${p}</p>`).join('')}<button data-act="begin">${INTRO.begin}</button></div>`
           : '',
       );
-      set('selection', selectionHtml(w, state));
+      set('selection', selectionHtml(w, state.selected));
       set('right', rightPanel(w, state));
       set(
         'log',
@@ -196,51 +208,10 @@ function forecastHtml(w: World): string {
     : phase.name === 'Dusk' ? `Attack in ${clock(phase.left)}`
     : phase.name === 'Night' ? `${w.enemies.length} monsters out, ${wave.plan.length - wave.spawned} still coming`
     : 'The night is over';
+  const raidIn = BALANCE.waves.raidAt - w.dayTime;
+  const raid = phase.name === 'Day' && w.day >= BALANCE.waves.raidFromDay && raidIn > 0 ? `<span class="alert">Raid from the ${EDGES[wave.edges[0]]} in ${clock(raidIn)}</span>` : '';
   return `<b class="${wave.bloodMoon ? 'alert' : ''}">Night ${wave.night}${wave.bloodMoon ? ', Blood Moon' : ''}</b>
-    <span>Threat ${wave.threat} from the ${edges}</span><span>${kinds}</span><span>${when}</span>`;
-}
-
-function selectionHtml(w: World, state: UiState): string {
-  if (state.selected === 'hearth') {
-    const lvl = BALANCE.hearth.levels[w.hearth.level - 1];
-    return `<h3>Hearth House</h3><p>${lvl.name}, stage ${w.hearth.level} of ${BALANCE.hearth.levels.length}.</p><p>Health ${Math.ceil(w.hearth.hp)}/${hearthStage(w).hp}</p><p>Warms a radius of ${lvl.radius} tiles. Burns ${lvl.fuelPerMinute} fuel per minute.</p>
-      <p class="${w.hearth.lit ? '' : 'alert'}">${w.hearth.lit ? 'Burning' : 'Out of fuel'}</p>${upgradeHtml(w)}`;
-  }
-  const b = w.buildings.find((b) => b.id === state.selected);
-  if (!b) return '';
-  const def = BUILDINGS[b.type];
-  const recipe = RECIPES[b.type];
-  const crew = w.colonists.filter((c) => (def.nightDuty ? c.duty : c.job) === b.id).length;
-  const lines = [`<h3>${def.name}</h3><p>Health ${Math.ceil(b.hp)}/${def.hp}</p>`];
-  if (STATUS_TEXT[b.status]) lines.push(`<p class="alert">${STATUS_TEXT[b.status]}</p>`);
-  if (def.workers > 0) {
-    lines.push(`<p class="workers">${def.nightDuty ? 'Night defenders' : 'Workers'} ${crew}/${b.workers} of ${def.workers}
-      <button data-act="workers:${b.id}:${b.workers - 1}">−</button><button data-act="workers:${b.id}:${b.workers + 1}">+</button></p>`);
-  }
-  if (recipe) {
-    lines.push(`<p>${recipe.inputs ? `${amounts(recipe.inputs)} to ` : ''}${amounts(recipe.outputs)} every ${recipe.cycle}s</p>`);
-    lines.push(`<i class="bar wide"><b style="width:${Math.round((b.progress / recipe.cycle) * 100)}%"></b></i>`);
-  }
-  if (def.beds) lines.push(`<p>Beds ${w.colonists.filter((c) => c.bed === b.id).length}/${def.beds}</p>`);
-  if (def.storage) lines.push(`<p>Adds ${def.storage} storage</p>`);
-  if (def.light) lines.push(`<p>Lights a radius of ${def.light.radius} at night for ${def.light.fuel} fuel. ${b.lit ? 'Lit' : 'Unlit'}</p>`);
-  if (def.walkable) lines.push('<p>Hurts monsters that walk over it</p>');
-  if (def.nightDuty) lines.push(`<p>Shoots monsters within ${BALANCE.defense.towerRange} tiles at night</p>`);
-  if (def.sight) {
-    const next = def.upgrades?.[b.level - 1];
-    const error = buildingUpgradeError(w, b);
-    lines.push(`<p>Stage ${b.level} of ${def.sight.length}. Spots far places within ${def.sight[b.level - 1]} tiles. A squad must go to confirm them.</p>`);
-    if (next) lines.push(`<p>Stage ${b.level + 1} sees ${def.sight[b.level]} tiles. Costs ${amounts(next)}.</p>${error ? `<p class="alert">${error}</p>` : `<button data-act="stage:${b.id}">Build it higher</button>`}`);
-  }
-  return lines.join('');
-}
-
-function upgradeHtml(w: World): string {
-  const next = BALANCE.hearth.levels[w.hearth.level];
-  if (!next) return '<p>The house is fully restored.</p>';
-  const error = hearthUpgradeError(w);
-  return `<h4>Next repair: ${next.name}</h4><p>Radius ${next.radius}, ${next.fuelPerMinute} fuel per minute, ${next.hp} health. Costs ${amounts(next.cost)}.</p>
-    ${error ? `<p class="alert">${error}</p>` : '<button data-act="upgrade">Repair the house</button>'}`;
+    <span>Threat ${wave.threat} from the ${edges}</span><span>${kinds}</span><span>${when}</span>${raid}`;
 }
 
 /** Score screen (section 3.4 and M5): survivors, the left behind, and every death with its cause. */
