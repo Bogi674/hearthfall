@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { BUILDINGS } from '../data/buildings';
-import { EDGES, FLOORS } from '../data/house';
-import { floorAt, flanks, houseRooms, isHearthTile } from '../sim/house';
+import { EDGES, FLOORS, STOREY_HEIGHT } from '../data/house';
+import { covered, floorAt, flanks, houseRooms, isHearthTile, isLanding } from '../sim/house';
 import type { World } from '../sim/world';
 import { mixPalette, PALETTE } from './materials';
 
@@ -9,7 +9,7 @@ import { mixPalette, PALETTE } from './materials';
 // Pieces rise out of the ground as builders work on them. Roofs cover closed rooms and fade away for the cutaway view.
 // Rebuilt every frame since the counts are small.
 
-const CAPACITY = 900;
+const CAPACITY = 3000;
 const WALL_HEIGHT = 1.15;
 const THICK = 0.14;
 const ROOF_THICK = 0.1;
@@ -32,6 +32,8 @@ const ROOF_SNOW = { clear: 0.25, overcast: 0.35, snow: 0.6, blizzard: 0.78 };
 const SNOW_COLOR = PALETTE.frost.clone().multiplyScalar(1.15);
 /** A steady pseudo random value in [0.94, 1.06] for one piece, so rows of planks are not identical. */
 const shade = (n: number) => 0.94 + 0.12 * (((Math.sin(n * 91.7) * 43758.5453) % 1 + 1) % 1);
+const SLAB = 0.22;
+const POST_COLOR = mixPalette(PALETTE.oldWood, PALETTE.warmShadow, 0.6);
 const DAMAGE_COLOR = mixPalette(PALETTE.ember, PALETTE.warmShadow, 0.5);
 
 function instanced(geometry: THREE.BufferGeometry, material: THREE.Material, shadow: boolean): THREE.InstancedMesh {
@@ -48,6 +50,8 @@ export type WallMode = 'up' | 'cut' | 'down';
 export interface HouseLook {
   walls: WallMode;
   roofs: boolean;
+  /** The highest storey drawn. Anything above it is cut away. */
+  storey: number;
 }
 
 /** Height share of a wall that is cut down. It stays as a low sill so the plan of the house still reads. */
@@ -100,18 +104,29 @@ export function createHouseView(scene: THREE.Scene): HouseView {
       for (const mesh of [floors, walls, doors, windows, roofs]) mesh.count = 0;
 
       for (const f of w.house.floors) {
+        if (f.storey > look.storey) continue;
         const done = 1 - f.construct / FLOORS[f.kind].build;
-        put(floors, f.x - ox, 0, f.y - oy, 1, 0.03 + 0.05 * done, 1, tint.copy(FLOOR_COLOR[f.kind]).multiplyScalar((f.construct > 0 ? 0.6 : 1) * shade(f.x * 31 + f.y)));
+        const color = tint.copy(FLOOR_COLOR[f.kind]).multiplyScalar((f.construct > 0 ? 0.6 : 1) * shade(f.x * 31 + f.y + f.storey * 7));
+        if (f.storey === 0) put(floors, f.x - ox, 0, f.y - oy, 1, 0.03 + 0.05 * done, 1, color);
+        else {
+          // An upper floor is a slab with its top at the storey height. Posts hold up the tiles with nothing under them.
+          const top = f.storey * STOREY_HEIGHT;
+          put(floors, f.x - ox, top - SLAB, f.y - oy, 1, SLAB + 0.03 + 0.05 * done, 1, color);
+          if (f.construct <= 0 && !floorAt(w, f.x, f.y, f.storey - 1)) {
+            for (const [px, pz] of [[-0.4, -0.4], [0.4, -0.4], [-0.4, 0.4], [0.4, 0.4]]) put(walls, f.x - ox + px, 0, f.y - oy + pz, 0.1, top - SLAB, 0.1, POST_COLOR);
+          }
+        }
       }
 
       for (const e of w.house.edges) {
+        if (e.storey > look.storey) continue;
+        const yo = e.storey * STOREY_HEIGHT;
         const level = EDGES[e.kind].levels[e.level - 1];
         // A back wall has floor on the camera side and none behind it. In the cut view only those stay up.
         const [near, far] = flanks(e.x, e.y, e.side);
         const camSide = e.side === 'n' ? cam.z > 0 : cam.x > 0;
         const [a, b] = camSide ? [near, far] : [far, near];
-        const covered = (t: [number, number]) => isHearthTile(w, t[0], t[1]) || floorAt(w, t[0], t[1]) !== undefined;
-        const back = covered(a) && !covered(b);
+        const back = covered(w, a[0], a[1], e.storey) && !covered(w, b[0], b[1], e.storey);
         const target = look.walls === 'up' || (look.walls === 'cut' && back) ? 1 : LOW;
         const eased = (cut.get(e.id) ?? target) + (target - (cut.get(e.id) ?? target)) * Math.min(1, dt * 9);
         cut.set(e.id, eased);
@@ -127,20 +142,20 @@ export function createHouseView(scene: THREE.Scene): HouseView {
         if (e.kind === 'window') {
           // The glow flickers a little, each window on its own rhythm.
           glow.copy(WINDOW_COLOR).multiplyScalar(0.9 + 0.1 * Math.sin(time * 7 + e.id * 3.1) * Math.sin(time * 2.3 + e.id));
-          put(windows, x, 0.25 * rise, z, sx * 0.96, 0.6 * rise, sz * 0.96, glow);
+          put(windows, x, yo + 0.25 * rise, z, sx * 0.96, 0.6 * rise, sz * 0.96, glow);
           // Sill and lintel around the glass.
-          put(walls, x, 0, z, sx, 0.25 * rise, sz, color);
-          put(walls, x, 0.85 * rise, z, sx, 0.3 * rise, sz, color);
+          put(walls, x, yo, z, sx, 0.25 * rise, sz, color);
+          put(walls, x, yo + 0.85 * rise, z, sx, 0.3 * rise, sz, color);
         } else if (e.kind === 'gunPort') {
           // A wall with a dark slit and a short barrel poking out of it.
-          put(walls, x, 0, z, sx, WALL_HEIGHT * rise, sz, color);
-          put(windows, x, 0.55 * rise, z, e.side === 'n' ? 0.5 : THICK * 1.5, 0.16 * rise, e.side === 'n' ? THICK * 1.5 : 0.5, SLIT_COLOR);
-          put(doors, x, 0.6 * rise, z, e.side === 'n' ? 0.1 : 0.55, 0.1 * rise, e.side === 'n' ? 0.55 : 0.1, WALL_COLOR[3]);
+          put(walls, x, yo, z, sx, WALL_HEIGHT * rise, sz, color);
+          put(windows, x, yo + 0.55 * rise, z, e.side === 'n' ? 0.5 : THICK * 1.5, 0.16 * rise, e.side === 'n' ? THICK * 1.5 : 0.5, SLIT_COLOR);
+          put(doors, x, yo + 0.6 * rise, z, e.side === 'n' ? 0.1 : 0.55, 0.1 * rise, e.side === 'n' ? 0.55 : 0.1, WALL_COLOR[3]);
         } else if (e.kind === 'door') {
           // A door swings open when someone is close, shown by sliding it along the wall.
           const mx = e.side === 'n' ? e.x : e.x - 0.5;
           const my = e.side === 'n' ? e.y - 0.5 : e.y;
-          const near = e.construct <= 0 && w.colonists.some((c) => Math.hypot(c.x - mx, c.y - my) < DOOR_REACH);
+          const near = e.construct <= 0 && w.colonists.some((c) => c.storey === e.storey && Math.hypot(c.x - mx, c.y - my) < DOOR_REACH);
           const amount = open.get(e.id) ?? 0;
           const next = amount + ((near ? 1 : 0) - amount) * Math.min(1, dt * 9);
           open.set(e.id, next);
@@ -150,19 +165,25 @@ export function createHouseView(scene: THREE.Scene): HouseView {
           const px = along === 'x' ? x + slide : x;
           const pz = along === 'z' ? z + slide : z;
           const [dx, dz] = e.side === 'n' ? [len, sz * 0.7] : [sx * 0.7, len];
-          put(doors, px, 0, pz, dx, 0.95 * rise, dz, color);
-        } else put(walls, x, 0, z, sx, WALL_HEIGHT * rise, sz, color);
+          put(doors, px, yo, pz, dx, 0.95 * rise, dz, color);
+        } else put(walls, x, yo, z, sx, WALL_HEIGHT * rise, sz, color);
       }
 
       // Roofs cover every closed room except the hearth hall, which has its own. A roof turret stands where the roof is open.
       roof.copy(ROOF_COLOR).lerp(SNOW_COLOR, ROOF_SNOW[w.weather]);
-      const turrets = new Set(w.buildings.filter((b) => BUILDINGS[b.type].roofed).map((b) => b.y * w.map.width + b.x));
-      for (const room of houseRooms(w)) {
-        for (const t of room.tiles) {
-          const tx = t % w.map.width;
-          const ty = Math.floor(t / w.map.width);
-          if (isHearthTile(w, tx, ty) || !floorAt(w, tx, ty) || floorAt(w, tx, ty)!.construct > 0 || turrets.has(t)) continue;
-          put(roofs, tx - ox, WALL_HEIGHT, ty - oy, 1.08, ROOF_THICK, 1.08, roof);
+      const turrets = new Set(w.buildings.filter((b) => BUILDINGS[b.type].roofed).map((b) => b.storey * w.map.width * w.map.height + b.y * w.map.width + b.x));
+      const top = Math.min(look.storey, w.house.floors.reduce((m, f) => Math.max(m, f.storey), 0));
+      for (let st = 0; st <= top; st++) {
+        for (const room of houseRooms(w, st)) {
+          for (const t of room.tiles) {
+            const tx = t % w.map.width;
+            const ty = Math.floor(t / w.map.width);
+            const f = floorAt(w, tx, ty, st);
+            if ((st === 0 && isHearthTile(w, tx, ty)) || !f || f.construct > 0 || turrets.has(t + st * w.map.width * w.map.height)) continue;
+            // A floor or a flight of stairs above is the ceiling already.
+            if (st < look.storey && (floorAt(w, tx, ty, st + 1) || isLanding(w, tx, ty, st + 1))) continue;
+            put(roofs, tx - ox, st * STOREY_HEIGHT + WALL_HEIGHT, ty - oy, 1.08, ROOF_THICK, 1.08, roof);
+          }
         }
       }
       roofOpacity += ((look.roofs ? 1 : 0) - roofOpacity) * Math.min(1, dt * 8);

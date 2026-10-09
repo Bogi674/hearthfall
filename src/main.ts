@@ -10,7 +10,7 @@ import { createWorldView } from './render/sync';
 import { deleteSave, exportSave, latestSlot, loadGame, readSave, storeSave, type SlotId } from './save/save';
 import { fixedStep } from './sim/loop';
 import { BUILDINGS } from './data/buildings';
-import { inHouse } from './sim/house';
+import { inHouse, maxStorey } from './sim/house';
 import { currentPhase } from './sim/query';
 import { createWorld, stepWorld, TICKS_PER_SECOND, type World } from './sim/world';
 import { createHud, type UiState } from './ui/hud';
@@ -58,7 +58,7 @@ const worldView = createWorldView(world, view);
 const controls = bindCameraControls(view.rig, view.renderer.domElement);
 const audio = createAudio();
 const state: UiState = {
-  placing: null, tool: null, rotated: false, walls: 'up', peek: false, rooms: false, selected: null, speed: 1, paused: false, buildOpen: true,
+  placing: null, tool: null, rotated: false, walls: 'up', peek: false, storey: 0, levels: 'all', rooms: false, selected: null, speed: 1, paused: false, buildOpen: true,
   buildCat: 'Shelter', tab: 'colonists', poi: null, squad: [], menu: false,
   // The page opens on the title screen. A new game opens with the story. A loaded save goes straight back to the game.
   title: !start.loaded && !params.has('play'),
@@ -97,7 +97,9 @@ const labels = createLabels(document.body);
 const showInside = (s: UiState) => s.tool !== null || (s.placing !== null && !!BUILDINGS[s.placing].furniture) || (typeof s.selected === 'number' && inHouse(world, s.selected));
 const houseLook = (s: UiState): HouseLook => {
   const walls: WallMode = s.peek ? 'down' : showInside(s) && s.walls === 'up' ? 'cut' : s.walls;
-  return { walls, roofs: walls === 'up' };
+  // Building on a lower floor cuts away the floors above it, so the work can be seen.
+  const limit = s.levels === 'current' || (showInside(s) && s.storey < maxStorey(world)) ? s.storey : Infinity;
+  return { walls, roofs: walls === 'up', storey: limit };
 };
 const interaction = createInteraction(view.scene);
 const pointer = bindPointer(view.renderer.domElement, view.rig.camera, view.scene, state, () => world, interaction);

@@ -1,10 +1,11 @@
 import * as THREE from 'three';
 import { BALANCE } from '../data/balance';
 import { BUILDINGS } from '../data/buildings';
-import { EDGES } from '../data/house';
+import { EDGES, STOREY_HEIGHT } from '../data/house';
 import { COMPONENT_IDS } from '../data/vehicle';
 import { ENEMIES } from '../data/enemies';
 import { Tile } from '../sim/grid';
+import { floorAt } from '../sim/house';
 import { hearthStage, isBuilt, lightSources } from '../sim/query';
 import type { World } from '../sim/world';
 import { FOG_DEPTH_TILES, fogDistance } from './fogOfWar';
@@ -83,6 +84,9 @@ export function createWorldView(world: World, view: Pick<View, 'scene' | 'fog' |
   const colonists = createFigureSet(PERSON_RIG, 64, 1.0);
   scene.add(colonists.group);
   const colonistHeading = new Map<number, number>();
+  /** Eased height of each colonist, so climbing stairs is a smooth rise. */
+  const colonistRise = new Map<number, number>();
+  let lastFrame = 0;
   let launchedAt = 0;
   const landmarks = world.pois.map((p) => {
     const g = createPoiMesh(p.type);
@@ -171,7 +175,12 @@ export function createWorldView(world: World, view: Pick<View, 'scene' | 'fog' |
         const g = new THREE.Group();
         g.add(createBuildingMesh(b.type, b.w, b.h, mask));
         if (!isBuilt(b)) g.add(createConstructionSite(b.w, b.h));
-        g.position.set(b.x + (b.w - 1) / 2 - width / 2, 0, b.y + (b.h - 1) / 2 - height / 2);
+        g.position.set(b.x + (b.w - 1) / 2 - width / 2, b.storey * STOREY_HEIGHT, b.y + (b.h - 1) / 2 - height / 2);
+        if (BUILDINGS[b.type].stairs) {
+          // A flight of stairs climbs toward the floor beside its top landing.
+          const top = [[1, 0], [-1, 0], [0, 1], [0, -1]].find(([dx, dy]) => floorAt(w, b.x + dx, b.y + dy, b.storey + 1)) ?? [0, -1];
+          g.rotation.y = Math.atan2(-top[0], -top[1]);
+        }
         buildingMeshes.set(b.id, g);
         scene.add(g);
       }
@@ -186,6 +195,7 @@ export function createWorldView(world: World, view: Pick<View, 'scene' | 'fog' |
         const [body, site] = g.children;
         body.scale.y = isBuilt(b) ? 1 : 0.08 + 0.92 * (1 - b.construct / BUILDINGS[b.type].build);
         if (site && isBuilt(b)) g.remove(site);
+        g.visible = b.storey <= look.storey;
         const light = g.getObjectByName('light');
         if (light) light.visible = b.lit;
         for (let s = 1; s <= 3; s++) {
@@ -217,7 +227,8 @@ export function createWorldView(world: World, view: Pick<View, 'scene' | 'fog' |
       camera.getWorldDirection(viewDir);
       bars.update(barList, Math.atan2(-viewDir.x, -viewDir.z));
 
-      colonists.update(colonistFigures(w, alpha, colonistHeading), time, 9);
+      colonists.update(colonistFigures(w, alpha, colonistHeading, colonistRise, Math.min(0.1, Math.max(0, time - lastFrame)), look.storey), time, 9);
+      lastFrame = time;
 
       snow.update(time, pixelsPerUnit, camera.getWorldDirection(viewDir));
     },

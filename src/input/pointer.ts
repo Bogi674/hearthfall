@@ -2,9 +2,10 @@
 import * as THREE from 'three';
 import { pushCommand } from '../sim/commands';
 import { BUILDINGS } from '../data/buildings';
+import { STOREY_HEIGHT } from '../data/house';
 import { PAD } from '../data/vehicle';
 import { edgePlacementError, floorPlacementError, footprint, placementError, removeError, siteError } from '../sim/placement';
-import { floorAt, storedEdgeAt, type Side } from '../sim/house';
+import { floorAt, maxStorey, storedEdgeAt, type Side } from '../sim/house';
 import type { World } from '../sim/world';
 import { createBuildingGhost } from '../render/ghost';
 import { createGhost, GHOST_BAD, GHOST_OK } from '../render/meshes/buildings';
@@ -29,11 +30,18 @@ export function bindPointer(canvas: HTMLCanvasElement, camera: THREE.Camera, sce
   const hit = new THREE.Vector3();
   const mouse = { x: 0, y: 0, ndc: new THREE.Vector2(), inside: false };
 
+  /** House pieces and furniture go on the storey being built. Everything else goes on the ground. */
+  const storeyOfWork = () => (state.tool && state.tool.kind !== 'site') || (state.placing && BUILDINGS[state.placing].furniture) || (!state.tool && !state.placing) ? state.storey : 0;
+  const aimAt = (storey: number) => {
+    ground.constant = -storey * STOREY_HEIGHT;
+    ray.setFromCamera(mouse.ndc, camera);
+    return ray.ray.intersectPlane(ground, hit);
+  };
+
   /** Tile under the cursor, or the top left tile of the footprint centered on it while placing. */
   const tileAt = () => {
     const w = world();
-    ray.setFromCamera(mouse.ndc, camera);
-    if (!ray.ray.intersectPlane(ground, hit)) return null;
+    if (!aimAt(storeyOfWork())) return null;
     const [fw, fh] = state.placing ? footprint(state.placing, state.rotated) : state.tool?.kind === 'site' ? [PAD.size, PAD.size] : [1, 1];
     return { x: Math.round(hit.x + w.map.width / 2 - (fw - 1) / 2), y: Math.round(hit.z + w.map.height / 2 - (fh - 1) / 2) };
   };
@@ -41,8 +49,7 @@ export function bindPointer(canvas: HTMLCanvasElement, camera: THREE.Camera, sce
   /** The tile border nearest the cursor, as the edge between two tiles. */
   const edgeAt = (): { x: number; y: number; side: Side } | null => {
     const w = world();
-    ray.setFromCamera(mouse.ndc, camera);
-    if (!ray.ray.intersectPlane(ground, hit)) return null;
+    if (!aimAt(storeyOfWork())) return null;
     // Tile centers sit on whole numbers, so the borders sit at the halves.
     const u = hit.x + w.map.width / 2 + 0.5;
     const v = hit.z + w.map.height / 2 + 0.5;
@@ -64,17 +71,17 @@ export function bindPointer(canvas: HTMLCanvasElement, camera: THREE.Camera, sce
     if (tool.kind === 'floor') {
       const t = tileAt();
       if (!t) return;
-      const id = `${t.x},${t.y}`;
+      const id = `${t.x},${t.y},${state.storey}`;
       if (id === lastTool) return;
       lastTool = id;
-      pushCommand(w.commands, { type: 'paintFloor', x: t.x, y: t.y, kind: tool.floor });
+      pushCommand(w.commands, { type: 'paintFloor', x: t.x, y: t.y, kind: tool.floor, storey: state.storey });
     } else if (tool.kind === 'edge') {
       const e = edgeAt();
       if (!e) return;
-      const id = `${e.side}${e.x},${e.y}`;
+      const id = `${state.storey}${e.side}${e.x},${e.y}`;
       if (id === lastTool) return;
       lastTool = id;
-      pushCommand(w.commands, { type: 'buildEdge', ...e, kind: tool.edge, level: tool.level });
+      pushCommand(w.commands, { type: 'buildEdge', ...e, kind: tool.edge, level: tool.level, storey: state.storey });
     } else if (tool.kind === 'site') {
       const t = tileAt();
       if (!t || !fresh) return;
@@ -91,12 +98,12 @@ export function bindPointer(canvas: HTMLCanvasElement, camera: THREE.Camera, sce
   const eraseTarget = (w: World): { item: 'furniture' | 'edge' | 'floor'; id: number } | null => {
     const t = tileAt();
     if (!t) return null;
-    const b = w.buildings.find((o) => BUILDINGS[o.type].furniture && t.x >= o.x && t.x < o.x + o.w && t.y >= o.y && t.y < o.y + o.h);
+    const b = w.buildings.find((o) => BUILDINGS[o.type].furniture && o.storey === state.storey && t.x >= o.x && t.x < o.x + o.w && t.y >= o.y && t.y < o.y + o.h);
     if (b) return { item: 'furniture', id: b.id };
     const e = edgeAt();
-    const edge = e && storedEdgeAt(w, e.x, e.y, e.side);
+    const edge = e && storedEdgeAt(w, e.x, e.y, e.side, state.storey);
     if (edge) return { item: 'edge', id: edge.id };
-    const f = floorAt(w, t.x, t.y);
+    const f = floorAt(w, t.x, t.y, state.storey);
     return f ? { item: 'floor', id: f.id } : null;
   };
 
@@ -131,7 +138,7 @@ export function bindPointer(canvas: HTMLCanvasElement, camera: THREE.Camera, sce
       const t = tileAt();
       if (!t) return;
       const at = state.placing === 'airshipDock' && w.airship.site ? w.airship.site : t;
-      pushCommand(w.commands, { type: 'place', building: state.placing, x: at.x, y: at.y, rotated: state.rotated });
+      pushCommand(w.commands, { type: 'place', building: state.placing, x: at.x, y: at.y, rotated: state.rotated, storey: BUILDINGS[state.placing].furniture ? state.storey : 0 });
       return;
     }
     const target = pointer.hover;
@@ -147,6 +154,9 @@ export function bindPointer(canvas: HTMLCanvasElement, camera: THREE.Camera, sce
     if (e.code === 'KeyB') state.buildOpen = !state.buildOpen;
     if (e.code === 'KeyR') state.rotated = !state.rotated;
     if (e.code === 'KeyH') state.rooms = !state.rooms;
+    if (e.code === 'PageUp' || e.code === 'BracketRight') state.storey = Math.min(maxStorey(world()), state.storey + 1);
+    if (e.code === 'PageDown' || e.code === 'BracketLeft') state.storey = Math.max(0, state.storey - 1);
+    if (e.code === 'KeyL') state.levels = state.levels === 'all' ? 'current' : 'all';
     if (e.code === 'KeyV') state.walls = WALL_MODES[(WALL_MODES.indexOf(state.walls) + 1) % WALL_MODES.length];
     if (e.code === 'Tab') {
       e.preventDefault();
@@ -171,17 +181,17 @@ export function bindPointer(canvas: HTMLCanvasElement, camera: THREE.Camera, sce
       const e = edgeAt();
       ghost.visible = e !== null;
       if (!e) return;
-      error = edgePlacementError(w, e.x, e.y, e.side, tool.edge, tool.level);
+      error = edgePlacementError(w, e.x, e.y, e.side, tool.edge, tool.level, state.storey);
       const [sx, sz] = e.side === 'n' ? [1.2, 0.2] : [0.2, 1.2];
-      ghost.position.set(e.side === 'w' ? e.x - 0.5 - w.map.width / 2 : e.x - w.map.width / 2, 0, e.side === 'n' ? e.y - 0.5 - w.map.height / 2 : e.y - w.map.height / 2);
+      ghost.position.set(e.side === 'w' ? e.x - 0.5 - w.map.width / 2 : e.x - w.map.width / 2, state.storey * STOREY_HEIGHT, e.side === 'n' ? e.y - 0.5 - w.map.height / 2 : e.y - w.map.height / 2);
       ghost.scale.set(sx, 1.15, sz);
     } else {
       const t = tileAt();
       ghost.visible = t !== null;
       if (!t) return;
       const target = tool.kind === 'erase' ? eraseTarget(w) : null;
-      error = tool.kind === 'floor' ? floorPlacementError(w, t.x, t.y, tool.floor) : target ? removeError(w, target.item, target.id) : 'Nothing to remove';
-      ghost.position.set(t.x - w.map.width / 2, 0, t.y - w.map.height / 2);
+      error = tool.kind === 'floor' ? floorPlacementError(w, t.x, t.y, tool.floor, state.storey) : target ? removeError(w, target.item, target.id) : 'Nothing to remove';
+      ghost.position.set(t.x - w.map.width / 2, state.storey * STOREY_HEIGHT, t.y - w.map.height / 2);
       ghost.scale.set(1, 0.1, 1);
     }
     ghost.material.color.copy(error ? GHOST_BAD : GHOST_OK);
@@ -192,8 +202,7 @@ export function bindPointer(canvas: HTMLCanvasElement, camera: THREE.Camera, sce
   /** The cursor in continuous tile units, or null when it is off the ground. */
   const cursorUV = () => {
     const w = world();
-    ray.setFromCamera(mouse.ndc, camera);
-    return ray.ray.intersectPlane(ground, hit) ? { u: hit.x + w.map.width / 2, v: hit.z + w.map.height / 2 } : null;
+    return aimAt(state.storey) ? { u: hit.x + w.map.width / 2, v: hit.z + w.map.height / 2 } : null;
   };
 
   const pointer: Pointer = {
@@ -204,7 +213,7 @@ export function bindPointer(canvas: HTMLCanvasElement, camera: THREE.Camera, sce
       if (state.tool || !state.placing) buildingGhost.hide();
       const free = mouse.inside && !state.tool && !state.placing;
       const uv = free ? cursorUV() : null;
-      pointer.hover = uv ? pick(w, uv.u, uv.v) : null;
+      pointer.hover = uv ? pick(w, uv.u, uv.v, state.storey) : null;
       canvas.style.cursor = state.tool || state.placing ? 'crosshair' : pointer.hover ? 'pointer' : '';
       if (state.tool && mouse.inside) return toolGhost(w);
       let t = state.placing && mouse.inside ? tileAt() : null;
@@ -217,8 +226,9 @@ export function bindPointer(canvas: HTMLCanvasElement, camera: THREE.Camera, sce
       }
       ghost.visible = false;
       const [fw, fh] = footprint(state.placing, state.rotated);
-      const error = placementError(w, state.placing, t.x, t.y, state.rotated);
-      buildingGhost.show(state.placing, fw, fh, t.x + (fw - 1) / 2 - w.map.width / 2, t.y + (fh - 1) / 2 - w.map.height / 2, !error, performance.now() / 1000);
+      const level = BUILDINGS[state.placing].furniture ? state.storey : 0;
+      const error = placementError(w, state.placing, t.x, t.y, state.rotated, 'place', level);
+      buildingGhost.show(state.placing, fw, fh, t.x + (fw - 1) / 2 - w.map.width / 2, t.y + (fh - 1) / 2 - w.map.height / 2, !error, performance.now() / 1000, level);
       if (error) pointer.tip = { text: error, x: mouse.x, y: mouse.y };
     },
   };

@@ -10,6 +10,7 @@ import type { WeaponId } from '../data/weapons';
 import type { WallMode } from '../render/houseView';
 import type { SlotId } from '../save/save';
 import { pushCommand } from '../sim/commands';
+import { maxStorey } from '../sim/house';
 import { capacity, currentPhase, fuelFactor, stockTotal } from '../sim/query';
 import type { World } from '../sim/world';
 import { currentHint } from '../data/hints';
@@ -29,6 +30,10 @@ export interface UiState {
   walls: WallMode;
   /** Held with Tab to look inside with every wall cut down. */
   peek: boolean;
+  /** The storey being built on and selected from. 0 is the ground floor (M11). */
+  storey: number;
+  /** Show every storey, or only up to the current one. Toggled with L. */
+  levels: 'all' | 'current';
   /** Names and warnings are drawn over the rooms of the house. Toggled with H. */
   rooms: boolean;
   selected: number | 'hearth' | null;
@@ -99,6 +104,8 @@ export function createHud(root: HTMLElement, state: UiState, world: () => World,
     if (act === 'build') [state.placing, state.tool] = [state.placing === arg ? null : (arg as BuildingType), null];
     if (act === 'tool') [state.tool, state.placing] = [state.tool && arg === toolIdOf(state.tool) ? null : parseTool(arg), null];
     if (act === 'rotate') state.rotated = !state.rotated;
+    if (act === 'storey') state.storey = Math.max(0, Math.min(maxStorey(world()), state.storey + Number(arg)));
+    if (act === 'levels') state.levels = state.levels === 'all' ? 'current' : 'all';
     if (act === 'walls') state.walls = WALL_MODES[(WALL_MODES.indexOf(state.walls) + 1) % WALL_MODES.length];
     if (act === 'edge') {
       const e = world().house.edges.find((o) => o.id === Number(arg));
@@ -187,7 +194,8 @@ export function createHud(root: HTMLElement, state: UiState, world: () => World,
       );
       const alarm = `<button data-act="alarm" class="${w.alarm ? 'alarm on' : 'alarm'}" title="Workers take shelter and defenders man the guns">${w.alarm ? 'All clear' : 'Alarm'}</button>`;
       const wallsButton = `<button data-act="walls" title="Walls up, back walls only, or all walls cut low (V)">${WALL_NAMES[state.walls]}</button>`;
-      set('controls', `${alarm}${speeds}${wallsButton}<button data-act="menu">Menu</button>`);
+      const floorBox = `<span class="floors"><button data-act="storey:-1" title="Down one floor (Page Down)">v</button><button data-act="levels" title="Show all floors or only up to this one (L)">Floor ${state.storey + 1}${state.levels === 'all' ? '' : ' only'}</button><button data-act="storey:1" title="Up one floor (Page Up)">^</button></span>`;
+      set('controls', `${alarm}${speeds}${floorBox}${wallsButton}<button data-act="menu">Menu</button>`);
       set('build', state.buildOpen ? buildMenuHtml(w, state.buildCat, state.placing, state.tool, state.rotated) : '');
 
       set('forecast', forecastHtml(w));

@@ -641,3 +641,8 @@ button.colonist:hover:not(:disabled) {
 .meter .bar {
   flex: 1 1 auto;
 }
+
+.floors {
+  display: inline-flex;
+  gap: 2px;
+}

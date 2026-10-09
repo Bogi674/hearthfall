@@ -2,6 +2,7 @@
 // Workers play the animation of their building's trade (section 12.4). Render only.
 import { BUILDINGS, type WorkAnim } from '../data/buildings';
 import { COLONIST_NAMES } from '../data/colonists';
+import { STOREY_HEIGHT } from '../data/house';
 import { lookFor } from '../data/looks';
 import { center, isBuilt } from '../sim/query';
 import type { World } from '../sim/world';
@@ -13,19 +14,23 @@ const TOOL_FOR: Record<WorkAnim, string | undefined> = {
 /** Guards stand on the platform of these posts. */
 const POST_HEIGHT: Partial<Record<string, number>> = { watchtower: 2, roofTurret: 1.28 };
 
-export function colonistFigures(w: World, alpha: number, heading: Map<number, number>): Figure[] {
+export function colonistFigures(w: World, alpha: number, heading: Map<number, number>, rise: Map<number, number>, dt: number, shownStorey = Infinity): Figure[] {
   const { width, height } = w.map;
   const byId = new Map(w.buildings.map((b) => [b.id, b]));
   const people: Figure[] = [];
   for (const c of w.colonists) {
     const job = c.job === null ? undefined : byId.get(c.job);
+    // Everyone eases up or down to the storey they are on, so a flight of stairs is a smooth climb.
+    const standing = c.storey * STOREY_HEIGHT;
+    const floorY = (rise.get(c.id) ?? standing) + (standing - (rise.get(c.id) ?? standing)) * Math.min(1, dt * 6);
+    rise.set(c.id, floorY);
     // People taking shelter are out of sight. Sleepers show only in house beds and on mats, since a tent hides them.
-    if (c.task === 'shelter') continue;
+    if (c.task === 'shelter' || c.storey > shownStorey) continue;
     if (c.asleep) {
       const bed = c.bed === null ? undefined : byId.get(c.bed);
       if (bed && !BUILDINGS[bed.type].furniture && isBuilt(bed)) continue;
       const on = bed && isBuilt(bed) ? center(bed) : { x: c.x, y: c.y };
-      people.push({ id: c.id, x: on.x - width / 2, y: bed && isBuilt(bed) ? 0.31 : 0.06, z: on.y - height / 2, yaw: bed ? 0 : (c.id % 4) * 0.6, moving: false, look: lookFor(w.seed, COLONIST_NAMES.indexOf(c.name)), pose: 'lie' });
+      people.push({ id: c.id, x: on.x - width / 2, y: floorY + (bed && isBuilt(bed) ? 0.31 : 0.06), z: on.y - height / 2, yaw: bed ? 0 : (c.id % 4) * 0.6, moving: false, look: lookFor(w.seed, COLONIST_NAMES.indexOf(c.name)), pose: 'lie' });
       continue;
     }
     const dx = c.x - c.px;
@@ -34,7 +39,7 @@ export function colonistFigures(w: World, alpha: number, heading: Map<number, nu
     let pose: Figure['pose'] = 'stand';
     let tool: string | undefined = c.weapon;
     let face: { x: number; y: number } | null = null;
-    let y = 0;
+    let y = floorY;
     let shift = 0;
     let sit = { x: 0, y: 0 };
     if (c.task === 'work' && job) {
@@ -47,7 +52,7 @@ export function colonistFigures(w: World, alpha: number, heading: Map<number, nu
     } else if (c.task === 'guard') {
       pose = 'guard';
       const post = c.duty === null ? undefined : byId.get(c.duty);
-      y = post ? (POST_HEIGHT[post.type] ?? 0) : 0;
+      y = floorY + (post ? (POST_HEIGHT[post.type] ?? 0) : 0);
       // Two guards on one post stand side by side.
       shift = w.colonists.filter((o) => o.duty === c.duty && o.task === 'guard').indexOf(c) === 1 ? 0.3 : -0.15;
       // Guards look out, away from the house.

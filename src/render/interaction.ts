@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { Target } from '../input/pick';
+import { STOREY_HEIGHT } from '../data/house';
 import { PALETTE } from './materials';
 
 // Glow frames for what the cursor is over and what is selected, and a ring that expands on a click (section 14.2).
@@ -35,7 +36,7 @@ function createFrame(scene: THREE.Scene): Frame {
 /** Puts the frame around a target. Scale is a multiplier for the pulse. */
 function place(f: Frame, t: Target, width: number, height: number, scale = 1): void {
   const [w, h] = [(t.w + 0.14) * scale, (t.h + 0.14) * scale];
-  f.group.position.set(t.x - width / 2, 0.06, t.y - height / 2);
+  f.group.position.set(t.x - width / 2, 0.06 + t.storey * STOREY_HEIGHT, t.y - height / 2);
   const [top, bottom, left, right] = f.bars;
   top.scale.set(w + THICK, 0.05, THICK);
   top.position.set(0, 0, -h / 2);

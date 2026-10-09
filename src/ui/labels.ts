@@ -1,6 +1,7 @@
 // Floating labels: the reason over every blocked building, and the placement problem next to the cursor.
 import * as THREE from 'three';
 import type { Pointer } from '../input/pointer';
+import { STOREY_HEIGHT } from '../data/house';
 import { POIS } from '../data/pois';
 import { roomInfos } from '../sim/house';
 import type { World } from '../sim/world';
@@ -27,11 +28,11 @@ export function createLabels(root: HTMLElement): { update(world: World, camera: 
       for (const b of world.buildings) {
         const text = STATUS_TEXT[b.status];
         if (!text) continue;
-        items.push({ text, ...screen(b.x + (b.w - 1) / 2, 2, b.y + (b.h - 1) / 2) });
+        items.push({ text, ...screen(b.x + (b.w - 1) / 2, 2 + b.storey * STOREY_HEIGHT, b.y + (b.h - 1) / 2) });
       }
       // The rooms of the house, named from their furniture, with a warning where something is missing (section 5.7).
       if (showRooms) {
-        for (const r of roomInfos(world)) items.push({ text: r.note ? `${r.name}. ${r.note}` : r.name, ...screen(r.x, 1.9, r.y), cls: r.note ? 'room warn' : 'room' });
+        for (const r of roomInfos(world)) items.push({ text: r.note ? `${r.name}. ${r.note}` : r.name, ...screen(r.x, 1.9 + r.storey * STOREY_HEIGHT, r.y), cls: r.note ? 'room warn' : 'room' });
       }
       if (pointer.tip) items.push({ ...pointer.tip, cls: 'tip' });
       while (pool.length < items.length) pool.push(layer.appendChild(document.createElement('div')));

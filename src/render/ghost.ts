@@ -1,12 +1,13 @@
 import * as THREE from 'three';
 import type { BuildingType } from '../data/buildings';
+import { STOREY_HEIGHT } from '../data/house';
 import { createBuildingMesh, GHOST_BAD, GHOST_OK } from './meshes/buildings';
 
 // The ghost of a building being placed (section 14.2): a translucent copy of the real model on a footprint plate,
 // green where it can go and red where it cannot. It pulses softly so it reads as a preview, not a building.
 
 export interface BuildingGhost {
-  show(type: BuildingType, w: number, h: number, x: number, z: number, ok: boolean, time: number): void;
+  show(type: BuildingType, w: number, h: number, x: number, z: number, ok: boolean, time: number, storey?: number): void;
   hide(): void;
 }
 
@@ -48,7 +49,7 @@ export function createBuildingGhost(scene: THREE.Scene): BuildingGhost {
   };
 
   return {
-    show(type, w, h, x, z, ok, time) {
+    show(type, w, h, x, z, ok, time, storey = 0) {
       const g = model(type, w, h);
       if (current !== g) {
         if (current) current.visible = false;
@@ -67,7 +68,7 @@ export function createBuildingGhost(scene: THREE.Scene): BuildingGhost {
       okMat.opacity = badMat.opacity = 0.45 + pulse * 0.08;
       plateMat.opacity = 0.28 + pulse * 0.1;
       plate.scale.set(w + 0.1, 1, h + 0.1);
-      root.position.set(x, 0, z);
+      root.position.set(x, storey * STOREY_HEIGHT, z);
       root.visible = true;
     },
     hide() {
