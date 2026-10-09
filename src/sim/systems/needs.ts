@@ -1,7 +1,8 @@
 // Hunger, rest, body warmth, health, and death (section 6.3).
 import { BALANCE } from '../../data/balance';
 import { BUILDINGS } from '../../data/buildings';
-import { bandAt, DAY_SECONDS } from '../query';
+import { isIndoors } from '../house';
+import { bandAt, DAY_SECONDS, isBuilt } from '../query';
 import { recordDeath, type World } from '../world';
 
 const N = BALANCE.needs;
@@ -9,12 +10,15 @@ const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
 export function needsSystem(world: World, dt: number): void {
   const byId = new Map(world.buildings.map((b) => [b.id, b]));
+  // With a table in the house colonists eat there in the evening instead of anywhere (section 5.7).
+  const hasTable = world.buildings.some((b) => BUILDINGS[b.type].social === 'eat' && isBuilt(b));
   for (const c of world.colonists) {
-    // House bedrooms and the infirmary let sleepers rest and heal faster (section 5.5).
+    // A bed in a closed room, a sickbed, and a mat each change how fast sleepers rest and heal (section 5.6).
     const bed = c.asleep && c.bed !== null ? byId.get(c.bed) : undefined;
-    const bonus = (bed && BUILDINGS[bed.type].restBonus) || 1;
+    const bonus = !c.asleep ? 1 : !bed ? BALANCE.house.matRest : BUILDINGS[bed.type].restBonus ?? (BUILDINGS[bed.type].furniture && isIndoors(world, bed.x, bed.y) ? BALANCE.house.roomRest : 1);
     c.hunger = clamp01(c.hunger - dt / (N.hungerDays * DAY_SECONDS));
-    if (c.hunger < N.eatBelow && world.stock.meals >= 1) {
+    const mayEat = !hasTable || c.task === 'eat' || c.hunger < N.eatAnywhereBelow;
+    if (c.hunger < N.eatBelow && mayEat && world.stock.meals >= 1) {
       world.stock.meals -= 1;
       c.hunger = clamp01(c.hunger + N.mealRestores);
     }

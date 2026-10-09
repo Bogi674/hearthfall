@@ -18,7 +18,7 @@ export const RECIPES: Partial<Record<BuildingType, Recipe>> = {
   quarry: { cycle: 6, outputs: { stone: 3 }, gather: { tile: Tile.RuinWall, radius: 6 } },
   foragerHut: { cycle: 6, outputs: { rawFood: 2 } },
   kitchen: { cycle: 6, inputs: { rawFood: 2, fuel: 1 }, outputs: { meals: 3 } },
-  hearthKitchen: { cycle: 5, inputs: { rawFood: 2, fuel: 1 }, outputs: { meals: 3 } },
+  stove: { cycle: 6, inputs: { rawFood: 2, fuel: 1 }, outputs: { meals: 3 } },
   sawmill: { cycle: 3, inputs: { wood: 2 }, outputs: { planks: 3 } },
   charcoalKiln: { cycle: 6, inputs: { wood: 2 }, outputs: { fuel: 4 } },
   smelter: { cycle: 3.5, inputs: { scrap: 2, fuel: 1 }, outputs: { metal: 3 } },

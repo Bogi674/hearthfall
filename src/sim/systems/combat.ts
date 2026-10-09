@@ -7,8 +7,11 @@ import { BALANCE } from '../../data/balance';
 import { BUILDINGS } from '../../data/buildings';
 import { ENEMIES } from '../../data/enemies';
 import { WEAPON_IDS, WEAPONS } from '../../data/weapons';
+import { EDGES } from '../../data/house';
+import { crossCost } from './pathfinding';
+import { barrierBetween, isBreached, isIndoors } from '../house';
 import { center, isBuilt, lightSources, lightStepAt } from '../query';
-import { addLog, recordDeath, type Building, type Colonist, type Enemy, type World } from '../world';
+import { addLog, recordDeath, type Building, type Colonist, type Enemy, type HouseEdge, type World } from '../world';
 
 const D = BALANCE.defense;
 
@@ -24,7 +27,7 @@ export function combatSystem(world: World, dt: number): void {
   equip(world);
   for (const c of world.colonists) c.cooldown = Math.max(0, c.cooldown - dt);
   const byId = new Map(world.buildings.map((b) => [b.id, b]));
-  const exposed = world.colonists.filter((c) => c.expedition === null && isExposed(c, byId));
+  const exposed = world.colonists.filter((c) => c.expedition === null && isExposed(world, c, byId));
   // Hunters avoid people standing in the core of a light.
   const prey = exposed.filter((c) => lightStepAt(lights, c.x, c.y)?.damage !== 0);
 
@@ -47,19 +50,30 @@ export function combatSystem(world: World, dt: number): void {
     } else {
       const tx = Math.round(e.x);
       const ty = Math.round(e.y);
-      let next = ty * width + tx;
-      for (const n of [tx < width - 1 && next + 1, tx > 0 && next - 1, next + width, next - width]) if (n !== false && field[n] < field[next]) next = n;
+      const here = ty * width + tx;
+      let next = here;
+      let best = field[here];
+      // House walls count against a step, so a monster goes where the way in is weakest.
+      for (const n of [tx < width - 1 && here + 1, tx > 0 && here - 1, here + width, here - width]) {
+        if (n === false) continue;
+        const cost = field[n] + crossCost(world, !!def.runner, tx, ty, n % width, (n - (n % width)) / width);
+        if (cost < best) [next, best] = [n, cost];
+      }
       const speed = def.speed * (light ? light.speed : 1) * dt;
       const target = e.breaker ? null : nearestPrey(e, prey);
       const wall = blocking.get(next);
-      if (target && chase(e, target, speed, blocking, width)) {
+      const nx = next % width;
+      const barrier = next === ty * width + tx ? undefined : barrierBetween(world, tx, ty, nx, (next - nx) / width);
+      if (target && chase(world, e, target, speed, blocking, width)) {
         // Hunting a person in the open.
       } else if (field[next] === 0) {
         if (hit && e.breaker) world.hearth.hp -= def.damage;
       } else if (wall) {
         if (hit && e.breaker) wall.hp -= def.damage * def.wallDamage;
+      } else if (barrier) {
+        // A wall, door, or window of the house. Breakers smash it. The others wait outside.
+        if (hit && e.breaker) barrier.hp -= def.damage * def.wallDamage;
       } else {
-        const nx = next % width;
         const ny = (next - nx) / width;
         const d = Math.hypot(nx - e.x, ny - e.y);
         const step = Math.min(d, speed);
@@ -78,10 +92,18 @@ export function combatSystem(world: World, dt: number): void {
   }
 
   fireGuns(world);
+  firePorts(world);
   fightBack(world, exposed);
 
   world.enemies = world.enemies.filter((e) => e.hp > 0);
   world.colonists = world.colonists.filter((c) => c.health > 0);
+  const broken = world.house.edges.filter((e: HouseEdge) => e.hp <= 0);
+  if (broken.length) {
+    for (const e of broken) addLog(world, `A ${EDGES[e.kind].levels[e.level - 1].name.toLowerCase()} was broken.`, { x: e.x, y: e.y });
+    world.house.edges = world.house.edges.filter((e) => e.hp > 0);
+    world.buildRev++;
+    world.hope = Math.max(0, world.hope + BALANCE.hope.buildingDestroyed * broken.length);
+  }
   const destroyed = world.buildings.filter((b) => b.hp <= 0);
   if (destroyed.length) {
     for (const b of destroyed) addLog(world, `The ${BUILDINGS[b.type].name} was destroyed.`, center(b));
@@ -91,8 +113,13 @@ export function combatSystem(world: World, dt: number): void {
   }
 }
 
-/** Asleep in a bed, sheltering, or working inside a standing building keeps a colonist out of reach. */
-function isExposed(c: Colonist, byId: Map<number, Building>): boolean {
+/**
+ * Asleep in a bed, sheltering, or working inside a standing building keeps a colonist out of reach.
+ * So does standing in a closed room of the house. Once a wall is down, anyone on its floor is exposed.
+ */
+function isExposed(world: World, c: Colonist, byId: Map<number, Building>): boolean {
+  if (isIndoors(world, c.x, c.y)) return false;
+  if (isBreached(world, c.x, c.y)) return true;
   if (c.asleep || c.task === 'shelter') return false;
   const job = c.job === null ? undefined : byId.get(c.job);
   return !(c.task === 'work' && job && BUILDINGS[job.type].indoor);
@@ -110,14 +137,26 @@ function nearestPrey(e: Enemy, prey: Colonist[]): Colonist | null {
 }
 
 /** Moves straight at the prey. Returns false when a building is in the way. */
-function chase(e: Enemy, prey: Colonist, speed: number, blocking: Map<number, Building>, width: number): boolean {
+function chase(world: World, e: Enemy, prey: Colonist, speed: number, blocking: Map<number, Building>, width: number): boolean {
   const d = Math.hypot(prey.x - e.x, prey.y - e.y);
   const step = Math.min(speed, Math.max(0, d - D.reach * 0.8));
   const x = e.x + ((prey.x - e.x) / d) * step;
   const y = e.y + ((prey.y - e.y) / d) * step;
   if (blocking.has(Math.round(y) * width + Math.round(x))) return false;
+  if (crossesWall(world, e.x, e.y, x, y)) return false;
   [e.x, e.y] = [x, y];
   return true;
+}
+
+/** True when the step from one point to another goes through a finished wall of the house. A corner step needs both ways clear. */
+function crossesWall(world: World, ax: number, ay: number, bx: number, by: number): boolean {
+  const [fx, fy, tx, ty] = [Math.round(ax), Math.round(ay), Math.round(bx), Math.round(by)];
+  if (fx === tx && fy === ty) return false;
+  if (fx === tx || fy === ty) return barrierBetween(world, fx, fy, tx, ty) !== undefined;
+  return (
+    barrierBetween(world, fx, fy, tx, fy) !== undefined || barrierBetween(world, tx, fy, tx, ty) !== undefined ||
+    barrierBetween(world, fx, fy, fx, ty) !== undefined || barrierBetween(world, fx, ty, tx, ty) !== undefined
+  );
 }
 
 /** Each defender on duty at a finished tower or gun nest fires one mounted gun (section 9.1). */
@@ -136,6 +175,20 @@ function fireGuns(world: World): void {
       target.hp -= gun.damage;
       c.cooldown = gun.interval;
     }
+  }
+}
+
+/** Each defender at a finished gun port fires its gun through the wall (section 9.8). */
+function firePorts(world: World): void {
+  for (const e of world.house.edges) {
+    if (e.kind !== 'gunPort' || e.construct > 0) continue;
+    const gun = EDGES.gunPort.levels[e.level - 1].gun!;
+    const c = world.colonists.find((o) => o.duty === e.id && o.task === 'guard' && o.cooldown <= 0);
+    if (!c) continue;
+    const target = nearestEnemy(world, e.x - (e.side === 'w' ? 0.5 : 0), e.y - (e.side === 'n' ? 0.5 : 0), gun.range);
+    if (!target) continue;
+    target.hp -= gun.damage;
+    c.cooldown = gun.interval;
   }
 }
 

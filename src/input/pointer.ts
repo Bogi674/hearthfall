@@ -2,7 +2,8 @@
 import * as THREE from 'three';
 import { pushCommand } from '../sim/commands';
 import { BUILDINGS } from '../data/buildings';
-import { edgePlacementError, floorPlacementError, footprint, placementError, removeError } from '../sim/placement';
+import { PAD } from '../data/vehicle';
+import { edgePlacementError, floorPlacementError, footprint, placementError, removeError, siteError } from '../sim/placement';
 import { floorAt, storedEdgeAt, type Side } from '../sim/house';
 import type { World } from '../sim/world';
 import { createGhost, GHOST_BAD, GHOST_OK } from '../render/meshes/buildings';
@@ -27,7 +28,7 @@ export function bindPointer(canvas: HTMLCanvasElement, camera: THREE.Camera, sce
     const w = world();
     ray.setFromCamera(mouse.ndc, camera);
     if (!ray.ray.intersectPlane(ground, hit)) return null;
-    const [fw, fh] = state.placing ? footprint(state.placing, state.rotated) : [1, 1];
+    const [fw, fh] = state.placing ? footprint(state.placing, state.rotated) : state.tool?.kind === 'site' ? [PAD.size, PAD.size] : [1, 1];
     return { x: Math.round(hit.x + w.map.width / 2 - (fw - 1) / 2), y: Math.round(hit.z + w.map.height / 2 - (fh - 1) / 2) };
   };
 
@@ -68,6 +69,11 @@ export function bindPointer(canvas: HTMLCanvasElement, camera: THREE.Camera, sce
       if (id === lastTool) return;
       lastTool = id;
       pushCommand(w.commands, { type: 'buildEdge', ...e, kind: tool.edge, level: tool.level });
+    } else if (tool.kind === 'site') {
+      const t = tileAt();
+      if (!t || !fresh) return;
+      pushCommand(w.commands, { type: 'chooseSite', x: t.x, y: t.y });
+      state.tool = null;
     } else if (fresh) {
       const target = eraseTarget(w);
       if (target) pushCommand(w.commands, { type: 'removeHouseItem', item: target.item, id: target.id });
@@ -115,7 +121,8 @@ export function bindPointer(canvas: HTMLCanvasElement, camera: THREE.Camera, sce
     const t = tileAt();
     if (!t) return;
     if (state.placing) {
-      pushCommand(w.commands, { type: 'place', building: state.placing, x: t.x, y: t.y, rotated: state.rotated });
+      const at = state.placing === 'airshipDock' && w.airship.site ? w.airship.site : t;
+      pushCommand(w.commands, { type: 'place', building: state.placing, x: at.x, y: at.y, rotated: state.rotated });
       return;
     }
     const b = w.buildings.find((b) => t.x >= b.x && t.x < b.x + b.w && t.y >= b.y && t.y < b.y + b.h);
@@ -138,7 +145,14 @@ export function bindPointer(canvas: HTMLCanvasElement, camera: THREE.Camera, sce
     const tool = state.tool!;
     let error: string | null = null;
     ghost.visible = true;
-    if (tool.kind === 'edge') {
+    if (tool.kind === 'site') {
+      const t = tileAt();
+      ghost.visible = t !== null;
+      if (!t) return;
+      error = siteError(w, t.x, t.y);
+      ghost.position.set(t.x + (PAD.size - 1) / 2 - w.map.width / 2, 0, t.y + (PAD.size - 1) / 2 - w.map.height / 2);
+      ghost.scale.set(PAD.size, 0.15, PAD.size);
+    } else if (tool.kind === 'edge') {
       const e = edgeAt();
       ghost.visible = e !== null;
       if (!e) return;
@@ -164,7 +178,9 @@ export function bindPointer(canvas: HTMLCanvasElement, camera: THREE.Camera, sce
     update(w) {
       pointer.tip = null;
       if (state.tool && mouse.inside) return toolGhost(w);
-      const t = state.placing && mouse.inside ? tileAt() : null;
+      let t = state.placing && mouse.inside ? tileAt() : null;
+      // The launch pad goes on the site the crew chose.
+      if (t && state.placing === 'airshipDock' && w.airship.site) t = w.airship.site;
       ghost.visible = t !== null;
       if (!t || !state.placing) return;
       const [fw, fh] = footprint(state.placing, state.rotated);

@@ -37,45 +37,57 @@ export const BUILDING_ICONS: Record<BuildingType, string> = {
       `<rect x="8" y="14" width="16" height="12" rx="2"/><path d="M8 18h16"/>` +
       `<rect x="13" y="20" width="6" height="3"/><path d="M10 26v2M22 26v2"/>`,
   ),
-  bedroom: svg(
-    `<rect x="14" y="16" width="13" height="5" ${ACCENT}/>` +
-      `<path d="M4 9v18M28 15v12M4 21h24M4 16h24"/><rect x="7" y="12" width="6" height="4" rx="1.5"/>` +
-      `<path d="M14 16v5"/>`,
-  ),
-  storeroom: svg(
-    `<rect x="10.5" y="5" width="11" height="10" ${ACCENT}/>` +
-      `<rect x="10.5" y="5" width="11" height="10"/><rect x="4" y="17" width="11" height="10"/>` +
-      `<rect x="17" y="17" width="11" height="10"/><path d="M10.5 10h11M4 22h11M17 22h11"/>`,
-  ),
-  hearthKitchen: svg(
-    `<path d="M11 19h10v3a3 3 0 0 1-3 3h-4a3 3 0 0 1-3-3z" ${ACCENT}/>` +
-      `<path d="M3 15L16 4l13 11M7 12v16h18V12"/>` +
-      `<path d="M11 19h10v3a3 3 0 0 1-3 3h-4a3 3 0 0 1-3-3zM9 20h2M21 20h2"/>` +
-      `<path d="M14 16c-1.5-1.5 1.5-2.5 0-4.5M18 16c-1.5-1.5 1.5-2.5 0-4.5"/>`,
-  ),
-  infirmary: svg(
-    `<path d="M12.5 5h7v7.5H27v7h-7.5V27h-7v-7.5H5v-7h7.5z" ${ACCENT}/>` +
-      `<path d="M12.5 5h7v7.5H27v7h-7.5V27h-7v-7.5H5v-7h7.5z"/>`,
-  ),
-  armory: svg(
-    `<g transform="rotate(45 16 16)"><path d="M12 14h7l10 1.5v5L19 19h-7z" ${ACCENT}/>` +
-      `<path d="M1 15.5h11M12 14h7l10 1.5v5L19 19h-7zM15 19v2.5h3"/></g>` +
-      `<g transform="rotate(-45 16 16)"><path d="M3 16h20M23 13l8 3-8 3zM20 14.5v3"/></g>`,
-  ),
   bed: svg(
     `<rect x="5" y="14" width="22" height="8" ${ACCENT}/>` +
       `<path d="M4 24V8M4 18h24v6M28 24v-3"/><rect x="6" y="12" width="7" height="5" rx="1.5"/>`,
   ),
+  sickbed: svg(
+    `<rect x="5" y="14" width="22" height="8" ${ACCENT}/>` +
+      `<path d="M4 24V10M4 18h24v6M28 24v-3"/><path d="M15 15v6M12 18h6"/>`,
+  ),
+  table: svg(
+    `<rect x="5" y="11" width="22" height="5" ${ACCENT}/>` +
+      `<rect x="5" y="11" width="22" height="5" rx="1"/><path d="M8 16v10M24 16v10"/><circle cx="12" cy="8" r="2.5"/><circle cx="20" cy="8" r="2.5"/>`,
+  ),
+  sofa: svg(
+    `<rect x="6" y="16" width="20" height="7" ${ACCENT}/>` +
+      `<path d="M6 16V11a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5M4 16h4v8H4zM24 16h4v8h-4zM8 23h16M9 26v2M23 26v2"/>`,
+  ),
+  stove: svg(
+    `<rect x="9" y="12" width="14" height="13" ${ACCENT}/>` +
+      `<rect x="8" y="11" width="16" height="15" rx="1"/><path d="M20 11V4M13 17h6v4h-6zM10 26v2M22 26v2"/>`,
+  ),
+  workbench: svg(
+    `<rect x="4" y="14" width="24" height="4" ${ACCENT}/>` +
+      `<rect x="4" y="14" width="24" height="4" rx="1"/><path d="M7 18v9M25 18v9M8 6l5 5M14 5l-3 6M22 7v7"/>`,
+  ),
+  lamp: svg(
+    `<path d="M11 14l2-8h6l2 8z" ${ACCENT}/>` +
+      `<path d="M11 14l2-8h6l2 8zM16 14v13M11 27h10"/>`,
+  ),
+  rug: svg(
+    `<rect x="5" y="9" width="22" height="14" ${ACCENT}/>` +
+      `<rect x="5" y="9" width="22" height="14" rx="1"/><rect x="10" y="13" width="12" height="6"/><path d="M5 9v-2M9 9v-2M13 9v-2M17 9v-2M21 9v-2M25 9v-2"/>`,
+  ),
+  plant: svg(
+    `<circle cx="16" cy="12" r="7" ${ACCENT}/>` +
+      `<path d="M16 19V9M16 14c-3 0-5-2-5-4M16 12c3 0 5-2 5-4M11 20h10l-1 8h-8z"/>`,
+  ),
+  roofTurret: svg(
+    `<rect x="9" y="12" width="14" height="6" ${ACCENT}/>` +
+      `<path d="M7 18h18M9 18v9M23 18v9M4 10l12 2M16 8v7M10 12h12"/><circle cx="16" cy="12" r="3"/>`,
+  ),
+  spotlight: svg(
+    `<path d="M10 6h10l4 8H6z" ${ACCENT}/>` +
+      `<path d="M10 6h10l4 8H6zM15 14v13M10 27h10M4 20l4-2M4 25l4-2"/>`,
+  ),
+  draftingTable: svg(
+    `<path d="M6 12l20-3v9L6 21z" ${ACCENT}/>` +
+      `<path d="M6 12l20-3v9L6 21zM9 21v7M23 18v10M12 14l8-1.2M12 17l8-1.2"/>`,
+  ),
   shelf: svg(
     `<rect x="9" y="6" width="14" height="20" ${ACCENT}/>` +
       `<rect x="7" y="4" width="18" height="24" rx="1"/><path d="M7 12h18M7 20h18"/><rect x="11" y="14" width="4" height="6"/>`,
-  ),
-  gunNest: svg(
-    `<rect x="9" y="9" width="9" height="5" rx="1" ${ACCENT}/>` +
-      `<rect x="9" y="9" width="9" height="5" rx="1"/><path d="M18 11l10-4M13 14v3"/>` +
-      `<rect x="8" y="17" width="8" height="5" rx="2.5"/><rect x="16" y="17" width="8" height="5" rx="2.5"/>` +
-      `<rect x="4" y="22" width="8" height="5" rx="2.5"/><rect x="12" y="22" width="8" height="5" rx="2.5"/>` +
-      `<rect x="20" y="22" width="8" height="5" rx="2.5"/>`,
   ),
   woodcutterCamp: svg(
     `<ellipse cx="16" cy="20" rx="10" ry="3" ${ACCENT}/>` +

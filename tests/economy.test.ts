@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { BALANCE } from '../src/data/balance';
 import type { BuildingType } from '../src/data/buildings';
 import { createWorld, stepWorld } from '../src/sim/world';
 import { build, makePlayer, runDays } from './helpers';
@@ -11,7 +12,9 @@ describe('core economy with no monsters (M2 done when)', () => {
     runDays(world, 5, makePlayer(FULL_PLAN), false);
     expect(world.lost).toBeNull();
     expect(world.day).toBe(6);
-    expect(world.colonists.length).toBe(8);
+    // Everyone lives, and a drifter joins on the dusk of day 3 because the tents have free beds.
+    expect(world.dead.length).toBe(0);
+    expect(world.colonists.length).toBe(BALANCE.start.colonists + 1);
     expect(world.hearth.lit).toBe(true);
   });
 

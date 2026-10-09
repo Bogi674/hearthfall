@@ -3,8 +3,8 @@
 export const BALANCE = {
   /** Section 18. */
   start: {
-    colonists: 8,
-    stock: { wood: 60, scrap: 10, rawFood: 30, meals: 16, fuel: 40 },
+    colonists: 7,
+    stock: { wood: 80, scrap: 10, rawFood: 30, meals: 16, fuel: 40 },
     /** Storage without any building. The Supply Cart holds the rest. */
     storage: 0,
     /** Where the Supply Cart stands, relative to the hearth. */
@@ -87,6 +87,8 @@ export const BALANCE = {
     hungerDays: 2,
     restDays: 1.5,
     eatBelow: 0.5,
+    /** With a table in the house colonists eat there in the evening, unless they get this hungry. */
+    eatAnywhereBelow: 0.25,
     mealRestores: 0.5,
     sleepFillSeconds: 200,
     tiredWorkSpeed: 0.6,
@@ -173,6 +175,17 @@ export const BALANCE = {
     /** Loot from a POI is multiplied by this for each full search already done there. */
     revisitLoot: 0.5,
   },
+  /** Drifters join the colony (section 6.6). They come on the dusk of these days if hope and beds allow. */
+  arrivals: {
+    days: [3, 6, 9],
+    minHope: 50,
+    /** The most colonists the colony can hold. It matches the most seats on the airship. */
+    maxColonists: 20,
+    /** Tiles from the hearth where they appear, and how fast they walk toward the light. */
+    distance: 34,
+    speed: 1.2,
+    joinDistance: 3,
+  },
   /** Section 6.5. */
   hope: {
     start: 60,
@@ -182,8 +195,24 @@ export const BALANCE = {
     buildingDestroyed: -1,
     hungryDawn: -5,
     frozenDawn: -3,
+    /** The evening in the house (section 5.7). Seconds of sitting at a table or sofa per hope point, and the most the evening gives. */
+    mingleSecondsPerPoint: 120,
+    mingleMax: 3,
+    /** Each lamp, rug, or plant in a closed room lifts the most the evening gives by this much, up to decorMax. */
+    decorBonus: 0.25,
+    decorMax: 1,
+    /** Hope lost at dawn for each colonist who slept on a mat because no bed was free, up to matMax. */
+    matSleeper: -0.5,
+    matMax: -1.5,
     lowBelow: 30,
     lowWorkSpeed: 0.8,
+  },
+  /** The house (section 5.6 and 5.7). */
+  house: {
+    /** Sleepers in a bed inside a closed room rest and heal this many times faster. */
+    roomRest: 1.5,
+    /** Sleepers on a mat by the hearth rest and heal this fast. */
+    matRest: 0.5,
   },
   production: {
     /** Work speed on cold tiles. Freezing tiles stop work. */

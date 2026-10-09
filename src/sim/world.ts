@@ -13,6 +13,7 @@ import type { MapState } from './grid';
 import { generateMap } from './mapgen';
 import { placeBuilding } from './placement';
 import { createRng, type RngState } from './rng';
+import { arrivalsSystem } from './systems/arrivals';
 import { jobsSystem } from './systems/jobs';
 import { needsSystem } from './systems/needs';
 import { combatSystem } from './systems/combat';
@@ -70,6 +71,8 @@ export interface Building {
   shelter: boolean;
   /** Weapon an armory crafts. */
   craft: WeaponId;
+  /** Seconds of builder work left to take it apart for salvage, or null when it is not marked. */
+  salvage: number | null;
 }
 
 /** One tile of house floor. It is a construction site until construct reaches 0. */
@@ -95,6 +98,8 @@ export interface HouseEdge {
   level: number;
   hp: number;
   construct: number;
+  /** An upgrade or a change of kind in progress. The old piece stands until it is done. */
+  pending: { kind: EdgeKind; level: number; left: number } | null;
 }
 
 export interface House {
@@ -103,7 +108,7 @@ export interface House {
 }
 
 /** What a colonist is doing right now. The renderer picks an animation from it. */
-export type Task = 'idle' | 'walk' | 'build' | 'work' | 'sleep' | 'guard' | 'shelter';
+export type Task = 'idle' | 'walk' | 'build' | 'work' | 'sleep' | 'guard' | 'shelter' | 'eat' | 'mingle';
 
 export interface Colonist {
   id: number;
@@ -183,7 +188,13 @@ export interface World {
   hope: number;
   /** Deaths since dusk, so dawn can reward a night without losses. */
   deathsTonight: number;
+  /** Colonist seconds spent at a table or sofa this evening. It lifts hope at dawn. */
+  socialSeconds: number;
+  /** The most colonists asleep on mats, with no bed, at one time since dusk. It costs hope at dawn. */
+  matSleepers: number;
   airship: Airship;
+  /** A stranger walking in from the dark toward the hearth, or null (section 6.6). */
+  drifter: { x: number; y: number; px: number; py: number } | null;
   /** Set when the airship launches. The world stops advancing. */
   won: { score: number; aboard: string[]; leftBehind: string[] } | null;
   /** Everyone who died, for the score screen. */
@@ -222,8 +233,14 @@ export interface Wave {
 }
 
 export interface Airship {
+  /** The old owner's blueprint has been found. Nothing can be built before it (section 11.2). */
+  blueprint: boolean;
+  /** Top left tile of the launch pad the crew chose, or null before the Moot (section 11.2). */
+  site: { x: number; y: number } | null;
+  /** Berth Decks built, each adding seats. */
+  berths: number;
   built: ComponentId[];
-  building: ComponentId | null;
+  building: ComponentId | 'berth' | null;
   /** Seconds of dock work done on the component being built. */
   progress: number;
   /** The Last Night, once started: seconds elapsed and fuel loaded (section 11.1). */
@@ -297,7 +314,10 @@ export function createWorld(seed: number): World {
     alarm: false,
     hope: BALANCE.hope.start,
     deathsTonight: 0,
-    airship: { built: [], building: null, progress: 0, launch: null },
+    socialSeconds: 0,
+    matSleepers: 0,
+    drifter: null,
+    airship: { blueprint: false, site: null, berths: 0, built: [], building: null, progress: 0, launch: null },
     won: null,
     dead: [],
     log: [],
@@ -358,6 +378,7 @@ export function stepWorld(world: World): void {
   combatSystem(world, TICK_SECONDS);
   vehicleSystem(world, TICK_SECONDS);
   hopeSystem(world, TICK_SECONDS);
+  arrivalsSystem(world, TICK_SECONDS);
   if (world.hearth.hp <= 0) world.lost = 'The hearth was destroyed.';
   else if (world.hearth.outSeconds >= BALANCE.hearth.outLossSeconds) world.lost = 'The hearth went out.';
   else if (world.colonists.length === 0) world.lost = 'Everyone is dead.';

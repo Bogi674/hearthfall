@@ -6,7 +6,7 @@ import { placeBuilding, placementError } from '../src/sim/placement';
 import { capacity, currentPhase } from '../src/sim/query';
 import { combatSystem } from '../src/sim/systems/combat';
 import { createWorld, stepWorld, TICKS_PER_SECOND, type Enemy, type World } from '../src/sim/world';
-import { build, findSpot, finish } from './helpers';
+import { build, closedRoom, findSpot, finish } from './helpers';
 
 const seconds = (w: World, s: number) => {
   for (let i = 0; i < s * TICKS_PER_SECOND && !w.lost; i++) stepWorld(w);
@@ -29,11 +29,11 @@ describe('construction (section 8.2)', () => {
     expect(camp.construct).toBe(BUILDINGS.woodcutterCamp.build);
     seconds(w, 3);
     expect(w.colonists.some((c) => c.task === 'build' && c.site === camp.id)).toBe(true);
-    expect(w.stock.wood).toBe(60 - BUILDINGS.woodcutterCamp.cost.wood!);
+    expect(w.stock.wood).toBe(BALANCE.start.stock.wood - BUILDINGS.woodcutterCamp.cost.wood!);
     seconds(w, 30);
     expect(camp.construct).toBe(0);
     seconds(w, 30);
-    expect(w.stock.wood).toBeGreaterThan(60 - BUILDINGS.woodcutterCamp.cost.wood!);
+    expect(w.stock.wood).toBeGreaterThan(BALANCE.start.stock.wood - BUILDINGS.woodcutterCamp.cost.wood!);
   });
 
   it('idle colonists build walls that have no crew of their own', () => {
@@ -59,36 +59,38 @@ describe('work spots (section 12.4)', () => {
   });
 });
 
-describe('the house and the supply cart (section 5.5)', () => {
+describe('the house and the supply cart (section 5.6)', () => {
   it('starts with a supply cart that holds the first storage', () => {
     const w = createWorld(1);
     expect(w.buildings.map((b) => b.type)).toEqual(['supplyCart']);
     expect(capacity(w)).toBe(300);
   });
 
-  it('keeps the lot around the house for rooms only', () => {
+  it('keeps the lot around the house free for the house', () => {
     const w = createWorld(1);
     Object.assign(w.stock, { wood: 100, planks: 100 });
     const { x, y } = w.hearth;
-    expect(placementError(w, 'bedroom', x + 2, y - 1, false)).toBeNull();
-    expect(placementError(w, 'tent', x + 2, y - 1, false)).toBe('Kept free for house rooms');
-    expect(placementError(w, 'bedroom', x + 6, y, false)).toBe('Rooms go on the house lot next to the house');
+    expect(placementError(w, 'tent', x + 2, y - 1, false)).toBe('Kept free for the house');
+    expect(placementError(w, 'bed', x + 2, y - 1, false)).toBe('Furniture needs a floor');
+    expect(placementError(w, 'tent', x + 4, y, false)).not.toBe('Kept free for the house');
   });
 
-  it('a bedroom lets sleepers rest faster than a tent', () => {
-    const rest = (type: 'tent' | 'bedroom') => {
+  it('a bed in a closed room lets sleepers rest faster than a tent', () => {
+    const rest = (type: 'tent' | 'bed') => {
       const w = createWorld(1);
       Object.assign(w.stock, { wood: 100, planks: 100 });
-      if (type === 'bedroom') placeBuilding(w, 'bedroom', w.hearth.x + 2, w.hearth.y - 1, false);
-      else place(w, 'tent');
+      if (type === 'bed') {
+        closedRoom(w);
+        expect(placeBuilding(w, 'bed', w.hearth.x + 2, w.hearth.y, false)).toBe(true);
+      } else place(w, 'tent');
       finish(w);
       for (const c of w.colonists) c.rest = 0.2;
       while (currentPhase(w).work) stepWorld(w);
       seconds(w, 60 + 40);
-      const sleepers = w.colonists.filter((c) => c.asleep);
-      return sleepers.reduce((s, c) => s + c.rest, 0) / sleepers.length;
+      const sleeper = w.colonists.find((c) => c.asleep && c.bed !== null)!;
+      return sleeper.rest;
     };
-    expect(rest('bedroom')).toBeGreaterThan(rest('tent'));
+    expect(rest('bed')).toBeGreaterThan(rest('tent'));
   });
 });
 
@@ -139,10 +141,11 @@ describe('shelter and monsters (sections 9.4 and 9.7)', () => {
 });
 
 describe('weapons (section 9.6)', () => {
-  it('an armory crafts spears and colonists pick them up', () => {
+  it('a workbench crafts spears and colonists pick them up', () => {
     const w = createWorld(1);
-    Object.assign(w.stock, { planks: 200, metal: 50, scrap: 50 });
-    placeBuilding(w, 'armory', w.hearth.x + 2, w.hearth.y - 1, false);
+    Object.assign(w.stock, { planks: 200, metal: 50, scrap: 50, wood: 50 });
+    closedRoom(w);
+    expect(placeBuilding(w, 'workbench', w.hearth.x + 2, w.hearth.y, true)).toBe(true);
     finish(w);
     seconds(w, 60);
     expect(w.colonists.some((c) => c.weapon === 'spear')).toBe(true);

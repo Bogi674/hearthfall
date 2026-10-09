@@ -14,7 +14,7 @@ export const HINT_DAYS = 2;
 
 export const HINTS: Hint[] = [
   { text: 'Build a Woodcutter Camp near trees. New buildings start as sites, and colonists without a job build them.', done: (w) => has(w, 'woodcutterCamp') },
-  { text: 'Add a Bedroom on the lot around the house, or put up two Tents. Colonists only rest in beds on warm tiles.', done: (w) => has(w, 'bedroom') || has(w, 'tent', 2) },
+  { text: 'Build a floor, walls, and a door next to the house and put a Bed inside, or put up two Tents. Colonists only rest in beds on warm tiles.', done: (w) => has(w, 'bed') || has(w, 'tent', 2) },
   { text: 'The hearth burns fuel every second. Build a Quarry by the ruins for stone.', done: (w) => has(w, 'quarry') },
   { text: 'Build a Charcoal Kiln. It turns wood into fuel. If the hearth stays out for a minute, the run is lost.', done: (w) => has(w, 'charcoalKiln') },
   { text: 'Build a Forager Hut and a Kitchen so colonists have meals.', done: (w) => has(w, 'foragerHut') && has(w, 'kitchen') },

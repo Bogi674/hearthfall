@@ -11,7 +11,7 @@ const TOOL_FOR: Record<WorkAnim, string | undefined> = {
   chop: 'axe', pick: 'pick', pry: 'crowbar', gather: undefined, stir: 'ladle', saw: 'saw', hammer: 'hammer', tend: 'poker',
 };
 /** Guards stand on the platform of these posts. */
-const POST_HEIGHT: Partial<Record<string, number>> = { watchtower: 2, gunNest: 1.28 };
+const POST_HEIGHT: Partial<Record<string, number>> = { watchtower: 2, roofTurret: 1.28 };
 
 export function colonistFigures(w: World, alpha: number, heading: Map<number, number>): Figure[] {
   const { width, height } = w.map;
@@ -19,8 +19,8 @@ export function colonistFigures(w: World, alpha: number, heading: Map<number, nu
   const people: Figure[] = [];
   for (const c of w.colonists) {
     const job = c.job === null ? undefined : byId.get(c.job);
-    // Sleepers, people taking shelter, and cooks in house rooms are indoors and out of sight.
-    if (c.asleep || c.task === 'shelter' || (c.task === 'work' && job && BUILDINGS[job.type].room)) continue;
+    // Sleepers and people taking shelter are indoors and out of sight.
+    if (c.asleep || c.task === 'shelter') continue;
     const dx = c.x - c.px;
     const dy = c.y - c.py;
     const moving = dx !== 0 || dy !== 0;

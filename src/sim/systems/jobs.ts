@@ -8,7 +8,7 @@ import { LAST_NIGHT } from '../../data/vehicle';
 import { floorAt, houseExtent, isHearthTile } from '../house';
 import { bandAt, center, currentPhase, isBuilt } from '../query';
 import { routeFor } from '../route';
-import type { Building, Colonist, Task, World } from '../world';
+import type { Building, Colonist, HouseEdge, Task, World } from '../world';
 
 const C = BALANCE.colonist;
 /** Where workers stand inside indoor buildings, relative to the center. */
@@ -34,9 +34,10 @@ interface Plan {
 
 export function jobsSystem(world: World, dt: number): void {
   const byId = new Map(world.buildings.map((b) => [b.id, b]));
+  const ports = new Map(world.house.edges.filter((e) => e.kind === 'gunPort' && e.construct <= 0).map((e) => [e.id, e]));
   for (const c of world.colonists) {
     if (c.job !== null && !byId.has(c.job)) c.job = null;
-    if (c.duty !== null && !byId.has(c.duty)) c.duty = null;
+    if (c.duty !== null && !byId.has(c.duty) && !ports.has(c.duty)) c.duty = null;
     if (c.bed !== null && (!byId.has(c.bed) || !isBuilt(byId.get(c.bed)!))) c.bed = null;
   }
 
@@ -61,6 +62,16 @@ export function jobsSystem(world: World, dt: number): void {
     }
   }
 
+  // Each finished gun port takes one defender, who guards it at night and at the alarm (section 9.8).
+  for (const e of ports.values()) {
+    const assigned = world.colonists.filter((c) => c.duty === e.id);
+    for (const c of assigned.slice(1)) c.duty = null;
+    if (assigned.length === 0) {
+      const idle = world.colonists.find((c) => c.duty === null && c.expedition === null);
+      if (idle) idle.duty = e.id;
+    }
+  }
+
   const crewIndex = new Map<number, number>();
   const crewSeen = new Map<number, number>();
   for (const c of world.colonists) {
@@ -71,10 +82,12 @@ export function jobsSystem(world: World, dt: number): void {
   }
   const siteLoad = new Map<number, number>();
   const sites = sitesOf(world);
+  const evening = currentPhase(world).name === 'Dusk' ? seatPlan(world, byId) : undefined;
+  const mats = matPlan(world, byId);
 
   for (const c of world.colonists) {
     if (c.expedition !== null) continue;
-    const plan = planFor(world, c, byId, sites, siteLoad, crewIndex.get(c.id) ?? 0);
+    const plan = planFor(world, c, byId, ports, sites, siteLoad, crewIndex.get(c.id) ?? 0, evening?.get(c.id), mats.get(c.id));
     c.site = plan.site ?? null;
     if (plan.site !== undefined) siteLoad.set(plan.site, (siteLoad.get(plan.site) ?? 0) + 1);
     c.px = c.x;
@@ -98,10 +111,49 @@ export function jobsSystem(world: World, dt: number): void {
     const arrived = c.route.length === 0 && Math.hypot(plan.x - c.x, plan.y - c.y) < 0.05;
     c.task = arrived ? plan.task : 'walk';
     c.asleep = c.task === 'sleep';
+    if (c.task === 'eat' || c.task === 'mingle') world.socialSeconds += dt;
   }
+  world.matSleepers = Math.max(world.matSleepers, world.colonists.filter((c) => c.asleep && c.bed === null).length);
 }
 
-function planFor(world: World, c: Colonist, byId: Map<number, Building>, sites: Site[], siteLoad: Map<number, number>, index: number): Plan {
+/** A place to sit in the evening: one for each tile of a table or sofa. Tables fill first. */
+interface Seat {
+  x: number;
+  y: number;
+  kind: 'eat' | 'mingle';
+}
+
+function seatPlan(world: World, byId: Map<number, Building>): Map<number, Seat> {
+  const seats: Seat[] = [];
+  for (const kind of ['eat', 'mingle'] as const) {
+    for (const b of world.buildings) {
+      if (BUILDINGS[b.type].social !== kind || !isBuilt(b) || b.hp <= 0) continue;
+      for (let y = b.y; y < b.y + b.h; y++) for (let x = b.x; x < b.x + b.w; x++) seats.push({ x, y, kind });
+    }
+  }
+  const plan = new Map<number, Seat>();
+  const people = world.colonists.filter((c) => c.expedition === null && c.duty === null);
+  people.forEach((c, i) => {
+    if (i < seats.length && !(c.job !== null && !byId.has(c.job))) plan.set(c.id, seats[i]);
+  });
+  return plan;
+}
+
+/** Colonists with no finished bed sleep on mats on the floor of the house, around the hearth. */
+function matPlan(world: World, byId: Map<number, Building>): Map<number, { x: number; y: number }> {
+  const plan = new Map<number, { x: number; y: number }>();
+  let k = 0;
+  for (const c of world.colonists) {
+    if (c.expedition !== null || c.duty !== null) continue;
+    const bed = c.bed === null ? undefined : byId.get(c.bed);
+    if (bed && isBuilt(bed)) continue;
+    plan.set(c.id, { x: world.hearth.x - 1 + (k % 3), y: world.hearth.y - 1 + (Math.floor(k / 3) % 3) });
+    k++;
+  }
+  return plan;
+}
+
+function planFor(world: World, c: Colonist, byId: Map<number, Building>, ports: Map<number, HouseEdge>, sites: Site[], siteLoad: Map<number, number>, index: number, seat?: Seat, mat?: { x: number; y: number }): Plan {
   const work = currentPhase(world).work;
   const launch = world.airship.launch;
   const dock = world.buildings.find((b) => b.type === 'airshipDock');
@@ -111,14 +163,20 @@ function planFor(world: World, c: Colonist, byId: Map<number, Building>, sites: 
 
   const job = c.job === null ? undefined : byId.get(c.job);
   const duty = c.duty === null ? undefined : byId.get(c.duty);
+  const port = c.duty === null ? undefined : ports.get(c.duty);
+  // A defender stands at a tower or turret, or just inside the wall at a gun port.
+  const post = duty && isBuilt(duty) ? center(duty) : port ? portSpot(world, port) : undefined;
   // The alarm sends defenders to their posts and everyone else under a roof (section 9.7).
-  if (world.alarm && duty && isBuilt(duty)) return { ...center(duty), task: 'guard' };
+  if (world.alarm && post) return { ...post, task: 'guard' };
   if (world.alarm || (work && job?.shelter)) return { ...shelterFor(world, c, job, byId), task: 'shelter' };
 
   if (!work) {
-    if (duty && isBuilt(duty)) return { ...center(duty), task: 'guard' };
+    if (post) return { ...post, task: 'guard' };
+    // At dusk everyone with a seat sits down to eat or to talk. At night they sleep (section 5.7).
+    if (seat) return { x: seat.x, y: seat.y, task: seat.kind };
     const bed = c.bed === null ? undefined : byId.get(c.bed);
-    return bed ? { ...center(bed), task: 'sleep' } : idleSpot(world, c);
+    if (bed) return { ...center(bed), task: 'sleep' };
+    return mat ? { ...mat, task: 'sleep' } : idleSpot(world, c);
   }
 
   if (job && !isBuilt(job)) return { ...buildSpot(job, siteLoad.get(job.id) ?? 0), task: 'build', site: job.id };
@@ -143,18 +201,26 @@ function idleSpot(world: World, c: Colonist): Plan {
   return { x: world.hearth.x + Math.cos(a) * r, y: world.hearth.y + Math.sin(a) * r, task: 'idle' };
 }
 
+/** The floor tile just inside a gun port, where its defender stands. */
+function portSpot(world: World, e: HouseEdge): { x: number; y: number } {
+  const [a, b] = e.side === 'n' ? [[e.x, e.y], [e.x, e.y - 1]] : [[e.x, e.y], [e.x - 1, e.y]];
+  const floored = (p: number[]) => isHearthTile(world, p[0], p[1]) || floorAt(world, p[0], p[1]) !== undefined;
+  const inside = floored(a) ? a : b;
+  return { x: inside[0], y: inside[1] };
+}
+
 /** Every unfinished building, floor, and wall edge. */
 function sitesOf(world: World): Site[] {
   const out: Site[] = [];
   for (const b of world.buildings) {
-    if (!isBuilt(b)) out.push({ id: b.id, ...center(b), cap: C.buildersPerSite, spot: (n) => buildSpot(b, n) });
+    if (!isBuilt(b) || b.salvage !== null) out.push({ id: b.id, ...center(b), cap: C.buildersPerSite, spot: (n) => buildSpot(b, n) });
   }
   const around = (x: number, y: number) => (n: number) => ({ x: x + Math.cos(n * 2.1) * 0.25, y: y + Math.sin(n * 2.1) * 0.25 });
   for (const f of world.house.floors) {
     if (f.construct > 0) out.push({ id: f.id, x: f.x, y: f.y, cap: HOUSE.buildersPerPiece, spot: around(f.x, f.y) });
   }
   for (const e of world.house.edges) {
-    if (e.construct <= 0) continue;
+    if (e.construct <= 0 && !e.pending) continue;
     // Builders stand on the open side of the wall, away from the floor if there is one.
     const [a, b] = e.side === 'n' ? [[e.x, e.y], [e.x, e.y - 1]] : [[e.x, e.y], [e.x - 1, e.y]];
     const floored = (p: number[]) => isHearthTile(world, p[0], p[1]) || floorAt(world, p[0], p[1]) !== undefined;

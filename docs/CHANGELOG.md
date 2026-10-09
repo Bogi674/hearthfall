@@ -2,6 +2,21 @@
 
 Newest entries first. Each entry names the milestone it belongs to.
 
+## 2026-10-09 (M10.1b: Living in the House)
+
+- **Furniture replaces the fixed rooms.** The six M8 rooms are gone. The house now has a Bed, Sickbed, Shelf, Table, Sofa, Stove, Workbench, Drafting Table, Lamp, Rug, and Potted Plant, plus defenses (section 5.7).
+- **The evening.** At dusk colonists walk into the house, sit at tables and sofas, and eat or talk. At night they sleep. Time spent sitting lifts hope at dawn, up to 3 points, and decor in a closed room lifts that limit. With a table in the house colonists eat there unless they get very hungry.
+- **Beds.** A bed in a closed room rests and heals 1.5 times faster. A colonist with no bed sleeps on a mat by the hearth at half speed and costs 0.5 hope, up to 1.5. Nobody is turned away.
+- **Safe rooms.** People in a closed room are safe from monsters. When a wall breaks, anyone on that floor is exposed.
+- **Defense on the house.** Gun ports are a wall kind. One defender stands inside and fires through each. A Roof Turret goes in a closed room. A Spotlight lights a wide circle at night. Walls can be upgraded or changed to another kind while the old piece stands. Breakers smash house walls, and monsters go for the weakest piece, which is the door. Broken walls cost hope.
+- **The blueprint and the Moot.** The airship is unknown at the start. At stage 3 and hope 50 the crew finds the old owner's plans in the attic. The player then chooses the Launch Pad site. The chosen ground and a ring around it are kept free.
+- **The Launch Pad** replaces the Airship Dock. It is 6 by 6 and must be within 18 tiles of the house. Colonists can take buildings apart to clear the ring and bring back 75 percent of the cost. Any building can now be taken apart.
+- **The Drafting Table** in the house lets four workers build components without the pad. The pad is needed for the launch. Crews at a pad in the cold work at half speed.
+- **Seats.** The Frame gives 8 seats and each Berth Deck adds 4, up to 20. At launch anyone without a seat is left behind.
+- **Crew size.** The colony starts with 7 colonists and 80 wood. Drifters walk in on the dusk of days 3, 6, and 9 if hope is 50 or more and a bed is free. The crew is capped at 20. The Farmhouse, Hardware Store, and Rail Depot can now hold survivors.
+- Saves are version 5.
+- Added `tests/living.test.ts`, `tests/housedefense.test.ts`, and new cases in `tests/airship.test.ts`. The scripted player now builds beds on house floors, a Drafting Table, and chooses a pad site outside the wall ring.
+
 ## 2026-10-09 (M10.1a: The House Layer)
 
 - **Reverted the M10 scaffold.** The M10 commit added prefab rooms and wall modules that no system used. Builders never built them, nothing drew them, guns never fired, and it broke the full run on seeds 2, 3, and 5. The code was reverted and the full run passes again.

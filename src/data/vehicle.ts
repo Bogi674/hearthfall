@@ -25,6 +25,19 @@ export type ComponentId = keyof typeof DEFS;
 export const COMPONENTS = DEFS as Record<ComponentId, ComponentDef>;
 export const COMPONENT_IDS = Object.keys(COMPONENTS) as ComponentId[];
 
+/** The old owner's blueprint turns up when the house is repaired and hope is up (section 11.2). */
+export const BLUEPRINT = { hearthLevel: 3, hope: 50 };
+
+/**
+ * The launch pad (section 11.2): a square deck for the gondola with a ring of open ground around it. It must be close
+ * enough to the house for the final dash on the last night.
+ */
+export const PAD = { size: 6, apron: 1, maxDistance: 18 };
+
+/** Seats aboard (section 11.2). The Frame gives the base seats and each Berth Deck adds more. */
+export const SEATS = { base: 8 };
+export const BERTH = { name: 'Berth Deck', cost: { planks: 40, parts: 10 } as Amounts, seconds: 30, seats: 4, max: 3, needs: 'frame' as ComponentId };
+
 /** The Last Night (section 11.1) and the score (section 3.4). */
 export const LAST_NIGHT = {
   fuel: 200,
@@ -32,7 +45,7 @@ export const LAST_NIGHT = {
   threatMultiplier: 3,
   boardSeconds: 30,
   /** Colonists this close to the dock center at launch are aboard. */
-  boardRadius: 3.5,
+  boardRadius: 4.5,
 };
 
 export const SCORE = {

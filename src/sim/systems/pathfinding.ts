@@ -4,7 +4,8 @@
 import { BALANCE } from '../../data/balance';
 import { BUILDINGS } from '../../data/buildings';
 import { Tile } from '../grid';
-import type { World } from '../world';
+import { barrierBetween } from '../house';
+import type { HouseEdge, World } from '../world';
 
 const P = BALANCE.paths;
 /** Cost of an impassable tile. A finite number keeps the state JSON safe. */
@@ -28,10 +29,40 @@ function tileCost(world: World, runner: boolean): number[] {
   return cost;
 }
 
+/**
+ * House walls, doors, and windows cost by their strength, so monsters go for the weakest piece. Doors are the
+ * cheapest, and runners favor them like gates. Only finished pieces count. The house itself adds no cost.
+ */
+function edgeCosts(world: World, runner: boolean): Map<number, number> {
+  const out = new Map<number, number>();
+  const { width } = world.map;
+  for (const e of world.house.edges) {
+    if (e.construct > 0) continue;
+    out.set((e.y * width + e.x) * 2 + (e.side === 'n' ? 0 : 1), breakCost(e, runner));
+  }
+  return out;
+}
+
+const breakCost = (e: HouseEdge, runner: boolean): number => (runner ? (e.kind === 'door' ? P.runnerGate : e.hp * 0.8) : e.hp * 0.4);
+
+/** What it costs a monster to break through the house wall between two neighbor tiles, or 0 when nothing stands there. */
+export function crossCost(world: World, runner: boolean, ax: number, ay: number, bx: number, by: number): number {
+  if (world.house.edges.length === 0) return 0;
+  const e = barrierBetween(world, ax, ay, bx, by);
+  return e ? breakCost(e, runner) : 0;
+}
+
+/** The key of the edge crossed by a step between two neighbor tiles. */
+function stepEdge(width: number, x: number, y: number, nx: number, ny: number): number {
+  if (nx !== x) return (y * width + Math.max(x, nx)) * 2 + 1;
+  return (Math.max(y, ny) * width + x) * 2;
+}
+
 /** Dijkstra from the hearth footprint over 4 neighbors. */
 function field(world: World, runner: boolean): number[] {
   const { width, height } = world.map;
   const cost = tileCost(world, runner);
+  const edges = edgeCosts(world, runner);
   const dist = new Array<number>(width * height).fill(BLOCKED);
   const heap: [number, number][] = [];
   for (let y = world.hearth.y - 1; y <= world.hearth.y + 1; y++) {
@@ -49,7 +80,7 @@ function field(world: World, runner: boolean): number[] {
       if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
       const n = ny * width + nx;
       if (cost[n] >= BLOCKED) continue;
-      const nd = d + cost[n];
+      const nd = d + cost[n] + (edges.size ? edges.get(stepEdge(width, x, y, nx, ny)) ?? 0 : 0);
       if (nd < dist[n]) {
         dist[n] = nd;
         push(heap, [nd, n]);

@@ -2,11 +2,11 @@
 import { BUILDINGS } from '../data/buildings';
 import { EDGES } from '../data/house';
 import { ITEMS, POIS } from '../data/pois';
-import { COMPONENT_IDS, COMPONENTS, LAST_NIGHT } from '../data/vehicle';
+import { BERTH, BLUEPRINT, COMPONENT_IDS, COMPONENTS, LAST_NIGHT, PAD } from '../data/vehicle';
 import { WEAPONS } from '../data/weapons';
 import { RESOURCE_NAMES, type Resource } from '../data/resources';
-import { componentError, expeditionError, launchError } from '../sim/commands';
-import { currentPhase, directionFromHearth } from '../sim/query';
+import { berthError, componentError, expeditionError, launchError } from '../sim/commands';
+import { currentPhase, directionFromHearth, seatCount } from '../sim/query';
 import { expeditionRisk } from '../sim/systems/expeditions';
 import type { World } from '../sim/world';
 import type { UiState } from './hud';
@@ -96,6 +96,25 @@ function expeditions(w: World, state: UiState): string {
 function airship(w: World): string {
   const air = w.airship;
   const out = [`<p>Built ${air.built.length} of ${COMPONENT_IDS.length} components.</p>`];
+  // The old owner's blueprint, the choice of where the airship rises, and the seats aboard (section 11.2).
+  if (!air.blueprint) {
+    out.push(`<div class="card"><b>The blueprint</b><small>Somewhere in the old house are plans for a balloon craft. Repair the house to stage ${BLUEPRINT.hearthLevel} and keep hope at ${BLUEPRINT.hope} or more.</small></div>`);
+    return out.join('');
+  }
+  if (!air.site) {
+    out.push(`<div class="card"><b>The Moot</b><small>The crew found the plans. Choose where the airship will rise. The pad is ${PAD.size} by ${PAD.size} tiles with open ground around it, within ${PAD.maxDistance} tiles of the house.</small><button data-act="tool:site">Choose the launch site</button></div>`);
+  } else if (!w.buildings.some((b) => b.type === 'airshipDock')) {
+    const { x, y } = air.site;
+    const inWay = w.buildings.filter((b) => b.x < x + PAD.size + PAD.apron && x - PAD.apron < b.x + b.w && b.y < y + PAD.size + PAD.apron && y - PAD.apron < b.y + b.h);
+    out.push(`<div class="card"><b>Launch site chosen</b><small>Build the Launch Pad from the Escape tab. The ground around it is kept free.</small>
+      ${inWay.length ? `<small class="alert">${inWay.length} building${inWay.length > 1 ? 's' : ''} in the way. Colonists take them apart and bring back 75 percent of the cost.</small><button data-act="clearpad">Clear the ground</button>` : ''}
+      <button data-act="focus:${x + 3}:${y + 3}">Show me</button><button data-act="tool:site">Choose another</button></div>`);
+  }
+  const seats = seatCount(w);
+  out.push(`<p>Seats ${seats} for ${w.colonists.length} colonists.${seats && seats < w.colonists.length ? ' Anyone without a seat is left behind.' : ''}</p>`);
+  const berthIssue = berthError(w);
+  out.push(`<div class="card"><b>${BERTH.name}</b><small>Adds ${BERTH.seats} seats. ${air.berths} of ${BERTH.max} built. Needs ${loot(BERTH.cost)}.</small>
+    ${air.building === 'berth' ? `<small>Building, ${Math.floor((air.progress / BERTH.seconds) * 100)}%</small>` : berthIssue ? `<small class="alert">${berthIssue}</small>` : '<button data-act="berth">Build</button>'}</div>`);
   for (const id of COMPONENT_IDS) {
     const def = COMPONENTS[id];
     const needs = [loot(def.cost), def.item ? `the ${ITEMS[def.item]}${w.items[def.item] ? '' : ' (not found yet)'}` : ''].filter(Boolean).join(', ');

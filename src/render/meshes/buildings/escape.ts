@@ -82,7 +82,11 @@ function tower(g: THREE.Group, x: number, h: number): void {
   g.add(part(GEO.block, MAT.wood, [x, h, 0], [0.6, 0.08, 0.76]));
 }
 
-const airshipDock: Builder = (g) => {
+const airshipDock: Builder = (root) => {
+  // The pad is drawn for a 4 by 4 footprint and scaled up to the 6 by 6 launch pad (section 11.2).
+  const g = new THREE.Group();
+  g.scale.setScalar(1.5);
+  root.add(g);
   // A concrete pad with pallets, two scaffold towers, and cradle beams the gondola rests on.
   g.add(part(GEO.block, MAT.darkStone, [0, 0, 0], [3.9, 0.12, 3.9]));
   g.add(at(pallet(), -0.7, 0.12, 1.3), at(pallet(), 0.1, 0.12, 1.5, 0.2));

@@ -8,7 +8,8 @@ import { POIS, type ItemId, type PoiType } from '../src/data/pois';
 import type { Amounts } from '../src/data/resources';
 import { COMPONENT_IDS, COMPONENTS, LAST_NIGHT, type ComponentId } from '../src/data/vehicle';
 import { buildingUpgradeError, componentError, hearthUpgradeError, launchError } from '../src/sim/commands';
-import { placementError } from '../src/sim/placement';
+import { floorAt } from '../src/sim/house';
+import { floorPlacementError, padError, placementError, siteError } from '../src/sim/placement';
 import { bandAt, capacity, center, currentPhase, missing, stockTotal } from '../src/sim/query';
 import type { World } from '../src/sim/world';
 import { findSpot } from './helpers';
@@ -61,6 +62,29 @@ function nextTarget(w: World): { target: Target; cost: Amounts } | null {
   return null;
 }
 
+/**
+ * Puts one more bed in the house: floors on the east side of the house, two tiles for each bed, kept inside the
+ * ring of walls. Rows and columns are tried nearest first, and the drafting table has its own row.
+ */
+function houseBed(w: World): void {
+  const { x, y } = w.hearth;
+  for (const dx of [2, 3, 4]) {
+    for (const dy of [0, 2, -3, 4]) {
+      const tiles: [number, number][] = [[x + dx, y + dy], [x + dx, y + dy + 1]];
+      if (tiles.some(([tx, ty]) => Math.max(Math.abs(tx - x), Math.abs(ty - y)) > 4)) continue;
+      if (!placementError(w, 'bed', tiles[0][0], tiles[0][1], false)) {
+        w.commands.push({ type: 'place', building: 'bed', x: tiles[0][0], y: tiles[0][1], rotated: false });
+        return;
+      }
+      const missingFloor = tiles.find(([tx, ty]) => !floorAt(w, tx, ty));
+      if (missingFloor && !floorPlacementError(w, missingFloor[0], missingFloor[1], 'boards')) {
+        w.commands.push({ type: 'paintFloor', x: missingFloor[0], y: missingFloor[1], kind: 'boards' });
+        return;
+      }
+    }
+  }
+}
+
 export function fullRunPlayer() {
   return (w: World) => {
     const phase = currentPhase(w);
@@ -81,6 +105,27 @@ export function fullRunPlayer() {
         const spot = findSpot(w, t, INSIDE.includes(t) ? 0 : OUTSIDE, t === 'woodcutterCamp' ? 30 : 10);
         if (spot) w.commands.push({ type: 'place', building: t, x: spot.x, y: spot.y, rotated: false });
       }
+    }
+    // Colonists without a bed sleep on mats and cost hope. Extra people get beds on floors in the warm house.
+    const beds = w.buildings.reduce((n, b) => n + (BUILDINGS[b.type].beds ?? 0), 0);
+    if (beds < w.colonists.length && !w.buildings.some((b) => b.type === 'bed' && b.construct > 0)) houseBed(w);
+    // The crew picks the nearest launch pad site with a clear ring as soon as the blueprint turns up (section 11.2).
+    if (w.airship.blueprint && !w.airship.site) {
+      let best: { x: number; y: number; d: number } | null = null;
+      for (let y = w.hearth.y - 20; y <= w.hearth.y + 20; y++) {
+        for (let x = w.hearth.x - 20; x <= w.hearth.x + 20; x++) {
+          const d = Math.hypot(x + 2.5 - w.hearth.x, y + 2.5 - w.hearth.y);
+          // Outside the ring of walls, like the other outside buildings. The pad does not fit inside it.
+          if (d >= OUTSIDE + 1 && (!best || d < best.d) && !siteError(w, x, y) && !padError(w, x, y, 6, 6)) best = { x, y, d };
+        }
+      }
+      if (best) w.commands.push({ type: 'chooseSite', x: best.x, y: best.y });
+    }
+    // Once the blueprint turns up, a Drafting Table on a house floor lets the crew build components in the warm house.
+    if (w.airship.blueprint && count(w, 'draftingTable') === 0) {
+      const { x, y } = w.hearth;
+      for (const dx of [2, 3]) w.commands.push({ type: 'paintFloor', x: x + dx, y: y - 1, kind: 'boards' });
+      w.commands.push({ type: 'place', building: 'draftingTable', x: x + 2, y: y - 1, rotated: false });
     }
     // Replace gatherers that ran out of nodes.
     for (const [type, keep] of [['woodcutterCamp', 2], ['salvageYard', 1]] as [BuildingType, number][]) {
@@ -138,7 +183,8 @@ export function fullRunPlayer() {
       ['foragerHut', s.rawFood < 40 ? 2 : 0],
       ['charcoalKiln', s.fuel < fuelTarget && s.wood >= 2 ? 2 : 0],
       ['woodcutterCamp', 3],
-      ['airshipDock', w.airship.building ? 4 : 0],
+      ['draftingTable', w.airship.building ? 4 : 0],
+      ['airshipDock', w.airship.building && count(w, 'draftingTable') === 0 ? 4 : 0],
       ['quarry', s.stone < (cost.stone ?? 0) ? 3 : 0],
       ['workshop', partsShort > 0 && s.planks >= 1 && s.metal >= 1 ? 2 : 0],
       ['smelter', s.metal < metalNeed && s.scrap >= 2 && s.fuel > 30 ? 2 : 0],
@@ -185,27 +231,5 @@ export function fullRunPlayer() {
     for (const ex of w.expeditions) if (phase.name !== 'Day') w.commands.push({ type: 'recall', id: ex.id });
 
     if (ready && !launchError(w) && s.fuel >= LAST_NIGHT.fuel + 15) w.commands.push({ type: 'launch' });
-  };
-}
-
-/**
- * A small house built partway through a run (M10.1a): a 2 by 2 room east of the hearth with walls, a door
- * on its east side, and two beds. Colonists build it like anything else, so the run must still launch.
- */
-export function houseBuilder() {
-  let done = false;
-  return (w: World) => {
-    if (done || w.day < 3 || w.stock.wood < 120) return;
-    done = true;
-    const { x, y } = w.hearth;
-    for (const [dx, dy] of [[2, 0], [3, 0], [2, 1], [3, 1]]) w.commands.push({ type: 'paintFloor', x: x + dx, y: y + dy, kind: 'boards' });
-    for (const dx of [2, 3]) {
-      w.commands.push({ type: 'buildEdge', x: x + dx, y, side: 'n', kind: 'wall', level: 1 });
-      w.commands.push({ type: 'buildEdge', x: x + dx, y: y + 2, side: 'n', kind: 'wall', level: 1 });
-    }
-    w.commands.push({ type: 'buildEdge', x: x + 4, y, side: 'w', kind: 'door', level: 1 });
-    w.commands.push({ type: 'buildEdge', x: x + 4, y: y + 1, side: 'w', kind: 'wall', level: 1 });
-    w.commands.push({ type: 'place', building: 'bed', x: x + 2, y, rotated: false });
-    w.commands.push({ type: 'place', building: 'bed', x: x + 3, y, rotated: false });
   };
 }

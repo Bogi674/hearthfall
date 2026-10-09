@@ -8,18 +8,18 @@ import type { World } from '../sim/world';
 import { BUILDING_ICONS } from './icons';
 
 /** What the build menu is drawing: the pieces of the house, or a building. */
-export type HouseTool = { kind: 'floor'; floor: FloorId } | { kind: 'edge'; edge: EdgeKind; level: number } | { kind: 'erase' };
+export type HouseTool = { kind: 'floor'; floor: FloorId } | { kind: 'edge'; edge: EdgeKind; level: number } | { kind: 'erase' } | { kind: 'site' };
 export type BuildCat = BuildingCategory | 'Structure';
 
-export const BUILD_CATS: BuildCat[] = ['Structure', 'Furniture', 'House', 'Shelter', 'Production', 'Defense', 'Escape'];
+export const BUILD_CATS: BuildCat[] = ['Structure', 'Furniture', 'Shelter', 'Production', 'Defense', 'Escape'];
 
 /** The id a tool has in a button, such as floor.boards or edge.wall.1. */
-export const toolId = (t: HouseTool): string => (t.kind === 'floor' ? `floor.${t.floor}` : t.kind === 'edge' ? `edge.${t.edge}.${t.level}` : 'erase');
+export const toolId = (t: HouseTool): string => (t.kind === 'floor' ? `floor.${t.floor}` : t.kind === 'edge' ? `edge.${t.edge}.${t.level}` : t.kind);
 export function parseTool(id: string): HouseTool {
   const [kind, a, b] = id.split('.');
   if (kind === 'floor') return { kind, floor: a as FloorId };
   if (kind === 'edge') return { kind, edge: a as EdgeKind, level: Number(b) };
-  return { kind: 'erase' };
+  return kind === 'site' ? { kind: 'site' } : { kind: 'erase' };
 }
 
 function structureHtml(w: World, tool: HouseTool | null): string {
@@ -43,7 +43,9 @@ export function buildMenuHtml(w: World, cat: BuildCat, placing: string | null, t
     .map((t) => {
       const def = BUILDINGS[t];
       const short = missing(w, def.cost);
-      const why = short ? `Needs more ${RESOURCE_NAMES[short as Resource].toLowerCase()}` : def.room ? 'Goes on the house lot' : def.furniture ? 'Goes on a house floor' : '';
+      const why = short ? `Needs more ${RESOURCE_NAMES[short as Resource].toLowerCase()}`
+        : t === 'airshipDock' ? (!w.airship.blueprint ? "Needs the old owner's blueprint" : w.airship.site ? 'Goes on the chosen site' : 'Choose the site in the Airship tab')
+        : def.roofed ? 'Goes in a closed room' : def.furniture ? 'Goes on a house floor' : '';
       return `<button data-act="build:${t}" class="item ${placing === t ? 'on' : ''} ${short ? 'poor' : ''}" title="${def.name}. ${why}">
         ${BUILDING_ICONS[t]}<span><b>${def.name}</b><small>${amounts(def.cost)}</small>${why ? `<small class="${short ? 'why' : ''}">${why}</small>` : ''}</span></button>`;
     })

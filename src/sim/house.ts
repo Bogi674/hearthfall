@@ -33,6 +33,7 @@ interface Index {
   floors: Map<number, HouseFloor>;
   edges: Map<string, HouseEdge>;
   rooms?: HouseRoom[];
+  roomOf?: Map<number, HouseRoom>;
 }
 const cache = new WeakMap<World, Index>();
 
@@ -90,6 +91,13 @@ export function stepBlocked(world: World, ax: number, ay: number, bx: number, by
   const e = edgeAcross(ax, ay, bx, by);
   const info = edgeInfo(world, e.x, e.y, e.side);
   return info !== null && info.built && info.kind !== 'door';
+}
+
+/** The finished wall, door, or window between two orthogonal neighbor tiles that monsters must break, if any. */
+export function barrierBetween(world: World, ax: number, ay: number, bx: number, by: number): HouseEdge | undefined {
+  const e = edgeAcross(ax, ay, bx, by);
+  const stored = storedEdgeAt(world, e.x, e.y, e.side);
+  return stored && stored.construct <= 0 ? stored : undefined;
 }
 
 export interface HouseRoom {
@@ -206,6 +214,29 @@ export function houseRooms(world: World): HouseRoom[] {
   const ix = index(world);
   return (ix.rooms ??= analyze(world, false).filter((r) => !r.outside && r.floorCount > 0));
 }
+
+/** The closed room a position is in, or undefined outdoors, in a room with a gap, or off the floor. */
+export function roomAt(world: World, x: number, y: number): HouseRoom | undefined {
+  const ix = index(world);
+  if (!ix.roomOf) {
+    ix.roomOf = new Map();
+    for (const r of houseRooms(world)) for (const t of r.tiles) ix.roomOf.set(t, r);
+  }
+  const tx = Math.round(x);
+  const ty = Math.round(y);
+  if (!isHearthTile(world, tx, ty) && !ix.floors.has(ty * world.map.width + tx)) return undefined;
+  return ix.roomOf.get(ty * world.map.width + tx);
+}
+
+/** True for a spot on the floor of a closed room, where walls stand all around. */
+export const isIndoors = (world: World, x: number, y: number): boolean => roomAt(world, x, y) !== undefined;
+
+/** True for a spot on a house floor that is not in a closed room, because a wall is down or missing. */
+export const isBreached = (world: World, x: number, y: number): boolean => {
+  const tx = Math.round(x);
+  const ty = Math.round(y);
+  return (isHearthTile(world, tx, ty) || floorAt(world, tx, ty) !== undefined) && !isIndoors(world, x, y);
+};
 
 /** True when the change would leave a room with floor that no one can enter. */
 export function sealsRoom(world: World, change: Change): boolean {

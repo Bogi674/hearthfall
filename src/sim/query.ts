@@ -2,6 +2,7 @@
 import { BALANCE } from '../data/balance';
 import { BUILDINGS } from '../data/buildings';
 import { RESOURCES, type Amounts } from '../data/resources';
+import { BERTH, SEATS } from '../data/vehicle';
 import type { Building, World } from './world';
 
 const W = BALANCE.warmth;
@@ -115,3 +116,6 @@ export const hearthStage = (world: World) => BALANCE.hearth.levels[world.hearth.
 export function hopeSpeed(world: World): number {
   return world.hope < BALANCE.hope.lowBelow ? BALANCE.hope.lowWorkSpeed : 1;
 }
+
+/** Seats aboard the airship: the Frame gives the base seats and each Berth Deck adds more (section 11.2). */
+export const seatCount = (world: World): number => (world.airship.built.includes('frame') ? SEATS.base : 0) + world.airship.berths * BERTH.seats;

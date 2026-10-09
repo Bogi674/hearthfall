@@ -47,7 +47,7 @@ Time controls are pause, 1x, 2x, and 3x. The game auto pauses on dusk start in t
 
 ### 3.3 Run arc
 1. **Early game, days 1 to 10.** Secure the hearth, food, fuel, and first walls.
-2. **Mid game, days 11 to 25.** Build production chains, run expeditions, unlock the Airship Dock.
+2. **Mid game, days 11 to 25.** Build production chains, run expeditions, find the old owner's blueprint and build the Launch Pad.
 3. **Late game, days 26 onward.** Build airship components under heavy pressure.
 4. **Finale.** The Last Night: fuel the airship while the final horde attacks, then launch.
 
@@ -115,32 +115,43 @@ Outdoor temperature starts at minus 2 degrees on day 1 and drops by 1 degree per
 
 ---
 
-### 5.5 Restoring the house: rooms
-The house is not only repaired in stages. The colony also builds rooms onto it, the way a survivor shelter grows from a ruin into a bunker. The 7 by 7 square of tiles around the hearth is the house lot. Only rooms can be built there, and rooms can only be built there.
+### 5.5 Restoring the house
+The house is not only repaired in stages. The colony also builds onto it, the way a survivor shelter grows from a ruin into a bunker. The player draws floors and walls and places furniture on the house lot. Rooms are whatever the walls enclose. Sections 5.6 and 5.7 describe how.
 
-| Room | Cost | Function |
-|### 5.6 Building the house: floors, walls, and doors (M10.1)
-From M10.1 the house is built tile by tile, like a survivor shelter growing from a ruin. The six fixed rooms of section 5.5 stay until M10.1b replaces them with furniture.
+### 5.6 Building the house: floors, walls, and doors
+The house is built tile by tile, like a survivor shelter growing from a ruin.
 
 - **House lot.** The lot around the hearth grows with the Hearth House stage: 3, 4, 5, 6, and 7 tiles from the hearth, so 7 by 7 up to 15 by 15. Floors, walls, and furniture go only on the lot.
 - **Floors.** Plank Floor (2 wood) and Stone Floor (2 stone). A floor tile must touch the house or another floor. Drag to paint.
-- **Walls, doors, and windows.** These sit on the border between two tiles and need a floor on one side. Walls come in wood, reinforced, stone, and metal. Doors come in wood and reinforced. Windows let light through and stop people.
+- **Walls, doors, windows, and gun ports.** These sit on the border between two tiles and need a floor on one side. Walls come in wood, reinforced, stone, and metal. Doors come in wood and reinforced. Windows let light through and stop people. Gun ports are walls a defender fires through (section 9.8). A built piece can be upgraded or changed to another kind. The old piece stands until the work is done.
 - **The house itself** is a wall with a front door on its south side. A door can be cut into any other house wall.
 - **No sealed rooms.** A wall that would shut a room in with no door is refused with the reason "A room would have no door. Add a door first". A door that is the only way into a room cannot be removed.
 - **Builders.** Every floor tile, wall, door, window, and piece of furniture is a construction site. Colonists without a job build the nearest one. Up to 2 builders work on one floor tile or wall edge. Builders stand on the open side of a wall.
-- **Walking.** Near the house colonists walk tile to tile. Finished walls and windows stop them and doors let them through. Away from the house they still walk straight.
-- **Furniture** goes on floor tiles. In M10.1a the Bed (1 by 2, one bed) and the Shelf (60 storage) exist. Both work through the normal bed and storage rules.
-- **Removing.** An untouched site refunds its full cost. Anything finished refunds half.
+- **Walking.** Near the house colonists walk tile to tile. Finished walls and windows stop them and doors let them through. Away from the house they still walk straight. Until the first floor or wall is built, the old house does not block walking.
+- **Removing.** An untouched site refunds its full cost. Anything finished refunds half. A building outside the house can be taken apart by colonists, who bring back 75 percent of the cost.
 
----|---|---|
-| Bedroom | 20 wood, 10 planks | 6 beds. Sleepers rest and heal 1.5 times faster |
-| Storeroom | 30 wood, 10 planks | Plus 400 storage |
-| House Kitchen | 20 planks, 10 stone | 2 cooks make meals indoors, a little faster than the Kitchen |
-| Infirmary | 30 planks, 5 parts | 3 beds where the wounded heal 3 times faster |
-| Armory | 30 planks, 10 metal | 1 worker crafts weapons (section 9.6) |
-| Rooftop Gun Nest | 20 planks, 25 metal, 5 parts | 2 defenders man heavy guns |
+### 5.7 Furniture and the evening
+Furniture goes on floor tiles. Colonists use it, so a furnished house is lived in, not only built.
 
-Rooms are tougher than outside buildings (400 to 500 health) and every room is a safe shelter. A fully grown house with its rooms is a self sustained bunker: beds, food, storage, weapons, and guns behind one set of walls.
+| Furniture | Cost | Use |
+|---|---|---|
+| Bed | 6 wood | One sleeper. A bed in a closed room rests and heals 1.5 times faster |
+| Sickbed | 8 planks, 1 part | One sleeper who rests and heals 3 times faster |
+| Shelf | 8 wood | Plus 60 storage |
+| Table | 10 wood | Two seats where colonists eat in the evening |
+| Sofa | 10 wood, 4 scrap | Two seats where colonists talk in the evening |
+| Stove | 6 planks, 4 stone | One cook makes meals indoors. Same rate as the Kitchen |
+| Workbench | 10 planks, 6 metal | One worker crafts weapons (section 9.6) |
+| Drafting Table | 12 planks, 6 metal | Four workers build the airship components (section 11.2) |
+| Lamp, Rug, Potted Plant | A few wood or scrap | Decor. Each one inside a closed room adds to the evening hope bonus |
+| Roof Turret, Spotlight | See section 9.8 | Defense |
+
+- **At dusk** everyone with a seat walks into the house, sits at a table or sofa, and eats or talks. Tables fill first. At night they sleep in their beds. At dawn they leave for work.
+- **Eating.** With a table in the house, colonists eat there in the evening. They still eat anywhere if they get very hungry.
+- **Hope.** Time spent sitting together lifts hope at dawn, up to 3 points. Each lamp, rug, or plant in a closed room lifts that limit by 0.25, up to 1 more.
+- **Beds.** A colonist with no bed sleeps on a mat on the floor of the house around the hearth. Mat sleepers rest at half speed and cost 0.5 hope each at dawn, up to 1.5. Nobody is turned away, so the house simply has to grow.
+- **Safe rooms.** People in a closed room are safe from monsters. If a wall of the room is broken, anyone on its floor is exposed.
+- Furniture does not block walking.
 
 ---
 
@@ -160,8 +171,9 @@ Each colonist has a name, health, hunger, rest, and body warmth. Each has one tr
 | Body warmth | Depends on tile warmth | Warm tiles | Health loss, then death |
 
 ### 6.4 Population
-- Start with 8 colonists.
-- New survivors join from expeditions and occasional random events.
+- Start with 7 colonists. The cap is 20, the most seats the airship can have.
+- New survivors join from expeditions. The Clinic, Farmhouse, Hardware Store, and Rail Depot can hold them.
+- Drifters walk in from the dark on the dusk of days 3, 6, and 9 if hope is at least 50 and a bed is free. They join when they reach the light.
 - Death is permanent and is logged with the cause.
 
 ### 6.5 Hope
@@ -191,7 +203,7 @@ A colony wide value from 0 to 100, starting at 60.
 
 ### 7.2 Logistics
 - **Prototype.** Global stockpile limited by total storage capacity. Hauling is abstracted.
-- **Supply Cart.** The survivors arrive with a hand cart of supplies parked by the house. It holds the first 300 storage. Storage Sheds and the Storeroom add more.
+- **Supply Cart.** The survivors arrive with a hand cart of supplies parked by the house. It holds the first 300 storage. Storage Sheds and Shelves add more.
 - **Later milestone.** Colonists physically haul between buildings and storage. Hand carts and simple conveyor lines become a mid game tech. This is where the Factorio flavor grows.
 
 ### 7.3 Production rules
@@ -223,7 +235,7 @@ Costs and numbers are starting values and live in data files.
 | Smelter | 30 planks, 20 stone | 2 | Metal | Yes |
 | Workshop | 40 planks, 30 metal | 2 | Parts | Yes |
 | Heater | 10 metal, 5 parts | 0 | Warmth radius 4, uses fuel | Yes |
-| Airship Dock | 100 planks, 80 metal, 20 parts | 4 | Builds airship components | Yes |
+| Launch Pad | 70 planks, 50 metal, 12 parts | 6 by 6 | Final assembly and launch. Crew work on components here too (section 11.2) | Yes |
 | Lookout Post | 20 wood, 10 planks | 0 | Spots far points of interest as rumors. Upgrades to stage 2 (30 planks, 10 stone) and stage 3 (40 planks, 15 metal) to see further | Yes |
 
 Workers work where the work is. Woodcutters stand at the tree they are chopping, quarry workers at the ruin, salvagers at the rubble, and foragers roam the brush. Cooks, sawyers, smiths, and mechanics work inside their building at its stove, saw, furnace, or bench.
@@ -239,7 +251,7 @@ Workers work where the work is. Woodcutters stand at the tree they are chopping,
 | 2 to 8 seconds | Barricades, traps, walls, gates, posts |
 | 10 to 20 seconds | Tents, sheds, camps, kitchens, heaters, towers |
 | 25 to 40 seconds | Sawmill, smelter, workshop, bunkhouse, rooms |
-| 60 seconds | Airship Dock |
+| 40 seconds | Launch Pad |
 
 ### 8.1 The compound
 The colony grows from the house outward. Rooms grow onto the house. Tents and workshops cluster around it. Walls join into a palisade or stone curtain around the core. Gates let squads out. Watchtowers and lantern posts stand on the walls as defense points. The goal is a compound that looks built by hand over many days.
@@ -258,7 +270,7 @@ The colony grows from the house outward. Rooms grow onto the house. Tents and wo
 | Lamp Post | 10 scrap, 5 metal, 2 parts, 1 fuel per night | 90 | Light radius 6 | Yes |
 | Spike Trap | 10 wood | 80 | Damages enemies that walk over it | Yes |
 | Watchtower | 30 wood | 180 | Two makeshift guns (range 6, damage 12), one per defender. Upgrades to heavy guns (range 8, damage 26) for 20 metal and 5 parts. Reveals fog in radius 8 | Yes |
-| Rooftop Gun Nest | See section 5.5 | 500 | Two heavy guns on the house lot | Yes |
+| Roof Turret | See section 9.8 | 200 | One gun on the roof of a closed room | Yes |
 | Fire Barrel | 10 metal, 3 fuel | 60 | Area burn when triggered | No |
 | Bolt Thrower | 20 metal, 10 parts | 250 | Needs 1 defender, heavy damage, slow | No |
 
@@ -300,13 +312,21 @@ Every colonist fights back against monsters in reach of their weapon, unless the
 | Crossbow | 12 | 5 | 1.4 | 5 planks, 3 metal, 1 part | 25 |
 | Hunting Rifle | 22 | 7 | 1.6 | 8 metal, 4 parts | 40 |
 
-The Armory room crafts the weapon the player picks onto a rack. Colonists swap their weapon for the best spare on the rack.
+The Workbench in the house crafts the weapon the player picks onto a rack. Colonists swap their weapon for the best spare on the rack.
 
 ### 9.7 Shelter and the alarm
-- Every building with room for people is a shelter while it stands: rooms, beds, storage, and production buildings of 2 by 2 or more. Walls, posts, and towers are not.
+- Every building with room for people is a shelter while it stands: beds, storage, indoor furniture, and production buildings of 2 by 2 or more. Walls, posts, and towers are not.
 - A building's Take shelter button sends its workers inside until they are called back.
 - The Alarm button sends every colonist under a roof and every defender to their gun, by day or by night. All clear sends them back to work.
 - A sheltering colonist goes to their own building, then their bed, then the nearest shelter, then the house.
+
+### 9.8 The house as a fortress
+- **Gun ports.** A gun port is a wall piece with a gun. One defender stands just inside and fires through it at night and at the alarm. A Gun Port (4 wood, 6 scrap) fires a makeshift gun. A Heavy Gun Port (4 planks, 6 metal, 2 parts) fires a heavy gun.
+- **Roof Turret.** Goes on the floor of a closed room, under its roof. It costs 20 planks, 15 metal, and 3 parts, takes one defender, and upgrades to a heavy gun like the Watchtower.
+- **Spotlight.** 10 scrap and 3 metal. Lights a radius of 8 at night for 1 fuel, like a lamp post.
+- **Walls under attack.** Breakers smash house walls, doors, and windows. Monsters go where the way in is weakest. A door has the fewest hit points, so it is where they push. Monsters that cannot break buildings wait outside walls.
+- **Strength.** Wood walls have 150 health, reinforced 300, stone 450, and metal 650. Doors have 100 and 300. Windows have 80. Gun ports have 120 and 300.
+- **A broken wall** costs 1 hope, and its room is no longer safe.
 
 ---
 
@@ -364,6 +384,16 @@ The airship is the spine of the run. Its progress is always visible on screen.
 - Colonists board in the final 30 seconds. Anyone not aboard at launch is left behind.
 
 Later versions may offer a rocket or makeshift plane as alternate vehicles with different component sets. The prototype uses the airship only.
+
+### 11.2 The blueprint, the Moot, and the Launch Pad
+The airship is not known at the start. The survivors find a ruined house and make it a home. Then the old owner's story turns up.
+
+1. **The blueprint.** At dawn, once the house is at stage 3 and hope is at least 50, the crew finds a sealed attic. Inside are the old owner's plans for a small balloon craft. The owner never finished it because the monsters came. Nothing airship related can be built before this.
+2. **The Moot.** The crew chooses where the airship will rise. The player picks the Launch Pad site. The pad is 6 by 6 tiles with a ring of open ground around it, and it must be within 18 tiles of the house so the last dash is possible. The chosen ground and its ring are kept free of new buildings and floors.
+3. **Clear the ground.** If buildings already stand in the ring, the player can have colonists take them apart. They bring back 75 percent of the cost.
+4. **Building.** Colonists at a Drafting Table in the house (four workers) and at the Launch Pad both build components. The pad is needed for the launch. A pad in the cold works at half speed, so the table in the warm house is the better bench.
+5. **Seats.** The Frame gives 8 seats. Each Berth Deck (40 planks, 10 parts, 30 seconds, up to 3) adds 4. Anyone without a seat at launch is left behind, so the player chooses who to save.
+6. **The last night.** The crew shelters in the house, fuel loads from the stockpile, and in the final 30 seconds everyone close to the pad boards.
 
 ---
 
@@ -602,6 +632,13 @@ Each milestone must meet its acceptance criteria before the next starts.
 - Rooms are found from the walls. No room can be sealed without a door.
 - **Done when:** the player can paint a floor, wall it in with a door, place a bed, and watch colonists build every piece and then walk through the door to sleep in the bed. The scripted full run still launches the airship by day 10.
 
+### M10.1b: Living in the House
+- Furniture, the evening routine, and the hope bonus (section 5.7). Safe closed rooms.
+- Gun ports, the Roof Turret, the Spotlight, wall upgrades, and monsters breaking house walls (section 9.8).
+- The blueprint, the Moot, the Launch Pad, the Drafting Table, seats, and Berth Decks (section 11.2). Taking buildings apart.
+- Seven starting colonists and drifters (section 6.4).
+- **Done when:** the colony eats, talks, and sleeps in a furnished house at night, a gun port and a roof turret hold a wall, and the airship is built from the blueprint with the Launch Pad on the chosen site. The scripted full run still launches the airship by day 10.
+
 ### Later milestones
 - Physical hauling, hand carts, and conveyor lines.
 - Traits, more enemies, Greenhouse, Fire Barrel, and Bolt Thrower.
@@ -628,8 +665,8 @@ All of these live in `src/data/balance.ts` and are expected to change.
 
 | Value | Start |
 |---|---|
-| Colonists | 8 |
-| Wood | 60 |
+| Colonists | 7 |
+| Wood | 80 |
 | Scrap | 10 |
 | Raw Food | 30 |
 | Meals | 16 |

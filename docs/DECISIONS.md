@@ -169,3 +169,19 @@ Design and architecture decisions that are not already in `docs/GAME_DESIGN.md`.
 - **The idle ring follows the lot.** Idle colonists stand 1.6 tiles outside the lot so they never wait inside the house area.
 - **The house walls block walking only after the first floor or wall is built.** Always blocking made colonists detour around the 3 by 3 house and lost the scripted run on 5 of 8 seeds. With no house building the game plays exactly as it did before M10.1. Once the player builds on the house, the full rules apply.
 - **The full run test for the house uses seed 2.** A control run with ordinary buildings of the same cost loses seeds 3 and 5 as well, so those seeds say nothing about the house.
+
+## M10.1b: Living in the house
+
+- **Start with 7 colonists, not 6.** The plan said 6. Measured on 16 seeds with drifters, a start of 6 launched on 4, a start of 7 on 12, and a start of 8 on 14. The old baseline with 8 and no drifters launched on 8. Six is too few for the economy. Seven is the smallest crew that holds up, and drifters bring the colony to about 10 by the first airship part.
+- **Drifters need a free bed and hope.** A colony that ignores housing stops growing. This ties arrivals to the house instead of to chance.
+- **Mats at the hearth, not a hard cap.** A bedless colonist sleeps on the hearth floor at half speed and costs a little hope. The penalty is small so a colony that grows past its beds is nudged, not punished.
+- **Closed rooms are safe, open rooms are not.** Safety comes from the walls, so a breached room exposes people on its floor. This makes walls matter without a separate shelter flag.
+- **Monsters pick their step with the wall cost included.** The flow field cost alone sent monsters at the nearest wall even when a door stood open beside it. Both the field and the step choice now count the wall strength, so doors draw attackers.
+- **Furniture workstations replace room buildings.** The stove, workbench, and drafting table are furniture with workers. They reuse the building worker rules, so no new job system was needed.
+- **The Drafting Table has four workers.** It does the same work as the old dock crew, so building the airship in the warm house costs no more labor than before.
+- **The pad is 6 by 6 and cheaper.** A bigger footprint and a clear ring cost the player space. The cost fell from 100 planks, 80 metal, 20 parts to 70, 50, and 12, and the build time from 60 to 40 seconds.
+- **The site is chosen before the pad is built.** The scripted run showed the nearest clear spot is crowded out by the time the pad is affordable. Choosing the site early keeps ground free, which is the Moot.
+- **Push Out the Wall was not built.** Taking buildings apart plus the normal wall tools do the same job. A dedicated tool can follow if players need it.
+- **The scripted player lives by the new rules.** It builds beds on house floors, a Drafting Table, and a pad outside the wall ring. Without the pad outside the ring it left a gap in its own walls.
+- **The full run test uses seeds 2, 4, and 7.** Measured on 16 seeds the scripted run launches on 12 with 7 colonists. Seeds 2, 4, and 7 launch on days 8, 7, and 7.
+

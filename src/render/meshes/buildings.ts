@@ -6,7 +6,6 @@ import { DEFENSE } from './buildings/defense';
 import { ESCAPE } from './buildings/escape';
 import { FURNITURE } from './buildings/furniture';
 import type { Builder } from './buildings/parts';
-import { ROOMS } from './buildings/rooms';
 import { SHELTER } from './buildings/shelter';
 import { WORKS } from './buildings/works';
 import { GEO, MAT, part } from './kit';
@@ -17,7 +16,7 @@ import { GEO, MAT, part } from './kit';
 export { WALL_EAST, WALL_NORTH, WALL_SOUTH, WALL_TYPES, WALL_WEST } from './buildings/defense';
 export { createConstructionSite } from './buildings/site';
 
-const BUILD: Record<BuildingType, Builder> = { ...SHELTER, ...ROOMS, ...FURNITURE, ...CAMPS, ...WORKS, ...DEFENSE, ...ESCAPE };
+const BUILD: Record<BuildingType, Builder> = { ...SHELTER, ...FURNITURE, ...CAMPS, ...WORKS, ...DEFENSE, ...ESCAPE };
 
 export function createBuildingMesh(type: BuildingType, w: number, h: number, mask = 0): THREE.Group {
   const g = new THREE.Group();

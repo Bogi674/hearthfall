@@ -1,3 +1,4 @@
+import { GUN_HEAVY, GUN_MAKESHIFT, type Gun } from './buildings';
 import type { Amounts } from './resources';
 
 // The house layer (M10.1): floors, wall edges, doors, and windows built on the house lot around the hearth.
@@ -26,13 +27,15 @@ export const FLOORS: Record<FloorId, FloorDef> = {
 export const FLOOR_IDS = Object.keys(FLOORS) as FloorId[];
 
 /** A wall edge sits between two tiles. A door lets people through. A window lets light through and blocks people. */
-export type EdgeKind = 'wall' | 'door' | 'window';
+export type EdgeKind = 'wall' | 'door' | 'window' | 'gunPort';
 
 export interface EdgeLevel {
   name: string;
   cost: Amounts;
   build: number;
   hp: number;
+  /** A gun port fires this gun when a defender stands at it at night (section 9.8). */
+  gun?: Gun;
 }
 
 export interface EdgeDef {
@@ -60,6 +63,13 @@ export const EDGES: Record<EdgeKind, EdgeDef> = {
   window: {
     name: 'Window',
     levels: [{ name: 'Window', cost: { wood: 3 }, build: 4, hp: 80 }],
+  },
+  gunPort: {
+    name: 'Gun Port',
+    levels: [
+      { name: 'Gun Port', cost: { wood: 4, scrap: 6 }, build: 6, hp: 120, gun: GUN_MAKESHIFT },
+      { name: 'Heavy Gun Port', cost: { planks: 4, metal: 6, parts: 2 }, build: 9, hp: 300, gun: GUN_HEAVY },
+    ],
   },
 };
 export const EDGE_KINDS = Object.keys(EDGES) as EdgeKind[];

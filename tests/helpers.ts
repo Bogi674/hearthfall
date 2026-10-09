@@ -1,4 +1,5 @@
 import { BUILDINGS, type BuildingType } from '../src/data/buildings';
+import { EDGES } from '../src/data/house';
 import { RECIPES } from '../src/data/recipes';
 import { placementError } from '../src/sim/placement';
 import { DAY_SECONDS } from '../src/sim/query';
@@ -53,6 +54,35 @@ export function finish(world: World): void {
     [b.construct, b.status] = [0, 'ok'];
     world.buildRev++;
   }
+  for (const piece of [...world.house.floors, ...world.house.edges]) {
+    if (piece.construct <= 0) continue;
+    piece.construct = 0;
+    world.buildRev++;
+  }
+  for (const e of world.house.edges) {
+    if (!e.pending) continue;
+    [e.kind, e.level, e.pending] = [e.pending.kind, e.pending.level, null];
+    e.hp = EDGES[e.kind].levels[e.level - 1].hp;
+    world.buildRev++;
+  }
+}
+
+/**
+ * A closed two tile room east of the house: floors, walls on the north, south, and east, and a door in
+ * the house wall on the west. It holds one 1 by 2 piece of furniture, or a 2 by 1 piece laid on its side.
+ * The hearth tiles are hearth.x and the two floor tiles are hearth.x + 2 on rows hearth.y and hearth.y + 1.
+ */
+export function closedRoom(world: World): void {
+  const { x, y } = world.hearth;
+  const cmd = (c: World['commands'][number]) => world.commands.push(c);
+  for (const dy of [0, 1]) cmd({ type: 'paintFloor', x: x + 2, y: y + dy, kind: 'boards' });
+  stepWorld(world);
+  cmd({ type: 'buildEdge', x: x + 2, y, side: 'w', kind: 'door', level: 1 });
+  cmd({ type: 'buildEdge', x: x + 2, y, side: 'n', kind: 'wall', level: 1 });
+  cmd({ type: 'buildEdge', x: x + 2, y: y + 2, side: 'n', kind: 'wall', level: 1 });
+  for (const dy of [0, 1]) cmd({ type: 'buildEdge', x: x + 3, y: y + dy, side: 'w', kind: 'wall', level: 1 });
+  stepWorld(world);
+  finish(world);
 }
 
 /** Runs the world for whole days, calling the player once per simulated second. */

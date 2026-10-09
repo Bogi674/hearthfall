@@ -4,7 +4,7 @@ import { BALANCE } from '../data/balance';
 import { type BuildingType } from '../data/buildings';
 import { ENEMIES, ENEMY_TYPES } from '../data/enemies';
 import { RESOURCE_NAMES, RESOURCES } from '../data/resources';
-import { COMPONENT_IDS, type ComponentId } from '../data/vehicle';
+import { COMPONENT_IDS, PAD, type ComponentId } from '../data/vehicle';
 import type { WeaponId } from '../data/weapons';
 import type { SlotId } from '../save/save';
 import { pushCommand } from '../sim/commands';
@@ -131,6 +131,12 @@ export function createHud(root: HTMLElement, state: UiState, world: () => World,
       actions.settingsChanged();
     }
     if (act === 'component') pushCommand(world().commands, { type: 'buildComponent', component: arg as ComponentId });
+    if (act === 'berth') pushCommand(world().commands, { type: 'buildBerth' });
+    if (act === 'salvage') pushCommand(world().commands, { type: 'salvage', id: Number(arg) });
+    if (act === 'clearpad' && world().airship.site) {
+      const { x, y } = world().airship.site!;
+      pushCommand(world().commands, { type: 'clearArea', x: x - PAD.apron, y: y - PAD.apron, w: PAD.size + 2 * PAD.apron, h: PAD.size + 2 * PAD.apron });
+    }
     if (act === 'launch') pushCommand(world().commands, { type: 'launch' });
     if (act === 'upgrade') pushCommand(world().commands, { type: 'upgradeHearth' });
     if (act === 'stage') pushCommand(world().commands, { type: 'upgradeBuilding', id: Number(arg) });

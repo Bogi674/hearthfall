@@ -4,11 +4,15 @@ Bugs, shortcuts, and loose ends that are known but not fixed yet.
 
 ## Open
 
-- **M10.1a.** The scripted full run is fragile. Without a house it launches on 6 of 8 seeds (2, 3, 5, 6, 7, 8). Spending about 50 wood and a few builder minutes on anything, a house or three ordinary buildings alike, makes seeds 3 and 5 lose to the night 9 or 10 raid. This was measured with a control run. The game tests seed 2 with a house. The bot, not the house, is the weak point.
+- **M10.1b.** The scripted full run launches on 12 of 16 seeds with 7 colonists, and on 14 of 16 with 8. The old baseline launched on 8 of 16. Seeds 1, 5, 8, and 14 lose to the night 9 or 10 raid. The test checks seeds 2, 4, and 7.
+- **M10.1b.** The scripted run is sensitive to timing around the day boundary. Being ready 0.3 days later can mean launching into the next night's bigger raid. A change that looks small in one seed can flip it.
+- **M10.1b.** Colonists at tables and sofas stand on their tiles with the normal stand pose. There is no sitting or eating animation yet.
+- **M10.1b.** Drifters are not drawn and monsters ignore them. A drifter appears as a colonist when they reach the light.
+- **M10.1b.** The roof of a closed room is not drawn, so roof turrets and gun port defenders show as people standing on the floor.
+- **M10.1b.** There is no tool for moving a wall outward. Players place new walls and take the old ones apart.
+- **M10.1b.** Salvaging a building keeps its workers at their jobs until the work is done.
 - **M10.1a.** Until the player builds a floor or wall, the Hearth House does not block walking, so a colony that never builds on the house plays exactly as before. Once any floor or wall exists, the house walls and front door block and route colonists.
 - **M10.1a.** Furniture does not block walking. Colonists walk through beds and shelves.
-- **M10.1a.** House walls do not affect monsters yet. They ignore house edges and the flow field does not count them. Wall hit points are stored but unused. This arrives in M10.1b.
-- **M10.1a.** The old M8 rooms (Bedroom, Storeroom, House Kitchen, Infirmary, Armory, Rooftop Gun Nest) still exist beside the new floors. M10.1b replaces them with furniture.
 - **M10.1a.** A trip is planned as a straight walk when no route exists, for example a colonist standing inside a tile that was walled in by a save from a bug. The colonist then walks through walls instead of getting stuck.
 - **M10.1a.** Walls are drawn as plain blocks with no roof, cutaway, or corner posts. Floor sites count as floors for furniture placement before they are finished.
 - **M10.1a.** Stage 2 and above of the house grow the lot, but outside buildings may still be placed on the grown lot tiles that are not floors. They then block the lot from growing there.
@@ -64,7 +68,7 @@ Bugs, shortcuts, and loose ends that are known but not fixed yet.
 - Hunters stop at walls and wait. They do not look for gates or gaps, and they leave at dawn.
 - A raid can reach a worker before the player sees it, since monsters in the fog are not drawn.
 - Builders and workers still walk in straight lines through walls and buildings.
-- Colonists inside house rooms and sheltering colonists are hidden. There is no indoor view.
+- Sleeping and sheltering colonists are hidden. There is no indoor view, since house walls are low and roofs are not drawn.
 - Tower guards stand at a fixed height on the platform. If a tower model changes height, the guard height in `src/render/colonists.ts` must change too.
 - Weapons have no attack animation. Colonists fight while standing in their work pose.
 - The bot does not use the alarm. In tests the alarm cost more work time than the few raiders cost lives.

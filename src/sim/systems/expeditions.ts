@@ -85,7 +85,7 @@ function roll(world: World, ex: Expedition): void {
     ex.items.push(def.rare);
     addLog(world, `${finder.name} found a ${ITEMS[def.rare]}.`, ex);
   }
-  if (def.survivors && chance(world.rng, def.survivors * factor)) {
+  if (def.survivors && chance(world.rng, def.survivors * factor) && world.colonists.length + ex.recruits < BALANCE.arrivals.maxColonists) {
     ex.recruits++;
     addLog(world, `${finder.name} found a survivor at the ${def.name}.`, ex);
   }
