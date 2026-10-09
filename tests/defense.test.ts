@@ -1,3 +1,4 @@
+import { BALANCE } from '../src/data/balance';
 import { describe, expect, it } from 'vitest';
 import { ENEMIES } from '../src/data/enemies';
 import { placeBuilding, placementError } from '../src/sim/placement';
@@ -32,9 +33,12 @@ const placeAll = (w: World, type: 'woodenBarricade' | 'spikeTrap', tiles: [numbe
 describe('waves', () => {
   it('follows the threat formula with a Blood Moon every fifth night', () => {
     expect(nightThreat(1)).toBe(0);
-    expect(nightThreat(2)).toBe(13);
-    expect(nightThreat(5)).toBe(60);
-    expect(nightThreat(8)).toBe(70);
+    const { base, growth, bloodMoonMultiplier } = BALANCE.waves;
+    expect(nightThreat(2)).toBe(Math.round(base * growth));
+    expect(nightThreat(5)).toBe(Math.round(base * growth ** 4 * bloodMoonMultiplier));
+    expect(nightThreat(8)).toBe(Math.round(base * growth ** 7));
+    // A Blood Moon is worse than the night after it.
+    expect(nightThreat(5)).toBeGreaterThan(nightThreat(6));
   });
 
   it('spends threat only on enemies unlocked by that night', () => {

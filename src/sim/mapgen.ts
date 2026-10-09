@@ -26,7 +26,22 @@ export function generateMap(rng: RngState): GeneratedMap {
   placeStreetRubble(map, rng);
   clearAround(map, hx, hy, CFG.clearingRadius);
 
-  return { map, hearth: { x: hx, y: hy }, pois: placePois(map, rng, hx, hy) };
+  const pois = placePois(map, rng, hx, hy);
+  placeYard(map, rng, hx, hy);
+  return { map, hearth: { x: hx, y: hy }, pois };
+}
+
+/**
+ * The old owner's paddock: an open square of ground near the house, in a random one of the eight directions.
+ * Trees, ruins, and rubble are cleared from it, so the launch pad (section 11.2) always has room on every map.
+ */
+function placeYard(map: MapState, rng: RngState, hx: number, hy: number): void {
+  const a = (nextInt(rng, 0, 7) * Math.PI) / 4;
+  const [cx, cy] = [Math.round(hx + Math.cos(a) * CFG.yard.distance), Math.round(hy + Math.sin(a) * CFG.yard.distance)];
+  const half = Math.floor(CFG.yard.size / 2);
+  for (let y = cy - half; y < cy - half + CFG.yard.size; y++) {
+    for (let x = cx - half; x < cx - half + CFG.yard.size; x++) if (inBounds(map, x, y)) setTile(map, x, y, Tile.Ground);
+  }
 }
 
 /** One POI of each type at its design distance, in a random direction, on a small cleared lot. */

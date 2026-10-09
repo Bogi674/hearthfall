@@ -39,6 +39,8 @@ export const BALANCE = {
     pondRadius: [3, 5],
     forestNoiseScale: 9,
     /** Trees start to thicken this far from the hearth and reach full density this many tiles later. */
+    /** The paddock beside the house that is always open ground (section 4). Size is in tiles, distance from the hearth. */
+    yard: { size: 10, distance: 11 },
     forestStart: 17,
     forestRamp: 40,
   },
@@ -102,9 +104,11 @@ export const BALANCE = {
   /** Section 9.5. Threat for night n is base * growth^(n - 1), rounded. */
   waves: {
     base: 10,
-    growth: 1.32,
+    growth: 1.2,
     firstNight: 2,
     bloodMoonEvery: 5,
+    /** Threat on a Blood Moon night is this many times the normal threat. */
+    bloodMoonMultiplier: 1.6,
     /** Spawns are spread over the first part of the night. */
     spawnSeconds: 90,
     /** Spawn edges grow by one every this many nights, up to 4. */

@@ -61,6 +61,7 @@ Time controls are pause, 1x, 2x, and 3x. The game auto pauses on dusk start in t
 
 - **Grid.** Square tiles of 1 world unit. The map is 128 by 128 tiles.
 - **Generation.** Seed based and deterministic. The same seed always produces the same map.
+- **The paddock.** An open 10 by 10 square of ground sits about 11 tiles from the house, in a random one of the eight directions. It is the old owner's launch field and keeps room for the launch pad on every map (section 11.2).
 - **Layout.** The hearth sits in a central clearing. Around it are ruined houses, streets, trees, rubble, and a few points of interest at increasing distance and danger. The forest starts to thicken about 17 tiles out, so the first gathering spots stay close. The nearest point of interest is 24 tiles away and the farthest is 54.
 - **Tile types.** Ground, road, tree, rubble, ruin wall, water, and blocked.
 - **Resource nodes.** Trees yield wood. Rubble yields scrap. Some ruins yield stone. Nodes deplete.
@@ -296,8 +297,8 @@ Colonists can be assigned to night duty at watchtowers and gun nests. Each defen
 - The others cannot hurt buildings. They hunt people out in the open within 10 tiles, and wait at walls they cannot pass.
 
 ### 9.5 Wave formula
-- Threat points for night `n` equal `10 * 1.32^(n - 1)`, rounded.
-- Every fifth night is a Blood Moon with double threat points.
+- Threat points for night `n` equal `10 * 1.2^(n - 1)`, rounded.
+- Every fifth night is a Blood Moon with 1.6 times the threat points.
 - Points are spent on enemy types unlocked by that night: Runners from night 3, Brutes from night 6.
 - The forecast panel shows threat level, active spawn edges, and enemy types for the next night at dawn, and exact counts at dusk.
 - From day 3 a small raid prowls in two minutes into the day, worth a quarter of the coming night's threat, made of Shamblers and Runners only. It comes from the first active edge and stays until it is killed or dawn comes.
@@ -389,11 +390,11 @@ Later versions may offer a rocket or makeshift plane as alternate vehicles with 
 The airship is not known at the start. The survivors find a ruined house and make it a home. Then the old owner's story turns up.
 
 1. **The blueprint.** At dawn, once the house is at stage 3 and hope is at least 50, the crew finds a sealed attic. Inside are the old owner's plans for a small balloon craft. The owner never finished it because the monsters came. Nothing airship related can be built before this.
-2. **The Moot.** The crew chooses where the airship will rise. The player picks the Launch Pad site. The pad is 6 by 6 tiles with a ring of open ground around it, and it must be within 18 tiles of the house so the last dash is possible. The chosen ground and its ring are kept free of new buildings and floors.
+2. **The Moot.** The crew chooses where the airship will rise. The old owner's paddock (section 4) always has room. The player picks the Launch Pad site. The pad is 6 by 6 tiles with a ring of open ground around it, and it must be within 18 tiles of the house so the last dash is possible. The chosen ground and its ring are kept free of new buildings and floors.
 3. **Clear the ground.** If buildings already stand in the ring, the player can have colonists take them apart. They bring back 75 percent of the cost.
 4. **Building.** Colonists at a Drafting Table in the house (four workers) and at the Launch Pad both build components. The pad is needed for the launch. A pad in the cold works at half speed, so the table in the warm house is the better bench.
 5. **Seats.** The Frame gives 8 seats. Each Berth Deck (40 planks, 10 parts, 30 seconds, up to 3) adds 4. Anyone without a seat at launch is left behind, so the player chooses who to save.
-6. **The last night.** The crew shelters in the house, fuel loads from the stockpile, and in the final 30 seconds everyone close to the pad boards.
+6. **The last night.** The crew shelters in the house, fuel loads from the stockpile, and in the final 30 seconds everyone close to the pad boards. Loading leaves enough fuel in the stockpile to keep the hearth burning for 90 seconds. If there is less, the launch waits for more fuel.
 
 ---
 

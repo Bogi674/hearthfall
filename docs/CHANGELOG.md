@@ -2,6 +2,13 @@
 
 Newest entries first. Each entry names the milestone it belongs to.
 
+## 2026-10-09 (Balance pass 1: a run that is hard to lose by accident)
+
+- **Gentler waves.** Threat for night n is now `10 * 1.2^(n - 1)` and a Blood Moon is 1.6 times, down from 1.32 and 2 times. The old curve reached 240 threat on the night 10 Blood Moon, so a delay of half a day flipped a run. The scripted player now launches on 24 of 24 seeds, and on 24 of 24 when it skips half of its turns.
+- **A paddock on every map.** An open 10 by 10 square sits about 11 tiles from the house. One seed had no open ground for the launch pad, so the run could not be finished.
+- **The hearth is not starved by the launch.** Loading fuel into the airship now leaves 90 seconds of hearth fuel in the stockpile. Before, loading could empty it and lose the run on the last night.
+- New tests for the paddock on 30 maps, the threat numbers, and the fuel reserve.
+
 ## 2026-10-09 (M10.1c: The House You Can See)
 
 - **The house in the scene.** Closed rooms have a snow covered roof. Holding Tab, holding a house tool, or selecting a piece of the house fades the roofs so the people inside can be seen. Doors slide open when someone is close. Gun ports show a slit and a barrel. Damaged walls darken and show a health bar. A drifter is drawn walking in from the dark.

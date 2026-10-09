@@ -38,3 +38,20 @@ describe('mapgen', () => {
     }
   });
 });
+
+describe('the paddock (section 4)', () => {
+  it('every map has an open square beside the house for the launch pad', () => {
+    const { size, distance } = BALANCE.map.yard;
+    for (let seed = 1; seed <= 30; seed++) {
+      const { map, hearth } = generateMap(createRng(seed));
+      let found = false;
+      for (let a = 0; a < 8 && !found; a++) {
+        const cx = Math.round(hearth.x + Math.cos((a * Math.PI) / 4) * distance);
+        const cy = Math.round(hearth.y + Math.sin((a * Math.PI) / 4) * distance);
+        const half = Math.floor(size / 2);
+        found = Array.from({ length: size * size }, (_, i) => getTile(map, cx - half + (i % size), cy - half + Math.floor(i / size))).every((t) => t === Tile.Ground);
+      }
+      expect(found).toBe(true);
+    }
+  });
+});

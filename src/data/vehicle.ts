@@ -44,6 +44,8 @@ export const LAST_NIGHT = {
   seconds: 180,
   threatMultiplier: 3,
   boardSeconds: 30,
+  /** Loading leaves enough fuel in the stockpile to keep the hearth burning this many seconds. */
+  hearthReserveSeconds: 90,
   /** Colonists this close to the dock center at launch are aboard. */
   boardRadius: 4.5,
 };

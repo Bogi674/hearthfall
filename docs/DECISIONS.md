@@ -195,3 +195,10 @@ Design and architecture decisions that are not already in `docs/GAME_DESIGN.md`.
 - **The Launch Pad lists its first blocking reason.** The blueprint and the site come before the cost, since resources do not help until those are done.
 - **Dev builds expose `project` and `ui`.** Browser scripts use them to point at a tile and to read the selection. Production builds do not.
 
+## Balance pass 1
+
+- **The threat curve is 1.2 with a 1.6 Blood Moon.** Measured on 24 seeds with the scripted player: 1.2 won 24 and lost 0.04 colonists a run, 1.26 won 22 and lost 0.17, and the old 1.32 won 16 and lost 0.21. The steep curve made the run depend on being half a day faster. At 1.2 a day of delay still wins and the nights still hurt, since the hearth falls to about 70 percent at its worst.
+- **The paddock is part of the map, not a rule.** Rather than letting the pad ignore trees, the map always has open ground for it. The pad still needs the player to choose where and to clear the ring.
+- **Loading fuel keeps a hearth reserve.** A loss because the airship drank the fuel the hearth needed felt unfair. The launch now waits for more fuel instead.
+- **Skipping turns does not stress the scripted player.** The player is paced by the economy, not by how often it acts, so a test that skips turns says little. Wave strength and delays do.
+

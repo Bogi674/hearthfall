@@ -123,6 +123,21 @@ describe('The Last Night', () => {
     expect(launchError(w)).toBe('Build every component first');
   });
 
+  it('loading fuel leaves enough in the stockpile to keep the hearth burning', () => {
+    const w = readyColony();
+    w.stock.fuel = 205;
+    w.commands.push({ type: 'launch' });
+    seconds(w, 150, () => {
+      w.enemies.length = 0;
+    });
+    const reserve = (BALANCE.hearth.levels[w.hearth.level - 1].fuelPerMinute / 60) * LAST_NIGHT.hearthReserveSeconds;
+    // The airship takes only what is above the reserve, so the hearth never starves and the launch waits for more fuel.
+    expect(w.airship.launch!.fuel).toBeLessThan(LAST_NIGHT.fuel);
+    expect(w.stock.fuel).toBeGreaterThan(reserve - 3);
+    expect(w.hearth.lit).toBe(true);
+    expect(w.lost).toBeNull();
+  });
+
   it('brings the final horde with the Horde Mother, loads fuel, boards, and launches', () => {
     const w = readyColony();
     w.stock.fuel = 250;

@@ -50,7 +50,9 @@ export function vehicleSystem(world: World, dt: number): void {
     return;
   }
   launch.elapsed += dt;
-  const load = Math.min(world.stock.fuel, (LAST_NIGHT.fuel / LAST_NIGHT.seconds) * dt, LAST_NIGHT.fuel - launch.fuel);
+  // The hearth must not starve while the airship drinks, so some fuel stays in the stockpile.
+  const reserve = (BALANCE.hearth.levels[world.hearth.level - 1].fuelPerMinute / 60) * LAST_NIGHT.hearthReserveSeconds;
+  const load = Math.max(0, Math.min(world.stock.fuel - reserve, (LAST_NIGHT.fuel / LAST_NIGHT.seconds) * dt, LAST_NIGHT.fuel - launch.fuel));
   world.stock.fuel -= load;
   launch.fuel += load;
   if (launch.elapsed < LAST_NIGHT.seconds || launch.fuel < LAST_NIGHT.fuel) return;

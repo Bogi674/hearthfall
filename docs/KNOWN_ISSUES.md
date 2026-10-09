@@ -4,8 +4,7 @@ Bugs, shortcuts, and loose ends that are known but not fixed yet.
 
 ## Open
 
-- **M10.1b.** The scripted full run launches on 12 of 16 seeds with 7 colonists, and on 14 of 16 with 8. The old baseline launched on 8 of 16. Seeds 1, 5, 8, and 14 lose to the night 9 or 10 raid. The test checks seeds 2, 4, and 7.
-- **M10.1b.** The scripted run is sensitive to timing around the day boundary. Being ready 0.3 days later can mean launching into the next night's bigger raid. A change that looks small in one seed can flip it.
+- **Balance pass 1.** The scripted full run launches on 24 of 24 seeds, mostly between days 7 and 10. The test checks seeds 2, 4, and 7.
 - **M10.1b.** Colonists at tables and sofas stand on their tiles with the normal stand pose. There is no sitting or eating animation yet.
 - **M10.1b.** Drifters are not drawn and monsters ignore them. A drifter appears as a colonist when they reach the light.
 - **M10.1c.** Roof turrets stand on a raised deck where the roof is open, and their defender stands on it, not on the roof.
@@ -52,8 +51,6 @@ Bugs, shortcuts, and loose ends that are known but not fixed yet.
 - A Lookout Post only spots places. It does not reveal monsters or terrain beyond its small reveal radius.
 - Loot that does not fit in storage when a squad returns is lost. The return message only lists what was kept.
 - Colonists away on expeditions still eat from the stockpile, since hauling is abstracted.
-- **Design conflict.** The threat formula `10 * 1.32^(n - 1)` gives about 10000 threat on night 26, where the run arc in section 3.3 puts the late game. Only a launch around day 8 to 10 is survivable now. The full game arc needs a different curve or a cap.
-- The scripted full run launches by day 9 on seeds 2, 3, 5, and 6. On seeds 1 and 4 it ends one airship part short and loses to the night 10 Blood Moon. The test checks seeds 2, 3, and 5 to keep the test time down.
 - The Last Night always starts at the start of a night, even when launched by day.
 - The airship model is placeholder boxes and a sphere, and the launch climb is a simple render animation.
 - Desertion is recorded in the list of the dead with the cause "deserted the colony".
