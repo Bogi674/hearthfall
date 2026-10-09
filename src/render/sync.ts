@@ -18,7 +18,7 @@ import { colonistFigures } from './colonists';
 import { createFigureSet } from './meshes/figures';
 import { PERSON_RIG } from './meshes/people';
 import { createHearthMesh } from './meshes/hearth';
-import { createHouseView } from './houseView';
+import { createHouseView, type HouseLook } from './houseView';
 import { buildProps, colorPropsByWarmth } from './meshes/props';
 import { createPoiMesh } from './meshes/pois';
 import { createSnow } from './meshes/snow';
@@ -34,8 +34,8 @@ function frostForDay(day: number): number {
 }
 
 export interface WorldView {
-  /** With cutaway the roofs fade so the people inside the house can be seen. */
-  update(world: World, time: number, alpha: number, pixelsPerUnit: number, camera: THREE.Camera, cutaway: boolean): void;
+  /** The look says how much of the walls and roofs to draw so the people inside the house can be seen. */
+  update(world: World, time: number, alpha: number, pixelsPerUnit: number, camera: THREE.Camera, look: HouseLook): void;
 }
 
 export function createWorldView(world: World, view: Pick<View, 'scene' | 'fog' | 'lights' | 'renderer'>): WorldView {
@@ -113,7 +113,7 @@ export function createWorldView(world: World, view: Pick<View, 'scene' | 'fog' |
   let revealRev = -1;
 
   return {
-    update(w, time, alpha, pixelsPerUnit, camera, cutaway) {
+    update(w, time, alpha, pixelsPerUnit, camera, look) {
       if (w.mapRev !== mapRev) {
         mapRev = w.mapRev;
         for (const p of props) {
@@ -155,7 +155,8 @@ export function createWorldView(world: World, view: Pick<View, 'scene' | 'fog' |
       hearthLight.visible = w.hearth.lit;
       hearthLight.intensity = baseIntensity * (1 + Math.sin(time * 11) * 0.05 + Math.sin(time * 27) * 0.03);
 
-      houseView.update(w, time, cutaway);
+      camera.getWorldDirection(viewDir);
+      houseView.update(w, time, look, { x: -viewDir.x, z: -viewDir.z });
       const alive = new Set<number>();
       const wallAt = new Set(w.buildings.filter((b) => WALL_TYPES.includes(b.type)).map((b) => b.y * width + b.x));
       for (const b of w.buildings) {

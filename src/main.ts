@@ -3,6 +3,7 @@ import { createAudio } from './audio/audio';
 import { bindCameraControls } from './input/cameraControls';
 import { bindPointer } from './input/pointer';
 import { targetOf } from './input/pick';
+import type { HouseLook, WallMode } from './render/houseView';
 import { createInteraction } from './render/interaction';
 import { createView } from './render/scene';
 import { createWorldView } from './render/sync';
@@ -57,7 +58,7 @@ const worldView = createWorldView(world, view);
 const controls = bindCameraControls(view.rig, view.renderer.domElement);
 const audio = createAudio();
 const state: UiState = {
-  placing: null, tool: null, rotated: false, cutaway: false, rooms: false, selected: null, speed: 1, paused: false, buildOpen: true,
+  placing: null, tool: null, rotated: false, walls: 'up', peek: false, rooms: false, selected: null, speed: 1, paused: false, buildOpen: true,
   buildCat: 'Shelter', tab: 'colonists', poi: null, squad: [], menu: false,
   // The page opens on the title screen. A new game opens with the story. A loaded save goes straight back to the game.
   title: !start.loaded && !params.has('play'),
@@ -92,8 +93,12 @@ const hud = createHud(document.body, state, () => world, {
   settingsChanged: () => storeSettings(settings),
 });
 const labels = createLabels(document.body);
-/** The roofs fade while the player holds Tab, builds in the house, or has a house piece selected. */
-const showInside = (s: UiState) => s.cutaway || s.tool !== null || (s.placing !== null && !!BUILDINGS[s.placing].furniture) || (typeof s.selected === 'number' && inHouse(world, s.selected));
+/** The house opens up while the player holds Tab, builds in the house, or has a house piece selected. */
+const showInside = (s: UiState) => s.tool !== null || (s.placing !== null && !!BUILDINGS[s.placing].furniture) || (typeof s.selected === 'number' && inHouse(world, s.selected));
+const houseLook = (s: UiState): HouseLook => {
+  const walls: WallMode = s.peek ? 'down' : showInside(s) && s.walls === 'up' ? 'cut' : s.walls;
+  return { walls, roofs: walls === 'up' };
+};
 const interaction = createInteraction(view.scene);
 const pointer = bindPointer(view.renderer.domElement, view.rig.camera, view.scene, state, () => world, interaction);
 
@@ -143,7 +148,7 @@ function frame(now: number): void {
   controls.update(dt);
   view.rig.update(dt);
   pointer.update(world);
-  worldView.update(world, time, result.alpha, view.rig.pixelsPerUnit(view.renderer.domElement.height), view.rig.camera, showInside(state));
+  worldView.update(world, time, result.alpha, view.rig.pixelsPerUnit(view.renderer.domElement.height), view.rig.camera, houseLook(state));
   interaction.update(world, time, pointer.hover, state.selected === null ? null : targetOf(world, state.selected));
   labels.update(world, view.rig.camera, pointer, state.rooms || state.tool !== null);
   audio.update(world, Math.hypot(view.rig.target.x, view.rig.target.z), settings.volume);

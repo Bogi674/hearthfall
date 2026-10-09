@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { BUILDINGS } from '../data/buildings';
 import { EDGES, FLOORS } from '../data/house';
-import { floorAt, houseRooms, isHearthTile } from '../sim/house';
+import { floorAt, flanks, houseRooms, isHearthTile } from '../sim/house';
 import type { World } from '../sim/world';
 import { mixPalette, PALETTE } from './materials';
 
@@ -43,9 +43,19 @@ function instanced(geometry: THREE.BufferGeometry, material: THREE.Material, sha
   return mesh;
 }
 
+/** Sims style wall display: all walls up, only the back walls up, or every wall cut low (M11). */
+export type WallMode = 'up' | 'cut' | 'down';
+export interface HouseLook {
+  walls: WallMode;
+  roofs: boolean;
+}
+
+/** Height share of a wall that is cut down. It stays as a low sill so the plan of the house still reads. */
+const LOW = 0.26;
+
 export interface HouseView {
-  /** Draws the house. With cutaway the roofs fade so the people inside can be seen. */
-  update(world: World, time: number, cutaway: boolean): void;
+  /** Draws the house. The camera direction is the horizontal vector from the scene toward the camera. */
+  update(world: World, time: number, look: HouseLook, cam: { x: number; z: number }): void;
 }
 
 export function createHouseView(scene: THREE.Scene): HouseView {
@@ -68,6 +78,8 @@ export function createHouseView(scene: THREE.Scene): HouseView {
   const glow = new THREE.Color();
   const roof = new THREE.Color();
   const open = new Map<number, number>();
+  /** Eased height share of each wall piece, so walls sink and rise instead of snapping. */
+  const cut = new Map<number, number>();
   let roofOpacity = 1;
   let lastTime = 0;
 
@@ -80,7 +92,7 @@ export function createHouseView(scene: THREE.Scene): HouseView {
   };
 
   return {
-    update(w, time, cutaway) {
+    update(w, time, look, cam) {
       const dt = Math.min(0.1, Math.max(0, time - lastTime));
       lastTime = time;
       const ox = w.map.width / 2;
@@ -94,7 +106,16 @@ export function createHouseView(scene: THREE.Scene): HouseView {
 
       for (const e of w.house.edges) {
         const level = EDGES[e.kind].levels[e.level - 1];
-        const rise = e.construct > 0 ? 0.08 + 0.92 * (1 - e.construct / level.build) : 1;
+        // A back wall has floor on the camera side and none behind it. In the cut view only those stay up.
+        const [near, far] = flanks(e.x, e.y, e.side);
+        const camSide = e.side === 'n' ? cam.z > 0 : cam.x > 0;
+        const [a, b] = camSide ? [near, far] : [far, near];
+        const covered = (t: [number, number]) => isHearthTile(w, t[0], t[1]) || floorAt(w, t[0], t[1]) !== undefined;
+        const back = covered(a) && !covered(b);
+        const target = look.walls === 'up' || (look.walls === 'cut' && back) ? 1 : LOW;
+        const eased = (cut.get(e.id) ?? target) + (target - (cut.get(e.id) ?? target)) * Math.min(1, dt * 9);
+        cut.set(e.id, eased);
+        const rise = (e.construct > 0 ? 0.08 + 0.92 * (1 - e.construct / level.build) : 1) * eased;
         const x = e.side === 'w' ? e.x - 0.5 - ox : e.x - ox;
         const z = e.side === 'n' ? e.y - 0.5 - oy : e.y - oy;
         const along = e.side === 'n' ? 'x' : 'z';
@@ -144,7 +165,7 @@ export function createHouseView(scene: THREE.Scene): HouseView {
           put(roofs, tx - ox, WALL_HEIGHT, ty - oy, 1.08, ROOF_THICK, 1.08, roof);
         }
       }
-      roofOpacity += ((cutaway ? 0 : 1) - roofOpacity) * Math.min(1, dt * 8);
+      roofOpacity += ((look.roofs ? 1 : 0) - roofOpacity) * Math.min(1, dt * 8);
       roofMat.opacity = Math.max(0, Math.min(1, roofOpacity));
       roofMat.depthWrite = roofOpacity > 0.98;
       roofs.visible = roofOpacity > 0.02;

@@ -7,6 +7,7 @@ import type { EdgeKind } from '../data/house';
 import { RESOURCE_NAMES, RESOURCES } from '../data/resources';
 import { COMPONENT_IDS, PAD, type ComponentId } from '../data/vehicle';
 import type { WeaponId } from '../data/weapons';
+import type { WallMode } from '../render/houseView';
 import type { SlotId } from '../save/save';
 import { pushCommand } from '../sim/commands';
 import { capacity, currentPhase, fuelFactor, stockTotal } from '../sim/query';
@@ -24,8 +25,10 @@ export interface UiState {
   /** The house tool in hand: a floor, a wall, a door, a window, or remove. */
   tool: HouseTool | null;
   rotated: boolean;
-  /** Roofs fade so the people inside the house can be seen. Held with Tab (section 12.6). */
-  cutaway: boolean;
+  /** Wall display: all walls up, only the back walls, or every wall cut low. Cycled with V (section 12.6). */
+  walls: WallMode;
+  /** Held with Tab to look inside with every wall cut down. */
+  peek: boolean;
   /** Names and warnings are drawn over the rooms of the house. Toggled with H. */
   rooms: boolean;
   selected: number | 'hearth' | null;
@@ -64,6 +67,9 @@ export interface HudActions {
   settingsChanged(): void;
 }
 
+export const WALL_MODES: WallMode[] = ['up', 'cut', 'down'];
+const WALL_NAMES: Record<WallMode, string> = { up: 'Walls up', cut: 'Walls cut', down: 'Walls down' };
+
 const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
 export function createHud(root: HTMLElement, state: UiState, world: () => World, actions: HudActions): { update(): void; say(text: string): void } {
@@ -93,6 +99,7 @@ export function createHud(root: HTMLElement, state: UiState, world: () => World,
     if (act === 'build') [state.placing, state.tool] = [state.placing === arg ? null : (arg as BuildingType), null];
     if (act === 'tool') [state.tool, state.placing] = [state.tool && arg === toolIdOf(state.tool) ? null : parseTool(arg), null];
     if (act === 'rotate') state.rotated = !state.rotated;
+    if (act === 'walls') state.walls = WALL_MODES[(WALL_MODES.indexOf(state.walls) + 1) % WALL_MODES.length];
     if (act === 'edge') {
       const e = world().house.edges.find((o) => o.id === Number(arg));
       if (e) pushCommand(world().commands, { type: 'buildEdge', x: e.x, y: e.y, side: e.side, kind: arg2 as EdgeKind, level: Number(t.dataset.act!.split(':')[3]) });
@@ -179,7 +186,8 @@ export function createHud(root: HTMLElement, state: UiState, world: () => World,
          <span>Storage ${Math.floor(stockTotal(w))}/${capacity(w)}</span>${hearth}`,
       );
       const alarm = `<button data-act="alarm" class="${w.alarm ? 'alarm on' : 'alarm'}" title="Workers take shelter and defenders man the guns">${w.alarm ? 'All clear' : 'Alarm'}</button>`;
-      set('controls', `${alarm}${speeds}<button data-act="menu">Menu</button>`);
+      const wallsButton = `<button data-act="walls" title="Walls up, back walls only, or all walls cut low (V)">${WALL_NAMES[state.walls]}</button>`;
+      set('controls', `${alarm}${speeds}${wallsButton}<button data-act="menu">Menu</button>`);
       set('build', state.buildOpen ? buildMenuHtml(w, state.buildCat, state.placing, state.tool, state.rotated) : '');
 
       set('forecast', forecastHtml(w));

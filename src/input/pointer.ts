@@ -9,7 +9,7 @@ import type { World } from '../sim/world';
 import { createBuildingGhost } from '../render/ghost';
 import { createGhost, GHOST_BAD, GHOST_OK } from '../render/meshes/buildings';
 import type { Interaction } from '../render/interaction';
-import type { UiState } from '../ui/hud';
+import { WALL_MODES, type UiState } from '../ui/hud';
 import { pick, type Target } from './pick';
 
 export interface Pointer {
@@ -108,7 +108,7 @@ export function bindPointer(canvas: HTMLCanvasElement, camera: THREE.Camera, sce
   });
   window.addEventListener('mouseup', () => (painting = false));
   window.addEventListener('keyup', (e) => {
-    if (e.code === 'Tab') state.cutaway = false;
+    if (e.code === 'Tab') state.peek = false;
   });
 
   canvas.addEventListener('mousemove', (e) => {
@@ -147,9 +147,10 @@ export function bindPointer(canvas: HTMLCanvasElement, camera: THREE.Camera, sce
     if (e.code === 'KeyB') state.buildOpen = !state.buildOpen;
     if (e.code === 'KeyR') state.rotated = !state.rotated;
     if (e.code === 'KeyH') state.rooms = !state.rooms;
+    if (e.code === 'KeyV') state.walls = WALL_MODES[(WALL_MODES.indexOf(state.walls) + 1) % WALL_MODES.length];
     if (e.code === 'Tab') {
       e.preventDefault();
-      state.cutaway = true;
+      state.peek = true;
     }
     if (e.code === 'Escape') [state.placing, state.tool, state.selected] = [null, null, null];
   });
