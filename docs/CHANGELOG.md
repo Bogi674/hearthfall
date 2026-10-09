@@ -2,6 +2,17 @@
 
 Newest entries first. Each entry names the milestone it belongs to.
 
+## 2026-10-09 (M10.1c: The House You Can See)
+
+- **The house in the scene.** Closed rooms have a snow covered roof. Holding Tab, holding a house tool, or selecting a piece of the house fades the roofs so the people inside can be seen. Doors slide open when someone is close. Gun ports show a slit and a barrel. Damaged walls darken and show a health bar. A drifter is drawn walking in from the dark.
+- **Ghosts.** Placing a building shows the real model in translucent color on a footprint plate that pulses. Green means it can go and red means it cannot, with the reason next to the cursor. A Rotate button joins the R key.
+- **Hover and click.** Colonists, buildings, wall pieces, floors, and the house glow with a soft frame under the cursor, which also becomes a pointer. A click sends a ring outward. The selected thing keeps a steady frame. Buttons glow on hover and press down on click.
+- **Selection panels** for colonists, wall pieces, and floors. A wall piece shows its strength, who guards it, an upgrade, Make a gun port, and Remove. A floor shows its room. Furniture has Remove. Other buildings have Take apart.
+- **Room overlay.** Press H or hold a house tool to see each room named from its furniture, with warnings for rooms that are not closed or need furniture.
+- The colonist list is now clickable and finds the colonist.
+- The airship tab shows the blueprint, the Moot, the site, the ground to clear, seats, and Berth Decks.
+- Added `tests/interaction.test.ts` and a room name test. Added screenshots `m10-1-*.jpg`.
+
 ## 2026-10-09 (M10.1b: Living in the House)
 
 - **Furniture replaces the fixed rooms.** The six M8 rooms are gone. The house now has a Bed, Sickbed, Shelf, Table, Sofa, Stove, Workbench, Drafting Table, Lamp, Rug, and Potted Plant, plus defenses (section 5.7).

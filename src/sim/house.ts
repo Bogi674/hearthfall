@@ -1,5 +1,6 @@
 // House layer queries (M10.1): floors, edges, rooms, and which steps people can take.
 // Read only. Placement rules are in placement.ts and the commands in commands.ts.
+import { BUILDINGS } from '../data/buildings';
 import { HOUSE, type EdgeKind } from '../data/house';
 import type { HouseEdge, HouseFloor, World } from './world';
 
@@ -32,6 +33,7 @@ interface Index {
   extent: number;
   floors: Map<number, HouseFloor>;
   edges: Map<string, HouseEdge>;
+  all?: HouseRoom[];
   rooms?: HouseRoom[];
   roomOf?: Map<number, HouseRoom>;
 }
@@ -212,8 +214,74 @@ export function analyze(world: World, includeSites: boolean, change: Change = {}
 /** Finished rooms of the house, cached until the layout changes. Used by furniture and defense later. */
 export function houseRooms(world: World): HouseRoom[] {
   const ix = index(world);
-  return (ix.rooms ??= analyze(world, false).filter((r) => !r.outside && r.floorCount > 0));
+  return (ix.rooms ??= allRooms(world).filter((r) => !r.outside && r.floorCount > 0));
 }
+
+/** Every area around the house, closed or open, cached until the layout changes. */
+function allRooms(world: World): HouseRoom[] {
+  const ix = index(world);
+  return (ix.all ??= analyze(world, false));
+}
+
+export type RoomRole = 'hearth' | 'bedroom' | 'infirmary' | 'kitchen' | 'workshop' | 'drafting' | 'hall' | 'storage' | 'empty' | 'open';
+
+export interface RoomInfo {
+  role: RoomRole;
+  name: string;
+  /** Center in tile units, and the room's closed state. */
+  x: number;
+  y: number;
+  closed: boolean;
+  floors: number;
+  beds: number;
+  seats: number;
+  decor: number;
+  /** Map tile indexes of the room. */
+  tiles: number[];
+  /** A short note when the room has a problem or a missing use. */
+  note: string;
+}
+
+const ROLE_NAMES: Record<RoomRole, string> = {
+  hearth: 'Hearth hall', bedroom: 'Bedroom', infirmary: 'Infirmary', kitchen: 'Kitchen', workshop: 'Workshop', drafting: 'Drafting room',
+  hall: 'Hall', storage: 'Storeroom', empty: 'Empty room', open: 'Open floor',
+};
+
+/** What each floor area is, from the furniture in it, for the room overlay and the selection panel (section 5.7). */
+export function roomInfos(world: World): RoomInfo[] {
+  const out: RoomInfo[] = [];
+  const w = world.map.width;
+  for (const r of allRooms(world)) {
+    if (r.floorCount === 0) continue;
+    const closed = !r.outside;
+    const tiles = new Set(r.tiles);
+    const inside = world.buildings.filter((b) => BUILDINGS[b.type].furniture && b.construct <= 0 && tiles.has(b.y * w + b.x));
+    const has = (f: (d: (typeof BUILDINGS)[keyof typeof BUILDINGS]) => boolean) => inside.some((b) => f(BUILDINGS[b.type]));
+    const beds = inside.reduce((n, b) => n + (BUILDINGS[b.type].beds ?? 0), 0);
+    const seats = inside.reduce((n, b) => n + (BUILDINGS[b.type].social ? b.w * b.h : 0), 0);
+    const decor = inside.filter((b) => BUILDINGS[b.type].decor).length;
+    const hearth = r.tiles.some((t) => isHearthTile(world, t % w, Math.floor(t / w)));
+    const role: RoomRole = !closed ? 'open'
+      : hearth ? 'hearth'
+      : has((d) => d.restBonus === 3) ? 'infirmary'
+      : beds > 0 ? 'bedroom'
+      : has((d) => d.work === 'stir') ? 'kitchen'
+      : has((d) => d.armory === true) ? 'workshop'
+      : inside.some((b) => b.type === 'draftingTable') ? 'drafting'
+      : seats > 0 ? 'hall'
+      : has((d) => (d.storage ?? 0) > 0) ? 'storage'
+      : 'empty';
+    const [cx, cy] = r.tiles.filter((t) => !isHearthTile(world, t % w, Math.floor(t / w)) || hearth).reduce((a, t) => [a[0] + (t % w), a[1] + Math.floor(t / w)], [0, 0]);
+    const count = r.tiles.filter((t) => !isHearthTile(world, t % w, Math.floor(t / w)) || hearth).length || 1;
+    out.push({
+      tiles: r.tiles, role, name: ROLE_NAMES[role], x: cx / count, y: cy / count, closed, floors: r.floorCount, beds, seats, decor,
+      note: !closed ? 'Not closed. Walls are missing, so it is cold and unsafe' : role === 'empty' ? 'Needs furniture' : role === 'bedroom' && beds < 1 ? 'No bed' : '',
+    });
+  }
+  return out;
+}
+
+
 
 /** The closed room a position is in, or undefined outdoors, in a room with a gap, or off the floor. */
 export function roomAt(world: World, x: number, y: number): HouseRoom | undefined {
@@ -242,3 +310,11 @@ export const isBreached = (world: World, x: number, y: number): boolean => {
 export function sealsRoom(world: World, change: Change): boolean {
   return analyze(world, true, change).some((r) => !r.reachable && r.floorCount > 0);
 }
+
+/** True when the id belongs to a floor tile, a wall piece, or a piece of furniture of the house. */
+export function inHouse(world: World, id: number): boolean {
+  return world.house.floors.some((f) => f.id === id) || world.house.edges.some((e) => e.id === id) || world.buildings.some((b) => b.id === id && BUILDINGS[b.type].furniture === true);
+}
+
+/** True when the tile is part of the room. */
+export const roomHasTile = (world: World, room: RoomInfo, x: number, y: number): boolean => room.tiles.includes(y * world.map.width + x);

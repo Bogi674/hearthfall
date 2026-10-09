@@ -1,12 +1,11 @@
 // Right side panel with tabs: colonists, expeditions, and the airship (section 14).
-import { BUILDINGS } from '../data/buildings';
-import { EDGES } from '../data/house';
 import { ITEMS, POIS } from '../data/pois';
 import { BERTH, BLUEPRINT, COMPONENT_IDS, COMPONENTS, LAST_NIGHT, PAD } from '../data/vehicle';
 import { WEAPONS } from '../data/weapons';
+import { taskText } from './people';
 import { RESOURCE_NAMES, type Resource } from '../data/resources';
 import { berthError, componentError, expeditionError, launchError } from '../sim/commands';
-import { currentPhase, directionFromHearth, seatCount } from '../sim/query';
+import { directionFromHearth, seatCount } from '../sim/query';
 import { expeditionRisk } from '../sim/systems/expeditions';
 import type { World } from '../sim/world';
 import type { UiState } from './hud';
@@ -26,27 +25,10 @@ export function rightPanel(w: World, state: UiState): string {
 }
 
 function colonists(w: World): string {
-  const name = (id: number | null) => {
-    const b = w.buildings.find((b) => b.id === id);
-    if (b) return BUILDINGS[b.type].name;
-    if (w.house.floors.some((f) => f.id === id)) return 'house floor';
-    const e = w.house.edges.find((e) => e.id === id);
-    return e ? EDGES[e.kind].name.toLowerCase() : '';
-  };
   return `${w.colonists
-    .map((c) => {
-      const task =
-        c.expedition !== null ? 'On expedition'
-        : c.task === 'sleep' ? 'Sleeping'
-        : c.task === 'shelter' ? 'Taking shelter'
-        : c.task === 'guard' ? `On watch at the ${name(c.duty)}`
-        : c.task === 'build' || c.site !== null ? `Building the ${name(c.site)}`
-        : c.job !== null && currentPhase(w).work ? name(c.job)
-        : 'Idle';
-      return `<div class="colonist"><span>${c.name}</span><small>${task}, ${WEAPONS[c.weapon].name.toLowerCase()}</small>
-        <div class="bars">${bar(c.health, 'Health')}${bar(c.hunger, 'Hunger')}${bar(c.rest, 'Rest')}${bar(c.warmth, 'Warmth')}</div></div>`;
-    })
-    .join('')}<p class="legend">Bars: health, hunger, rest, warmth</p>`;
+    .map((c) => `<button data-act="focus:${Math.round(c.x)}:${Math.round(c.y)}" class="colonist"><span>${c.name}</span><small>${taskText(w, c)}, ${WEAPONS[c.weapon].name.toLowerCase()}</small>
+        <div class="bars">${bar(c.health, 'Health')}${bar(c.hunger, 'Hunger')}${bar(c.rest, 'Rest')}${bar(c.warmth, 'Warmth')}</div></button>`)
+    .join('')}<p class="legend">Bars: health, hunger, rest, warmth. Click a colonist to find them.</p>`;
 }
 
 function expeditions(w: World, state: UiState): string {

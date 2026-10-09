@@ -6,18 +6,24 @@ import { PAD } from '../data/vehicle';
 import { edgePlacementError, floorPlacementError, footprint, placementError, removeError, siteError } from '../sim/placement';
 import { floorAt, storedEdgeAt, type Side } from '../sim/house';
 import type { World } from '../sim/world';
+import { createBuildingGhost } from '../render/ghost';
 import { createGhost, GHOST_BAD, GHOST_OK } from '../render/meshes/buildings';
+import type { Interaction } from '../render/interaction';
 import type { UiState } from '../ui/hud';
+import { pick, type Target } from './pick';
 
 export interface Pointer {
   /** Placement problem under the cursor, shown next to it. */
   tip: { text: string; x: number; y: number } | null;
+  /** What the cursor is over when nothing is being placed. It glows and the cursor turns to a pointer. */
+  hover: Target | null;
   update(world: World): void;
 }
 
-export function bindPointer(canvas: HTMLCanvasElement, camera: THREE.Camera, scene: THREE.Scene, state: UiState, world: () => World): Pointer {
+export function bindPointer(canvas: HTMLCanvasElement, camera: THREE.Camera, scene: THREE.Scene, state: UiState, world: () => World, interaction: Interaction): Pointer {
   const ghost = createGhost();
   scene.add(ghost);
+  const buildingGhost = createBuildingGhost(scene);
   const ray = new THREE.Raycaster();
   const ground = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
   const hit = new THREE.Vector3();
@@ -101,6 +107,9 @@ export function bindPointer(canvas: HTMLCanvasElement, camera: THREE.Camera, sce
     useTool(true);
   });
   window.addEventListener('mouseup', () => (painting = false));
+  window.addEventListener('keyup', (e) => {
+    if (e.code === 'Tab') state.cutaway = false;
+  });
 
   canvas.addEventListener('mousemove', (e) => {
     mouse.x = e.clientX;
@@ -118,16 +127,16 @@ export function bindPointer(canvas: HTMLCanvasElement, camera: THREE.Camera, sce
   canvas.addEventListener('click', () => {
     if (state.tool) return;
     const w = world();
-    const t = tileAt();
-    if (!t) return;
     if (state.placing) {
+      const t = tileAt();
+      if (!t) return;
       const at = state.placing === 'airshipDock' && w.airship.site ? w.airship.site : t;
       pushCommand(w.commands, { type: 'place', building: state.placing, x: at.x, y: at.y, rotated: state.rotated });
       return;
     }
-    const b = w.buildings.find((b) => t.x >= b.x && t.x < b.x + b.w && t.y >= b.y && t.y < b.y + b.h);
-    const onHearth = Math.abs(t.x - w.hearth.x) <= 1 && Math.abs(t.y - w.hearth.y) <= 1;
-    state.selected = b ? b.id : onHearth ? 'hearth' : null;
+    const target = pointer.hover;
+    state.selected = target ? target.id : null;
+    if (target) interaction.click(target, performance.now() / 1000);
   });
   window.addEventListener('keydown', (e) => {
     if (e.code === 'Space') {
@@ -137,6 +146,11 @@ export function bindPointer(canvas: HTMLCanvasElement, camera: THREE.Camera, sce
     if (['Digit1', 'Digit2', 'Digit3'].includes(e.code)) [state.speed, state.paused] = [Number(e.code.slice(5)), false];
     if (e.code === 'KeyB') state.buildOpen = !state.buildOpen;
     if (e.code === 'KeyR') state.rotated = !state.rotated;
+    if (e.code === 'KeyH') state.rooms = !state.rooms;
+    if (e.code === 'Tab') {
+      e.preventDefault();
+      state.cutaway = true;
+    }
     if (e.code === 'Escape') [state.placing, state.tool, state.selected] = [null, null, null];
   });
 
@@ -170,24 +184,40 @@ export function bindPointer(canvas: HTMLCanvasElement, camera: THREE.Camera, sce
       ghost.scale.set(1, 0.1, 1);
     }
     ghost.material.color.copy(error ? GHOST_BAD : GHOST_OK);
+    ghost.material.opacity = 0.42 + Math.sin(performance.now() / 160) * 0.1;
     if (error) pointer.tip = { text: error, x: mouse.x, y: mouse.y };
+  };
+
+  /** The cursor in continuous tile units, or null when it is off the ground. */
+  const cursorUV = () => {
+    const w = world();
+    ray.setFromCamera(mouse.ndc, camera);
+    return ray.ray.intersectPlane(ground, hit) ? { u: hit.x + w.map.width / 2, v: hit.z + w.map.height / 2 } : null;
   };
 
   const pointer: Pointer = {
     tip: null,
+    hover: null,
     update(w) {
       pointer.tip = null;
+      if (state.tool || !state.placing) buildingGhost.hide();
+      const free = mouse.inside && !state.tool && !state.placing;
+      const uv = free ? cursorUV() : null;
+      pointer.hover = uv ? pick(w, uv.u, uv.v) : null;
+      canvas.style.cursor = state.tool || state.placing ? 'crosshair' : pointer.hover ? 'pointer' : '';
       if (state.tool && mouse.inside) return toolGhost(w);
       let t = state.placing && mouse.inside ? tileAt() : null;
       // The launch pad goes on the site the crew chose.
       if (t && state.placing === 'airshipDock' && w.airship.site) t = w.airship.site;
-      ghost.visible = t !== null;
-      if (!t || !state.placing) return;
+      if (!t || !state.placing) {
+        ghost.visible = false;
+        buildingGhost.hide();
+        return;
+      }
+      ghost.visible = false;
       const [fw, fh] = footprint(state.placing, state.rotated);
       const error = placementError(w, state.placing, t.x, t.y, state.rotated);
-      ghost.position.set(t.x + (fw - 1) / 2 - w.map.width / 2, 0, t.y + (fh - 1) / 2 - w.map.height / 2);
-      ghost.scale.set(fw, 0.6, fh);
-      ghost.material.color.copy(error ? GHOST_BAD : GHOST_OK);
+      buildingGhost.show(state.placing, fw, fh, t.x + (fw - 1) / 2 - w.map.width / 2, t.y + (fh - 1) / 2 - w.map.height / 2, !error, performance.now() / 1000);
       if (error) pointer.tip = { text: error, x: mouse.x, y: mouse.y };
     },
   };

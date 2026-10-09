@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { HOUSE } from '../src/data/house';
-import { houseRooms, stepBlocked } from '../src/sim/house';
+import { houseRooms, roomInfos, stepBlocked } from '../src/sim/house';
 import { edgePlacementError, floorPlacementError, placeBuilding, placeEdge, placeFloor, placementError, removeError, removeHouseItem } from '../src/sim/placement';
 import { routeFor } from '../src/sim/route';
 import { createWorld, stepWorld, TICKS_PER_SECOND, type World } from '../src/sim/world';
@@ -248,5 +248,35 @@ describe('colonists build and use the house (M10.1)', () => {
     seconds(w, 40);
     seconds(copy, 40);
     expect(copy).toEqual(w);
+  });
+});
+
+describe('room names (section 5.7)', () => {
+  it('names rooms from their furniture and warns about rooms with gaps', () => {
+    const w = createWorld(1);
+    w.hearth.level = 5;
+    Object.assign(w.stock, { wood: 500, planks: 100, stone: 50, metal: 50, scrap: 50 });
+    const { x, y } = w.hearth;
+    // A closed room with a bed and a gap-free door to the house, and an open floor patch to the north.
+    for (const dy of [0, 1]) w.commands.push({ type: 'paintFloor', x: x + 2, y: y + dy, kind: 'boards' });
+    stepWorld(w);
+    w.commands.push({ type: 'buildEdge', x: x + 2, y, side: 'w', kind: 'door', level: 1 });
+    w.commands.push({ type: 'buildEdge', x: x + 2, y, side: 'n', kind: 'wall', level: 1 });
+    w.commands.push({ type: 'buildEdge', x: x + 2, y: y + 2, side: 'n', kind: 'wall', level: 1 });
+    for (const dy of [0, 1]) w.commands.push({ type: 'buildEdge', x: x + 3, y: y + dy, side: 'w', kind: 'wall', level: 1 });
+    stepWorld(w);
+    finishHouse(w);
+    expect(roomInfos(w).map((r) => r.name).sort()).toEqual(['Empty room', 'Hearth hall']);
+    expect(roomInfos(w).find((r) => r.name === 'Empty room')!.note).toBe('Needs furniture');
+    expect(placeBuilding(w, 'bed', x + 2, y, false)).toBe(true);
+    finishHouse(w);
+    expect(roomInfos(w).map((r) => r.name).sort()).toEqual(['Bedroom', 'Hearth hall']);
+    // A floor with no walls is open to the cold.
+    w.commands.push({ type: 'paintFloor', x: x + 2, y: y - 1, kind: 'boards' });
+    stepWorld(w);
+    finishHouse(w);
+    const open = roomInfos(w).find((r) => r.role === 'open')!;
+    expect(open.closed).toBe(false);
+    expect(open.note).toMatch(/Not closed/);
   });
 });

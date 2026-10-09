@@ -24,8 +24,9 @@ export function createBuildingMesh(type: BuildingType, w: number, h: number, mas
   return g;
 }
 
-export const GHOST_OK = PALETTE.lantern;
-export const GHOST_BAD = mixPalette(PALETTE.ember, PALETTE.warmShadow, 0.4);
+/** A green tinted lantern for a spot that works and a red shifted ember for one that does not, both from the palette. */
+export const GHOST_OK = mixPalette(PALETTE.blight, PALETTE.lantern, 0.3);
+export const GHOST_BAD = PALETTE.ember.clone().offsetHSL(-0.075, 0.15, -0.06);
 
 export function createGhost(): THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial> {
   const ghost = new THREE.Mesh(GEO.block, new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.45, depthWrite: false }));

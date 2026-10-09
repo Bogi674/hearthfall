@@ -567,3 +567,77 @@ button:disabled {
   font-size: 15px;
   border-color: #ff9a3c;
 }
+
+/* Micro interactions (section 14.2): buttons answer the mouse so it is clear what can be clicked. */
+button {
+  transition: background-color 0.12s, border-color 0.12s, transform 0.08s, box-shadow 0.12s, filter 0.12s;
+}
+
+button:hover:not(:disabled) {
+  border-color: #ffc56b;
+  background: #3b2519;
+  box-shadow: 0 0 8px rgba(255, 197, 107, 0.35);
+}
+
+button.on:hover:not(:disabled) {
+  background: #7d5a3e;
+}
+
+button:active:not(:disabled) {
+  transform: translateY(1px) scale(0.97);
+  box-shadow: 0 0 3px rgba(255, 197, 107, 0.5);
+  filter: brightness(1.15);
+}
+
+button:focus-visible {
+  outline: 2px solid #ffc56b;
+  outline-offset: 1px;
+}
+
+button.poor:hover:not(:disabled) {
+  opacity: 0.8;
+}
+
+#build button.item:hover:not(:disabled) svg {
+  filter: drop-shadow(0 0 4px rgba(255, 197, 107, 0.7));
+}
+
+#labels .room {
+  transform: translate(-50%, -50%);
+  color: #ffc56b;
+  border-color: rgba(255, 197, 107, 0.6);
+  background: rgba(42, 26, 20, 0.78);
+  font-size: 11px;
+}
+
+#labels .room.warn {
+  color: #ff9a3c;
+  border-color: #ff9a3c;
+}
+
+button.colonist {
+  width: 100%;
+  text-align: left;
+  border-color: transparent;
+  background: transparent;
+  padding: 3px 4px;
+}
+
+button.colonist:hover:not(:disabled) {
+  background: rgba(255, 197, 107, 0.08);
+  border-color: rgba(255, 197, 107, 0.5);
+}
+
+.meter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.meter span {
+  flex: 0 0 54px;
+}
+
+.meter .bar {
+  flex: 1 1 auto;
+}

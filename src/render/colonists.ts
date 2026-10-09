@@ -52,5 +52,16 @@ export function colonistFigures(w: World, alpha: number, heading: Map<number, nu
       look: lookFor(w.seed, COLONIST_NAMES.indexOf(c.name)), pose, tool,
     });
   }
+  // A drifter walking in from the dark toward the light.
+  const d = w.drifter;
+  if (d) {
+    const dx = d.x - d.px;
+    const dy = d.y - d.py;
+    heading.set(-1, Math.atan2(dx, dy));
+    people.push({
+      id: -1, x: d.px + dx * alpha - width / 2, y: 0, z: d.py + dy * alpha - height / 2, yaw: heading.get(-1) ?? 0, moving: true,
+      look: lookFor(w.seed, w.colonists.length + w.dead.length), pose: 'stand', tool: undefined,
+    });
+  }
   return people;
 }

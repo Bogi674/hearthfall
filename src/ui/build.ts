@@ -37,17 +37,19 @@ function structureHtml(w: World, tool: HouseTool | null): string {
 
 export const amounts = (a: Amounts) => Object.entries(a).map(([r, n]) => `${n} ${RESOURCE_NAMES[r as Resource]}`).join(' + ');
 
-export function buildMenuHtml(w: World, cat: BuildCat, placing: string | null, tool: HouseTool | null): string {
-  const tabs = BUILD_CATS.map((c) => `<button data-act="cat:${c}" class="${cat === c ? 'on' : ''}">${c}</button>`).join('');
+export function buildMenuHtml(w: World, cat: BuildCat, placing: string | null, tool: HouseTool | null, rotated: boolean): string {
+  const rotate = placing ? `<button data-act="rotate" class="rotate ${rotated ? 'on' : ''}" title="Turn the building a quarter turn (R)">Rotate (R)</button>` : '';
+  const tabs = BUILD_CATS.map((c) => `<button data-act="cat:${c}" class="${cat === c ? 'on' : ''}">${c}</button>`).join('') + rotate;
   const items = cat === 'Structure' ? structureHtml(w, tool) : BUILDABLE.filter((t) => BUILDINGS[t].category === cat)
     .map((t) => {
       const def = BUILDINGS[t];
       const short = missing(w, def.cost);
-      const why = short ? `Needs more ${RESOURCE_NAMES[short as Resource].toLowerCase()}`
-        : t === 'airshipDock' ? (!w.airship.blueprint ? "Needs the old owner's blueprint" : w.airship.site ? 'Goes on the chosen site' : 'Choose the site in the Airship tab')
+      const padWhy = t !== 'airshipDock' ? '' : !w.airship.blueprint ? "Needs the old owner's blueprint" : !w.airship.site ? 'Choose the site in the Airship tab' : '';
+      const why = padWhy ? padWhy : short ? `Needs more ${RESOURCE_NAMES[short as Resource].toLowerCase()}`
+        : t === 'airshipDock' ? 'Goes on the chosen site'
         : def.roofed ? 'Goes in a closed room' : def.furniture ? 'Goes on a house floor' : '';
-      return `<button data-act="build:${t}" class="item ${placing === t ? 'on' : ''} ${short ? 'poor' : ''}" title="${def.name}. ${why}">
-        ${BUILDING_ICONS[t]}<span><b>${def.name}</b><small>${amounts(def.cost)}</small>${why ? `<small class="${short ? 'why' : ''}">${why}</small>` : ''}</span></button>`;
+      return `<button data-act="build:${t}" class="item ${placing === t ? 'on' : ''} ${short || padWhy ? 'poor' : ''}" title="${def.name}. ${why}">
+        ${BUILDING_ICONS[t]}<span><b>${def.name}</b><small>${amounts(def.cost)}</small>${why ? `<small class="${short || padWhy ? 'why' : ''}">${why}</small>` : ''}</span></button>`;
     })
     .join('');
   return `<div class="tabs">${tabs}</div><div class="group">${items}</div>`;

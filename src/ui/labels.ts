@@ -2,10 +2,11 @@
 import * as THREE from 'three';
 import type { Pointer } from '../input/pointer';
 import { POIS } from '../data/pois';
+import { roomInfos } from '../sim/house';
 import type { World } from '../sim/world';
 import { STATUS_TEXT } from './selection';
 
-export function createLabels(root: HTMLElement): { update(world: World, camera: THREE.Camera, pointer: Pointer): void } {
+export function createLabels(root: HTMLElement): { update(world: World, camera: THREE.Camera, pointer: Pointer, showRooms: boolean): void } {
   const layer = document.createElement('div');
   layer.id = 'labels';
   root.appendChild(layer);
@@ -13,7 +14,7 @@ export function createLabels(root: HTMLElement): { update(world: World, camera: 
   const v = new THREE.Vector3();
 
   return {
-    update(world, camera, pointer) {
+    update(world, camera, pointer, showRooms) {
       const items: { text: string; x: number; y: number; cls?: string }[] = [];
       const screen = (x: number, h: number, y: number) => {
         v.set(x - world.map.width / 2, h, y - world.map.height / 2).project(camera);
@@ -27,6 +28,10 @@ export function createLabels(root: HTMLElement): { update(world: World, camera: 
         const text = STATUS_TEXT[b.status];
         if (!text) continue;
         items.push({ text, ...screen(b.x + (b.w - 1) / 2, 2, b.y + (b.h - 1) / 2) });
+      }
+      // The rooms of the house, named from their furniture, with a warning where something is missing (section 5.7).
+      if (showRooms) {
+        for (const r of roomInfos(world)) items.push({ text: r.note ? `${r.name}. ${r.note}` : r.name, ...screen(r.x, 1.9, r.y), cls: r.note ? 'room warn' : 'room' });
       }
       if (pointer.tip) items.push({ ...pointer.tip, cls: 'tip' });
       while (pool.length < items.length) pool.push(layer.appendChild(document.createElement('div')));

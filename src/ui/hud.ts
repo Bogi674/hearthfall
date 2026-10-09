@@ -3,6 +3,7 @@
 import { BALANCE } from '../data/balance';
 import { type BuildingType } from '../data/buildings';
 import { ENEMIES, ENEMY_TYPES } from '../data/enemies';
+import type { EdgeKind } from '../data/house';
 import { RESOURCE_NAMES, RESOURCES } from '../data/resources';
 import { COMPONENT_IDS, PAD, type ComponentId } from '../data/vehicle';
 import type { WeaponId } from '../data/weapons';
@@ -23,6 +24,10 @@ export interface UiState {
   /** The house tool in hand: a floor, a wall, a door, a window, or remove. */
   tool: HouseTool | null;
   rotated: boolean;
+  /** Roofs fade so the people inside the house can be seen. Held with Tab (section 12.6). */
+  cutaway: boolean;
+  /** Names and warnings are drawn over the rooms of the house. Toggled with H. */
+  rooms: boolean;
   selected: number | 'hearth' | null;
   speed: number;
   paused: boolean;
@@ -87,6 +92,12 @@ export function createHud(root: HTMLElement, state: UiState, world: () => World,
     const [act, arg, arg2] = t.dataset.act!.split(':');
     if (act === 'build') [state.placing, state.tool] = [state.placing === arg ? null : (arg as BuildingType), null];
     if (act === 'tool') [state.tool, state.placing] = [state.tool && arg === toolIdOf(state.tool) ? null : parseTool(arg), null];
+    if (act === 'rotate') state.rotated = !state.rotated;
+    if (act === 'edge') {
+      const e = world().house.edges.find((o) => o.id === Number(arg));
+      if (e) pushCommand(world().commands, { type: 'buildEdge', x: e.x, y: e.y, side: e.side, kind: arg2 as EdgeKind, level: Number(t.dataset.act!.split(':')[3]) });
+    }
+    if (act === 'remove') pushCommand(world().commands, { type: 'removeHouseItem', item: arg as 'edge' | 'floor' | 'furniture', id: Number(arg2) });
     if (act === 'speed') [state.speed, state.paused] = arg === '0' ? [state.speed, !state.paused] : [Number(arg), false];
     if (act === 'workers') pushCommand(world().commands, { type: 'setWorkers', id: Number(arg), count: Number(arg2) });
     if (act === 'restart') actions.toTitle();
@@ -169,7 +180,7 @@ export function createHud(root: HTMLElement, state: UiState, world: () => World,
       );
       const alarm = `<button data-act="alarm" class="${w.alarm ? 'alarm on' : 'alarm'}" title="Workers take shelter and defenders man the guns">${w.alarm ? 'All clear' : 'Alarm'}</button>`;
       set('controls', `${alarm}${speeds}<button data-act="menu">Menu</button>`);
-      set('build', state.buildOpen ? buildMenuHtml(w, state.buildCat, state.placing, state.tool) : '');
+      set('build', state.buildOpen ? buildMenuHtml(w, state.buildCat, state.placing, state.tool, state.rotated) : '');
 
       set('forecast', forecastHtml(w));
       const hint = actions.settings.hints && !w.lost && !w.won ? currentHint(w) : null;

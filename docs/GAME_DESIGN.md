@@ -433,7 +433,13 @@ Orthographic camera at a classic isometric angle. Zoom with scroll. Rotate in 90
 - The moon casts soft shadows from buildings, trees, and characters.
 - Soft vignette and a light film grain.
 
-### 12.5 Readability
+### 12.5 The house
+- Walls are low enough to see over from the isometric camera. Closed rooms have a snow covered roof. The roofs fade away for the cutaway, which is on while the player holds Tab, has a house tool in hand, or has a piece of the house selected.
+- Doors slide open when someone is close. Gun ports are walls with a dark slit and a short barrel. Damaged walls darken and show a health bar.
+- A ghost of a building shows the real model in translucent green where it can go and red where it cannot, on a footprint plate that pulses softly. The reason it cannot go there shows next to the cursor.
+- Floors rise out of the ground as builders work on them. So do walls.
+
+### 12.6 Readability
 - Every building shows a status icon when blocked.
 - Enemies have glowing eyes visible in darkness.
 - Health bars appear only on damaged entities.
@@ -455,9 +461,11 @@ Orthographic camera at a classic isometric angle. Zoom with scroll. Rotate in 90
 - **Title screen.** Continue the latest save, start a new game on a chosen or random map, load a save slot, import a save file, settings, and the story.
 - **Top bar.** Resources, colonist count, hope, temperature, day and time, and the Alarm button.
 - **Forecast bar.** Next wave threat, spawn edges, and countdown.
-- **Build menu.** Bottom of screen, grouped into House, Shelter, Production, Defense, and Escape. Every building has an icon, its cost, and the reason it cannot be built yet.
-- **Selection panel.** Shows details for the selected building, with worker plus and minus buttons.
-- **Colonist panel.** List of colonists with needs and current job.
+- **Build menu.** Bottom of screen, grouped into Structure, Furniture, Shelter, Production, Defense, and Escape. Structure holds floors, walls, doors, windows, gun ports, and Remove. Every item has an icon, its cost, and the reason it cannot be built yet. A Rotate button shows while a building is being placed.
+- **Selection panel.** Shows details for the selected colonist, building, wall piece, floor tile, or the house. A wall piece shows its strength, its upgrade, its defender if it is a gun port, and Remove. A floor tile shows its room. A building shows worker plus and minus buttons, and Take apart.
+- **Room overlay.** Names each floor area from its furniture, such as Bedroom, Kitchen, or Hall, and warns when it is not closed or needs furniture. Toggle with H. It shows while a house tool is in hand.
+- **Hover and click.** Anything that can be clicked gets a soft glowing frame when the cursor is over it, and the cursor becomes a pointer. A click sends a ring outward, and the selected thing keeps a steady brighter frame. Buttons glow on hover and press down when clicked.
+- **Colonist panel.** List of colonists with needs and current job. Click one to find them.
 - **Expedition panel.** POI list, squad selection, and active expeditions.
 - **Airship panel.** Component progress and requirements.
 - **Event log.** Short messages in the corner, with click to focus the camera.
@@ -467,7 +475,10 @@ Orthographic camera at a classic isometric angle. Zoom with scroll. Rotate in 90
 |---|---|
 | Left click | Select or place |
 | Right click or Escape | Cancel placement |
-| R | Rotate building during placement |
+| R, or the Rotate button | Turn a building a quarter turn during placement |
+| Tab (hold) | Cutaway. The roofs fade so the people inside the house can be seen |
+| H | Show or hide the room overlay |
+| Drag with a floor or wall tool | Paint floors, or draw walls along tile borders |
 | Q and E | Rotate camera |
 | Space | Pause |
 | 1, 2, 3 | Game speed |
@@ -502,6 +513,9 @@ src/
     rng.ts            seeded random
     grid.ts
     commands.ts       player command queue
+    placement.ts      placement rules and reasons
+    house.ts          floors, walls, rooms, and what blocks walking
+    route.ts          colonist routes through the doors of the house
     mapgen.ts
     systems/
       time.ts
@@ -515,9 +529,11 @@ src/
       combat.ts
       expeditions.ts
       hope.ts
+      arrivals.ts     drifters
       vehicle.ts
   data/
     buildings.ts
+    house.ts          floors, walls, doors, and the house lot
     enemies.ts
     resources.ts
     recipes.ts
@@ -533,8 +549,12 @@ src/
     groundShader.ts
     meshes/
     sync.ts           maps sim entities to scene objects
+    houseView.ts      floors, walls, doors, and roofs of the house
+    ghost.ts          the translucent preview of a building
+    interaction.ts    hover, selection, and click frames
   ui/
   input/
+    pick.ts           what is under the cursor
   save/
 tests/
 docs/
@@ -638,6 +658,13 @@ Each milestone must meet its acceptance criteria before the next starts.
 - The blueprint, the Moot, the Launch Pad, the Drafting Table, seats, and Berth Decks (section 11.2). Taking buildings apart.
 - Seven starting colonists and drifters (section 6.4).
 - **Done when:** the colony eats, talks, and sleeps in a furnished house at night, a gun port and a roof turret hold a wall, and the airship is built from the blueprint with the Launch Pad on the chosen site. The scripted full run still launches the airship by day 10.
+
+### M10.1c: The House You Can See
+- The house in the scene: roofs, cutaway, doors that open, gun ports, damaged walls, and the drifter (section 12.5).
+- Ghosts of buildings and rotation (section 12.5).
+- Hover, click, and selection feedback (section 14).
+- Selection panels for colonists, wall pieces, and floors, and the room overlay (section 14).
+- **Done when:** the player can place a floor, walls, a door, and furniture, see what each will look like before placing it, hold Tab to see inside, hover and click anything to select it, and read why something cannot be placed. The scripted full run still launches the airship by day 10.
 
 ### Later milestones
 - Physical hauling, hand carts, and conveyor lines.

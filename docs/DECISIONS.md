@@ -185,3 +185,13 @@ Design and architecture decisions that are not already in `docs/GAME_DESIGN.md`.
 - **The scripted player lives by the new rules.** It builds beds on house floors, a Drafting Table, and a pad outside the wall ring. Without the pad outside the ring it left a gap in its own walls.
 - **The full run test uses seeds 2, 4, and 7.** Measured on 16 seeds the scripted run launches on 12 with 7 colonists. Seeds 2, 4, and 7 launch on days 8, 7, and 7.
 
+## M10.1c: The house you can see
+
+- **Hover frames are drawn on the ground.** Buildings share materials, so tinting one would tint all of that type. A frame under the thing needs no new materials, works for colonists and wall pieces too, and reads clearly from the isometric camera. It draws on top so it is visible through walls.
+- **Cutaway fades the roofs, not the walls.** Walls are low, so they never hide the room. Only the roof does, and it fades smoothly instead of popping.
+- **Building ghosts reuse the real meshes.** A ghost is the real model with a translucent material, so it can never drift from what gets built.
+- **Rotation stays a half turn toggle.** The plan asked for four directions. The simulation only stores whether the footprint is turned, and seats and beds do not care which way they face. Four facings can come with the animation work if furniture needs a front.
+- **Close to a border wins over the tile.** A wall piece next to a bed would otherwise never be pickable, so the cursor picks the wall when it is within a fifth of a tile of the border.
+- **The Launch Pad lists its first blocking reason.** The blueprint and the site come before the cost, since resources do not help until those are done.
+- **Dev builds expose `project` and `ui`.** Browser scripts use them to point at a tile and to read the selection. Production builds do not.
+

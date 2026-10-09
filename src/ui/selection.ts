@@ -4,9 +4,11 @@ import { BALANCE } from '../data/balance';
 import { BUILDINGS } from '../data/buildings';
 import { RECIPES } from '../data/recipes';
 import { CRAFTABLE, WEAPONS } from '../data/weapons';
+import { EDGES, FLOORS } from '../data/house';
 import { buildingUpgradeError, hearthUpgradeError } from '../sim/commands';
-import { houseRooms, lotRadius } from '../sim/house';
-import { hearthStage, isBuilt } from '../sim/query';
+import { houseRooms, lotRadius, roomHasTile, roomInfos } from '../sim/house';
+import { hearthStage, isBuilt, missing } from '../sim/query';
+import { nameOf, taskText } from './people';
 import type { Building, BuildingStatus, World } from '../sim/world';
 import { amounts } from './build';
 import { BUILDING_ICONS } from './icons';
@@ -27,7 +29,7 @@ const bar = (fraction: number) => `<i class="bar wide"><b style="width:${Math.ro
 export function selectionHtml(w: World, selected: number | 'hearth' | null): string {
   if (selected === 'hearth') return houseHtml(w);
   const b = w.buildings.find((b) => b.id === selected);
-  if (!b) return '';
+  if (!b) return colonistHtml(w, selected as number) || edgeHtml(w, selected as number) || floorHtml(w, selected as number);
   const def = BUILDINGS[b.type];
   const lines = [`<h3 class="with-icon">${BUILDING_ICONS[b.type]}${def.name}</h3><p>Health ${Math.ceil(b.hp)}/${def.hp}</p>`];
   if (!isBuilt(b)) {
@@ -69,6 +71,7 @@ export function selectionHtml(w: World, selected: number | 'hearth' | null): str
 /** Taking a building apart returns most of its cost (section 8.2). */
 function salvageHtml(b: Building): string {
   if (b.type === 'supplyCart') return '';
+  if (BUILDINGS[b.type].furniture) return `<button data-act="remove:furniture:${b.id}">Remove</button><small class="note">Gives back half the cost.</small>`;
   return b.salvage !== null
     ? `<p class="alert">Marked to be taken apart.</p><button data-act="salvage:${b.id}">Keep it</button>`
     : `<button data-act="salvage:${b.id}">Take apart</button><small class="note">Colonists without a job do it and bring back 75 percent of the cost.</small>`;
@@ -119,4 +122,58 @@ function houseHtml(w: World): string {
       ${error ? `<p class="alert">${error}</p>` : '<button data-act="upgrade">Repair the house</button>'}` : '<p>The house is fully restored.</p>'}
     <h4>The house lot</h4><p>The lot reaches ${lotRadius(w)} tiles from the hearth. ${rooms > 0 ? `${rooms} closed room${rooms > 1 ? 's' : ''} so far.` : 'No closed rooms yet.'}${sites ? ` ${sites} pieces are waiting for builders.` : ''}</p>
     <p>Build floors, walls, and doors from the Structure tab, and furniture from the Furniture tab. People in a closed room are safe while its walls stand.</p>`;
+}
+
+const meter = (label: string, v: number) => `<p class="meter"><span>${label}</span>${bar(v)}</p>`;
+
+/** A colonist: needs, what they are doing, and where they sleep and work. */
+function colonistHtml(w: World, id: number): string {
+  const c = w.colonists.find((c) => c.id === id);
+  if (!c) return '';
+  const bed = c.bed === null ? undefined : w.buildings.find((b) => b.id === c.bed);
+  return `<h3>${c.name}</h3><p>${taskText(w, c)}.</p>
+    ${meter('Health', c.health)}${meter('Hunger', c.hunger)}${meter('Rest', c.rest)}${meter('Warmth', c.warmth)}
+    <p>Works at: ${c.job === null ? 'nowhere' : nameOf(w, c.job)}. Sleeps: ${bed ? `in a ${BUILDINGS[bed.type].name.toLowerCase()}` : 'on a mat by the hearth'}.</p>
+    <p>Carries a ${WEAPONS[c.weapon].name.toLowerCase()}.</p>`;
+}
+
+/** A wall, door, window, or gun port of the house: strength, who guards it, upgrades, and removal. */
+function edgeHtml(w: World, id: number): string {
+  const e = w.house.edges.find((e) => e.id === id);
+  if (!e) return '';
+  const level = EDGES[e.kind].levels[e.level - 1];
+  const lines = [`<h3>${level.name}</h3><p>Health ${Math.ceil(e.hp)}/${level.hp}.</p>${bar(e.hp / level.hp)}`];
+  if (e.construct > 0) lines.push(`<p>Being built, ${Math.floor((1 - e.construct / level.build) * 100)}% done.</p>`);
+  if (e.pending) lines.push(`<p>Being changed to a ${EDGES[e.pending.kind].levels[e.pending.level - 1].name.toLowerCase()}.</p>`);
+  if (e.kind === 'gunPort' && e.construct <= 0) {
+    const defender = w.colonists.find((c) => c.duty === e.id);
+    lines.push(`<p>Gun: ${level.gun!.name}, range ${level.gun!.range}, damage ${level.gun!.damage}.</p><p class="${defender ? '' : 'alert'}">${defender ? `${defender.name} fires it at night and at the alarm.` : 'No defender. Someone takes it when a colonist is free.'}</p>`);
+  }
+  if (e.kind === 'door') lines.push('<p>People walk through. Monsters break it, and it is the weakest piece, so they go for it.</p>');
+  if (e.kind === 'window') lines.push('<p>Lets light through and stops people.</p>');
+  if (e.construct <= 0 && !e.pending) {
+    const next = EDGES[e.kind].levels[e.level];
+    if (next) lines.push(`<p>Upgrade: ${next.name}. Costs ${amounts(next.cost)}.</p>${missing(w, next.cost) ? '<p class="alert">Not enough resources</p>' : `<button data-act="edge:${e.id}:${e.kind}:${e.level + 1}">Upgrade</button>`}`);
+    if (e.kind === 'wall') {
+      const port = EDGES.gunPort.levels[0];
+      lines.push(`<button data-act="edge:${e.id}:gunPort:1" ${missing(w, port.cost) ? 'disabled' : ''}>Make a gun port</button><small class="note">${amounts(port.cost)}. A defender fires through it.</small>`);
+    }
+  }
+  lines.push(`<button data-act="remove:edge:${e.id}">Remove</button><small class="note">Gives back half the cost.</small>`);
+  return lines.join('');
+}
+
+/** A floor tile, with the room it belongs to. */
+function floorHtml(w: World, id: number): string {
+  const f = w.house.floors.find((f) => f.id === id);
+  if (!f) return '';
+  const room = roomInfos(w).find((r) => Math.abs(r.x - f.x) < 12 && Math.abs(r.y - f.y) < 12 && roomHasTile(w, r, f.x, f.y));
+  const lines = [`<h3>${FLOORS[f.kind].name}</h3>`];
+  if (f.construct > 0) lines.push(`<p>Being built, ${Math.floor((1 - f.construct / FLOORS[f.kind].build) * 100)}% done.</p>`);
+  if (room) {
+    lines.push(`<p>${room.name}. ${room.floors} floor tiles, ${room.beds} bed${room.beds === 1 ? '' : 's'}, ${room.seats} seat${room.seats === 1 ? '' : 's'}, ${room.decor} decor.</p>`);
+    lines.push(`<p class="${room.closed && !room.note ? '' : 'alert'}">${room.closed ? (room.note || 'Closed. People inside are safe while the walls stand.') : room.note}</p>`);
+  }
+  lines.push(`<button data-act="remove:floor:${f.id}">Remove</button><small class="note">Gives back half the cost.</small>`);
+  return lines.join('');
 }

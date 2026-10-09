@@ -8,15 +8,18 @@ Bugs, shortcuts, and loose ends that are known but not fixed yet.
 - **M10.1b.** The scripted run is sensitive to timing around the day boundary. Being ready 0.3 days later can mean launching into the next night's bigger raid. A change that looks small in one seed can flip it.
 - **M10.1b.** Colonists at tables and sofas stand on their tiles with the normal stand pose. There is no sitting or eating animation yet.
 - **M10.1b.** Drifters are not drawn and monsters ignore them. A drifter appears as a colonist when they reach the light.
-- **M10.1b.** The roof of a closed room is not drawn, so roof turrets and gun port defenders show as people standing on the floor.
+- **M10.1c.** Roof turrets stand on a raised deck where the roof is open, and their defender stands on it, not on the roof.
 - **M10.1b.** There is no tool for moving a wall outward. Players place new walls and take the old ones apart.
 - **M10.1b.** Salvaging a building keeps its workers at their jobs until the work is done.
 - **M10.1a.** Until the player builds a floor or wall, the Hearth House does not block walking, so a colony that never builds on the house plays exactly as before. Once any floor or wall exists, the house walls and front door block and route colonists.
 - **M10.1a.** Furniture does not block walking. Colonists walk through beds and shelves.
 - **M10.1a.** A trip is planned as a straight walk when no route exists, for example a colonist standing inside a tile that was walled in by a save from a bug. The colonist then walks through walls instead of getting stuck.
-- **M10.1a.** Walls are drawn as plain blocks with no roof, cutaway, or corner posts. Floor sites count as floors for furniture placement before they are finished.
+- **M10.1a.** Floor sites count as floors for furniture placement before they are finished. Walls have no corner posts.
 - **M10.1a.** Stage 2 and above of the house grow the lot, but outside buildings may still be placed on the grown lot tiles that are not floors. They then block the lot from growing there.
-- **M10.1a.** The build ghost is still a green or red box. Rotation is still a single toggle. Both change in M10.1c.
+- **M10.1c.** Rotation is a half turn toggle. Buildings cannot face four ways.
+- **M10.1c.** Hover frames draw on top of everything and so show through walls and roofs.
+- **M10.1c.** The room overlay recomputes names every frame while it is shown. It was not measured on a large house.
+- **M10.1c.** The new scene pieces were checked in headless Chromium with software rendering only, as before.
 
 - The production bundle is about 530 kB and Vite warns about chunk size. Almost all of it is Three.js. Code splitting can wait until load time matters.
 - Performance was only checked in headless Chromium with software WebGL. It has not been measured on a real GPU. Since M8 the map is 128 by 128, so there are about three times as many trees and ruins. Props are still 4 instanced draw calls, plus 20000 snow points.

@@ -1,10 +1,15 @@
+import { Vector3 } from 'three';
 import { createAudio } from './audio/audio';
 import { bindCameraControls } from './input/cameraControls';
 import { bindPointer } from './input/pointer';
+import { targetOf } from './input/pick';
+import { createInteraction } from './render/interaction';
 import { createView } from './render/scene';
 import { createWorldView } from './render/sync';
 import { deleteSave, exportSave, latestSlot, loadGame, readSave, storeSave, type SlotId } from './save/save';
 import { fixedStep } from './sim/loop';
+import { BUILDINGS } from './data/buildings';
+import { inHouse } from './sim/house';
 import { currentPhase } from './sim/query';
 import { createWorld, stepWorld, TICKS_PER_SECOND, type World } from './sim/world';
 import { createHud, type UiState } from './ui/hud';
@@ -52,7 +57,7 @@ const worldView = createWorldView(world, view.scene, view.fog);
 const controls = bindCameraControls(view.rig, view.renderer.domElement);
 const audio = createAudio();
 const state: UiState = {
-  placing: null, tool: null, rotated: false, selected: null, speed: 1, paused: false, buildOpen: true,
+  placing: null, tool: null, rotated: false, cutaway: false, rooms: false, selected: null, speed: 1, paused: false, buildOpen: true,
   buildCat: 'Shelter', tab: 'colonists', poi: null, squad: [], menu: false,
   // The page opens on the title screen. A new game opens with the story. A loaded save goes straight back to the game.
   title: !start.loaded && !params.has('play'),
@@ -87,10 +92,21 @@ const hud = createHud(document.body, state, () => world, {
   settingsChanged: () => storeSettings(settings),
 });
 const labels = createLabels(document.body);
-const pointer = bindPointer(view.renderer.domElement, view.rig.camera, view.scene, state, () => world);
+/** The roofs fade while the player holds Tab, builds in the house, or has a house piece selected. */
+const showInside = (s: UiState) => s.cutaway || s.tool !== null || (s.placing !== null && !!BUILDINGS[s.placing].furniture) || (typeof s.selected === 'number' && inHouse(world, s.selected));
+const interaction = createInteraction(view.scene);
+const pointer = bindPointer(view.renderer.domElement, view.rig.camera, view.scene, state, () => world, interaction);
 
 // Dev builds expose the world so browser scripts can set up scenes for visual checks.
-if (import.meta.env.DEV) Object.assign(window, { world });
+if (import.meta.env.DEV) {
+  const v = new Vector3();
+  // Screen position of a tile, so browser scripts can point at things.
+  const project = (x: number, y: number, h = 0) => {
+    v.set(x - world.map.width / 2, h, y - world.map.height / 2).project(view.rig.camera);
+    return { x: ((v.x + 1) / 2) * innerWidth, y: ((1 - v.y) / 2) * innerHeight };
+  };
+  Object.assign(window, { world, project, ui: state });
+}
 
 let accumulator = 0;
 let last = performance.now();
@@ -127,8 +143,9 @@ function frame(now: number): void {
   controls.update(dt);
   view.rig.update(dt);
   pointer.update(world);
-  worldView.update(world, time, result.alpha, view.rig.pixelsPerUnit(view.renderer.domElement.height), view.rig.camera);
-  labels.update(world, view.rig.camera, pointer);
+  worldView.update(world, time, result.alpha, view.rig.pixelsPerUnit(view.renderer.domElement.height), view.rig.camera, showInside(state));
+  interaction.update(world, time, pointer.hover, state.selected === null ? null : targetOf(world, state.selected));
+  labels.update(world, view.rig.camera, pointer, state.rooms || state.tool !== null);
   audio.update(world, Math.hypot(view.rig.target.x, view.rig.target.z), settings.volume);
   if (now - lastHud > HUD_INTERVAL_MS) {
     hud.update();

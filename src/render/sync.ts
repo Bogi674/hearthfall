@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { BALANCE } from '../data/balance';
 import { BUILDINGS } from '../data/buildings';
+import { EDGES } from '../data/house';
 import { COMPONENT_IDS } from '../data/vehicle';
 import { ENEMIES } from '../data/enemies';
 import { Tile } from '../sim/grid';
@@ -30,7 +31,8 @@ function frostForDay(day: number): number {
 }
 
 export interface WorldView {
-  update(world: World, time: number, alpha: number, pixelsPerUnit: number, camera: THREE.Camera): void;
+  /** With cutaway the roofs fade so the people inside the house can be seen. */
+  update(world: World, time: number, alpha: number, pixelsPerUnit: number, camera: THREE.Camera, cutaway: boolean): void;
 }
 
 export function createWorldView(world: World, scene: THREE.Scene, fog: THREE.Fog): WorldView {
@@ -106,7 +108,7 @@ export function createWorldView(world: World, scene: THREE.Scene, fog: THREE.Fog
   let revealRev = -1;
 
   return {
-    update(w, time, alpha, pixelsPerUnit, camera) {
+    update(w, time, alpha, pixelsPerUnit, camera, cutaway) {
       if (w.mapRev !== mapRev) {
         mapRev = w.mapRev;
         for (const p of props) {
@@ -147,7 +149,7 @@ export function createWorldView(world: World, scene: THREE.Scene, fog: THREE.Fog
       hearthLight.visible = w.hearth.lit;
       hearthLight.intensity = baseIntensity * (1 + Math.sin(time * 11) * 0.05 + Math.sin(time * 27) * 0.03);
 
-      houseView.update(w);
+      houseView.update(w, time, cutaway);
       const alive = new Set<number>();
       const wallAt = new Set(w.buildings.filter((b) => WALL_TYPES.includes(b.type)).map((b) => b.y * width + b.x));
       for (const b of w.buildings) {
@@ -192,6 +194,10 @@ export function createWorldView(world: World, scene: THREE.Scene, fog: THREE.Fog
         }
         const max = BUILDINGS[b.type].hp;
         if (b.hp < max) barList.push({ x: b.x + (b.w - 1) / 2 - width / 2, z: b.y + (b.h - 1) / 2 - height / 2, y: 2, fraction: b.hp / max, enemy: false });
+      }
+      for (const e of w.house.edges) {
+        const max = EDGES[e.kind].levels[e.level - 1].hp;
+        if (e.construct <= 0 && e.hp < max) barList.push({ x: (e.side === 'w' ? e.x - 0.5 : e.x) - width / 2, z: (e.side === 'n' ? e.y - 0.5 : e.y) - height / 2, y: 1.5, fraction: e.hp / max, enemy: false });
       }
       if (w.hearth.hp < hearthStage(w).hp) barList.push({ x: 0, z: 0, y: 3.5, fraction: w.hearth.hp / hearthStage(w).hp, enemy: false });
       // Monsters under fog of war stay unseen.
