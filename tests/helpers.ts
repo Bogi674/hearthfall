@@ -5,19 +5,29 @@ import { placementError } from '../src/sim/placement';
 import { DAY_SECONDS } from '../src/sim/query';
 import { stepWorld, TICKS_PER_SECOND, type World } from '../src/sim/world';
 
+const sortedSpots = new Map<string, { x: number; y: number; d: number }[]>();
+
+/** Every tile of the map for a footprint, nearest to the hearth first. Built once per map and footprint, since the player asks often. */
+function spotsFor(world: World, w: number, h: number): { x: number; y: number; d: number }[] {
+  const key = `${world.seed}|${world.map.width}|${w}x${h}`;
+  let spots = sortedSpots.get(key);
+  if (!spots) {
+    spots = [];
+    for (let y = 0; y < world.map.height; y++) {
+      for (let x = 0; x < world.map.width; x++) spots.push({ x, y, d: Math.hypot(x + (w - 1) / 2 - world.hearth.x, y + (h - 1) / 2 - world.hearth.y) });
+    }
+    spots.sort((a, b) => a.d - b.d);
+    sortedSpots.set(key, spots);
+  }
+  return spots;
+}
+
 /** Nearest valid spot to the hearth. Gatherers also need some nodes in range, like a player would choose. */
 export function findSpot(world: World, type: BuildingType, minDist = 0, minNodes = 10): { x: number; y: number } | null {
   const [w, h] = BUILDINGS[type].size;
   const gather = RECIPES[type]?.gather;
-  const spots: { x: number; y: number; d: number }[] = [];
-  for (let y = 0; y < world.map.height; y++) {
-    for (let x = 0; x < world.map.width; x++) {
-      const d = Math.hypot(x + (w - 1) / 2 - world.hearth.x, y + (h - 1) / 2 - world.hearth.y);
-      if (d >= minDist) spots.push({ x, y, d });
-    }
-  }
-  spots.sort((a, b) => a.d - b.d);
-  for (const s of spots) {
+  for (const s of spotsFor(world, w, h)) {
+    if (s.d < minDist) continue;
     if (placementError(world, type, s.x, s.y, false)) continue;
     if (gather && nodesInRange(world, s.x + (w - 1) / 2, s.y + (h - 1) / 2, gather.tile, gather.radius - 1) < minNodes) continue;
     return s;

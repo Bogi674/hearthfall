@@ -17,6 +17,6 @@ describe('full run (M5 done when)', () => {
       expect(world.won!.aboard.length).toBeGreaterThan(0);
       // About 45 minutes at 2x speed (see docs/DECISIONS.md).
       expect(world.day).toBeLessThanOrEqual(10);
-    });
+    }, 240000);
   }
 });

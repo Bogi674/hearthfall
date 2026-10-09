@@ -26,7 +26,7 @@ export function rightPanel(w: World, state: UiState): string {
 
 function colonists(w: World): string {
   return `${w.colonists
-    .map((c) => `<button data-act="focus:${Math.round(c.x)}:${Math.round(c.y)}" class="colonist"><span>${c.name}</span><small>${taskText(w, c)}, ${WEAPONS[c.weapon].name.toLowerCase()}</small>
+    .map((c) => `<button data-act="focus:${Math.round(c.x)}:${Math.round(c.y)}:${c.storey}" class="colonist"><span>${c.name}</span><small>${taskText(w, c)}, ${WEAPONS[c.weapon].name.toLowerCase()}</small>
         <div class="bars">${bar(c.health, 'Health')}${bar(c.hunger, 'Hunger')}${bar(c.rest, 'Rest')}${bar(c.warmth, 'Warmth')}</div></button>`)
     .join('')}<p class="legend">Bars: health, hunger, rest, warmth. Click a colonist to find them.</p>`;
 }

@@ -127,7 +127,12 @@ export function createHud(root: HTMLElement, state: UiState, world: () => World,
       state.squad = [];
     }
     if (act === 'recall') pushCommand(world().commands, { type: 'recall', id: Number(arg) });
-    if (act === 'focus') actions.focus(Number(arg), Number(arg2));
+    if (act === 'focus') {
+      actions.focus(Number(arg), Number(arg2));
+      // Looking at someone upstairs brings that floor into view.
+      const level = t.dataset.act!.split(':')[3];
+      if (level !== undefined) state.storey = Math.min(maxStorey(world()), Number(level));
+    }
     if (act === 'menu') [state.menu, state.view, note] = [!state.menu, 'main', ''];
     if (act === 'view') [state.view, note] = [arg as MenuView, ''];
     if (act === 'story') [state.intro, state.menu] = [true, false];
