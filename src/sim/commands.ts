@@ -7,6 +7,7 @@ import { RESOURCE_NAMES, type Resource } from '../data/resources';
 import { BERTH, COMPONENT_IDS, COMPONENTS, type ComponentId } from '../data/vehicle';
 import type { EdgeKind, FloorId } from '../data/house';
 import type { Side } from './house';
+import { buildLine, buildRoom, demolishArea, paintArea } from './build';
 import { placeBuilding, placeEdge, placeFloor, removeHouseItem, siteError, type HouseItem } from './placement';
 import { center, launchFuelNeeded, missing, pay } from './query';
 import { recall } from './systems/expeditions';
@@ -30,7 +31,11 @@ export type Command =
   | { type: 'setCraft'; id: number; weapon: WeaponId }
   | { type: 'paintFloor'; x: number; y: number; kind: FloorId; storey?: number }
   | { type: 'buildEdge'; x: number; y: number; side: Side; kind: EdgeKind; level: number; storey?: number }
-  | { type: 'removeHouseItem'; item: HouseItem; id: number };
+  | { type: 'removeHouseItem'; item: HouseItem; id: number }
+  | { type: 'paintArea'; x: number; y: number; w: number; h: number; kind: FloorId; storey?: number }
+  | { type: 'buildRoom'; x: number; y: number; w: number; h: number; kind: FloorId; level: number; storey?: number }
+  | { type: 'buildLine'; x: number; y: number; side: Side; length: number; edge: EdgeKind; level: number; storey?: number }
+  | { type: 'demolishArea'; x: number; y: number; w: number; h: number; storey?: number };
 
 export function pushCommand(queue: Command[], command: Command): void {
   queue.push(command);
@@ -42,6 +47,10 @@ export function applyCommands(world: World): void {
     if (c.type === 'paintFloor') placeFloor(world, c.x, c.y, c.kind, c.storey ?? 0);
     if (c.type === 'buildEdge') placeEdge(world, c.x, c.y, c.side, c.kind, c.level, c.storey ?? 0);
     if (c.type === 'removeHouseItem') removeHouseItem(world, c.item, c.id);
+    if (c.type === 'paintArea') paintArea(world, c, c.kind, c.storey ?? 0);
+    if (c.type === 'buildRoom') buildRoom(world, c, c.kind, c.level, c.storey ?? 0);
+    if (c.type === 'buildLine') buildLine(world, c, c.length, c.edge, c.level, c.storey ?? 0);
+    if (c.type === 'demolishArea') demolishArea(world, c, c.storey ?? 0);
     if (c.type === 'setWorkers') {
       const b = world.buildings.find((b) => b.id === c.id);
       if (b) b.workers = Math.max(0, Math.min(BUILDINGS[b.type].workers, c.count));

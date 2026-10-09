@@ -58,7 +58,7 @@ const worldView = createWorldView(world, view);
 const controls = bindCameraControls(view.rig, view.renderer.domElement);
 const audio = createAudio();
 const state: UiState = {
-  placing: null, tool: null, rotated: false, walls: 'up', peek: false, storey: 0, levels: 'all', rooms: false, selected: null, speed: 1, paused: false, buildOpen: true,
+  placing: null, tool: null, rotated: false, walls: 'up', peek: false, storey: 0, levels: 'all', fill: false, rooms: false, selected: null, speed: 1, paused: false, buildOpen: true,
   buildCat: 'Shelter', tab: 'colonists', poi: null, squad: [], menu: false,
   // The page opens on the title screen. A new game opens with the story. A loaded save goes straight back to the game.
   title: !start.loaded && !params.has('play'),

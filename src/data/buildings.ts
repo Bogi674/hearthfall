@@ -4,7 +4,7 @@ import type { Amounts } from './resources';
 // Size is the footprint in tiles before rotation. HP is how much damage a building takes before it is destroyed.
 // Build is the seconds of work one builder needs to put it up (section 8.2).
 
-export type BuildingCategory = 'Furniture' | 'Shelter' | 'Production' | 'Defense' | 'Escape';
+export type BuildingCategory = 'Structure' | 'Furniture' | 'Utility' | 'Shelter' | 'Production' | 'Defense' | 'Escape';
 
 /** How workers look while they work here (section 12.4). */
 export type WorkAnim = 'chop' | 'pick' | 'pry' | 'gather' | 'stir' | 'saw' | 'hammer' | 'tend';
@@ -76,14 +76,16 @@ const DEFS = {
   heater: { name: 'Heater', category: 'Shelter', cost: { metal: 10, parts: 5 }, size: [1, 1], build: 10, workers: 0, hp: 80, heat: { radius: 4, fuelPerMinute: 1 } },
   bed: { name: 'Bed', category: 'Furniture', cost: { wood: 6 }, size: [1, 1], build: 6, workers: 0, hp: 60, beds: 1, furniture: true, indoor: true },
   sickbed: { name: 'Sickbed', category: 'Furniture', cost: { planks: 8, parts: 1 }, size: [1, 1], build: 8, workers: 0, hp: 60, beds: 1, restBonus: 3, furniture: true, indoor: true },
-  shelf: { name: 'Shelf', category: 'Furniture', cost: { wood: 8 }, size: [1, 1], build: 5, workers: 0, hp: 60, storage: 60, furniture: true, indoor: true },
+  shelf: { name: 'Shelf', category: 'Utility', cost: { wood: 8 }, size: [1, 1], build: 5, workers: 0, hp: 60, storage: 60, furniture: true, indoor: true },
   table: { name: 'Table', category: 'Furniture', cost: { wood: 10 }, size: [2, 1], build: 6, workers: 0, hp: 60, social: 'eat', furniture: true, indoor: true },
   sofa: { name: 'Sofa', category: 'Furniture', cost: { wood: 10, scrap: 4 }, size: [2, 1], build: 6, workers: 0, hp: 60, social: 'mingle', furniture: true, indoor: true },
-  stairs: { name: 'Stairs', category: 'Furniture', cost: { wood: 14 }, size: [1, 1], build: 8, workers: 0, hp: 80, furniture: true, indoor: true, stairs: true },
-  stove: { name: 'Stove', category: 'Furniture', cost: { planks: 6, stone: 4 }, size: [1, 1], build: 8, workers: 1, hp: 80, furniture: true, indoor: true, work: 'stir' },
-  workbench: { name: 'Workbench', category: 'Furniture', cost: { planks: 10, metal: 6 }, size: [2, 1], build: 10, workers: 1, hp: 80, furniture: true, indoor: true, work: 'hammer', armory: true },
-  draftingTable: { name: 'Drafting Table', category: 'Furniture', cost: { planks: 12, metal: 6 }, size: [2, 1], build: 10, workers: 4, hp: 80, furniture: true, indoor: true, work: 'hammer' },
-  lamp: { name: 'Lamp', category: 'Furniture', cost: { wood: 2, scrap: 4 }, size: [1, 1], build: 3, workers: 0, hp: 30, glow: 3, decor: true, furniture: true, indoor: true },
+  stairs: { name: 'Stairs', category: 'Structure', cost: { wood: 14 }, size: [1, 1], build: 8, workers: 0, hp: 80, furniture: true, indoor: true, stairs: true },
+  stove: { name: 'Stove', category: 'Utility', cost: { planks: 6, stone: 4 }, size: [1, 1], build: 8, workers: 1, hp: 80, furniture: true, indoor: true, work: 'stir' },
+  workbench: { name: 'Workbench', category: 'Utility', cost: { planks: 10, metal: 6 }, size: [2, 1], build: 10, workers: 1, hp: 80, furniture: true, indoor: true, work: 'hammer', armory: true },
+  draftingTable: { name: 'Drafting Table', category: 'Utility', cost: { planks: 12, metal: 6 }, size: [2, 1], build: 10, workers: 4, hp: 80, furniture: true, indoor: true, work: 'hammer' },
+  lamp: { name: 'Lamp', category: 'Utility', cost: { wood: 2, scrap: 4 }, size: [1, 1], build: 3, workers: 0, hp: 30, glow: 3, decor: true, furniture: true, indoor: true },
+  stringLights: { name: 'String Lights', category: 'Utility', cost: { scrap: 5, wood: 1 }, size: [1, 1], build: 3, workers: 0, hp: 20, glow: 3.5, decor: true, furniture: true, indoor: true },
+  crate: { name: 'Storage Crate', category: 'Utility', cost: { wood: 10 }, size: [1, 1], build: 4, workers: 0, hp: 60, storage: 80, furniture: true, indoor: true },
   rug: { name: 'Rug', category: 'Furniture', cost: { scrap: 6 }, size: [2, 1], build: 3, workers: 0, hp: 20, decor: true, furniture: true, indoor: true },
   plant: { name: 'Potted Plant', category: 'Furniture', cost: { wood: 3 }, size: [1, 1], build: 2, workers: 0, hp: 20, decor: true, furniture: true, indoor: true },
   roofTurret: {

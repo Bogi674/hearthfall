@@ -91,6 +91,24 @@ const lamp: Builder = (g) => {
   g.add(glowPart(MAT.glow, [0, 1.02, 0], [0.12, 0.12, 0.12], GEO.sphere));
 };
 
+/** A string of warm bulbs on two short poles, hung across the tile. */
+const stringLights: Builder = (g) => {
+  for (const s of [-1, 1]) g.add(part(GEO.pipe, MAT.darkWood, [s * 0.42, 0, 0.35], [0.05, 1.15, 0.05]));
+  for (let i = 0; i < 6; i++) {
+    const t = i / 5;
+    g.add(glowPart(MAT.glow, [-0.42 + t * 0.84, 1.1 - Math.sin(t * Math.PI) * 0.12, 0.35], [0.075, 0.075, 0.075], GEO.bulb));
+  }
+  g.add(part(GEO.rod, MAT.soot, [0, 1.07, 0.35], [0.012, 0.86, 0.012], [0, 0, Math.PI / 2]));
+};
+
+/** A slatted crate with a rope handle. */
+const crate: Builder = (g) => {
+  g.add(part(GEO.block, MAT.wood, [0, 0, 0], [0.7, 0.55, 0.6]));
+  for (const y of [0.12, 0.3, 0.48]) g.add(part(GEO.block, MAT.darkWood, [0, y, 0.31], [0.72, 0.05, 0.03]));
+  g.add(part(GEO.block, MAT.rust, [0.15, 0.55, 0], [0.2, 0.06, 0.2]));
+  g.add(part(GEO.block, MAT.burlap, [-0.15, 0.55, 0.05], [0.22, 0.1, 0.2]));
+};
+
 const rug: Builder = (g, w, h) => {
   g.add(part(GEO.block, MAT.tarpRust, [0, 0, 0], [w * 0.86, 0.025, h * 0.8]));
   g.add(part(GEO.block, MAT.paintYellow, [0, 0.025, 0], [w * 0.7, 0.01, h * 0.62]));
@@ -131,4 +149,4 @@ const draftingTable: Builder = (g, w, h) => {
   g.add(part(GEO.rod, MAT.rope, [long ? w * 0.3 : 0, 0.7, long ? h * 0.3 : h * 0.3], [0.08, 0.5, 0.08], [0, 0, Math.PI / 2]));
 };
 
-export const FURNITURE = { bed, sickbed, stairs, shelf, table, sofa, stove, workbench, lamp, rug, plant, roofTurret, spotlight, draftingTable } satisfies Partial<Record<BuildingType, Builder>>;
+export const FURNITURE = { bed, sickbed, stairs, stringLights, crate, shelf, table, sofa, stove, workbench, lamp, rug, plant, roofTurret, spotlight, draftingTable } satisfies Partial<Record<BuildingType, Builder>>;

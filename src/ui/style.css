@@ -646,3 +646,34 @@ button.colonist:hover:not(:disabled) {
   display: inline-flex;
   gap: 2px;
 }
+
+#build .sections {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  justify-content: center;
+  max-width: min(1100px, calc(100vw - 32px));
+}
+
+#build .sec {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+#build .sec h5 {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #a9c4d8;
+}
+
+#build .sec .group {
+  max-width: 340px;
+  justify-content: flex-start;
+}
+
+#build .sec button.item {
+  width: 164px;
+}

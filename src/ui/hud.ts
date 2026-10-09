@@ -34,6 +34,8 @@ export interface UiState {
   storey: number;
   /** Show every storey, or only up to the current one. Toggled with L. */
   levels: 'all' | 'current';
+  /** Drag out shapes with the house tools: a rectangle of floor, a run of wall, an area to clear. Toggled with Z. */
+  fill: boolean;
   /** Names and warnings are drawn over the rooms of the house. Toggled with H. */
   rooms: boolean;
   selected: number | 'hearth' | null;
@@ -104,6 +106,7 @@ export function createHud(root: HTMLElement, state: UiState, world: () => World,
     if (act === 'build') [state.placing, state.tool] = [state.placing === arg ? null : (arg as BuildingType), null];
     if (act === 'tool') [state.tool, state.placing] = [state.tool && arg === toolIdOf(state.tool) ? null : parseTool(arg), null];
     if (act === 'rotate') state.rotated = !state.rotated;
+    if (act === 'shape') state.fill = !state.fill;
     if (act === 'storey') state.storey = Math.max(0, Math.min(maxStorey(world()), state.storey + Number(arg)));
     if (act === 'levels') state.levels = state.levels === 'all' ? 'current' : 'all';
     if (act === 'walls') state.walls = WALL_MODES[(WALL_MODES.indexOf(state.walls) + 1) % WALL_MODES.length];
@@ -196,7 +199,7 @@ export function createHud(root: HTMLElement, state: UiState, world: () => World,
       const wallsButton = `<button data-act="walls" title="Walls up, back walls only, or all walls cut low (V)">${WALL_NAMES[state.walls]}</button>`;
       const floorBox = `<span class="floors"><button data-act="storey:-1" title="Down one floor (Page Down)">v</button><button data-act="levels" title="Show all floors or only up to this one (L)">Floor ${state.storey + 1}${state.levels === 'all' ? '' : ' only'}</button><button data-act="storey:1" title="Up one floor (Page Up)">^</button></span>`;
       set('controls', `${alarm}${speeds}${floorBox}${wallsButton}<button data-act="menu">Menu</button>`);
-      set('build', state.buildOpen ? buildMenuHtml(w, state.buildCat, state.placing, state.tool, state.rotated) : '');
+      set('build', state.buildOpen ? buildMenuHtml(w, state.buildCat, state.placing, state.tool, state.rotated, state.fill) : '');
 
       set('forecast', forecastHtml(w));
       const hint = actions.settings.hints && !w.lost && !w.won ? currentHint(w) : null;

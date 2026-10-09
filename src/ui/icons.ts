@@ -45,6 +45,14 @@ export const BUILDING_ICONS: Record<BuildingType, string> = {
     `<path d="M5 26h6v-5h6v-5h6v-5h4v15z" ${ACCENT}/>` +
       `<path d="M4 26h6v-5h6v-5h6v-5h6"/><path d="M4 26h24"/>`,
   ),
+  stringLights: svg(
+    `<path d="M5 24V8M27 24V8"/><path d="M5 9c6 7 16 7 22 0"/>` +
+      `<circle cx="10" cy="14" r="2" ${ACCENT}/><circle cx="16" cy="16" r="2" ${ACCENT}/><circle cx="22" cy="14" r="2" ${ACCENT}/>`,
+  ),
+  crate: svg(
+    `<rect x="5" y="9" width="22" height="16" ${ACCENT}/><rect x="5" y="9" width="22" height="16"/>` +
+      `<path d="M5 14h22M5 19h22M12 9v16M20 9v16"/>`,
+  ),
   sickbed: svg(
     `<rect x="5" y="14" width="22" height="8" ${ACCENT}/>` +
       `<path d="M4 24V10M4 18h24v6M28 24v-3"/><path d="M15 15v6M12 18h6"/>`,

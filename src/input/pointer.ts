@@ -11,7 +11,11 @@ import { createBuildingGhost } from '../render/ghost';
 import { createGhost, GHOST_BAD, GHOST_OK } from '../render/meshes/buildings';
 import type { Interaction } from '../render/interaction';
 import { WALL_MODES, type UiState } from '../ui/hud';
+import type { HouseTool } from '../ui/build';
 import { pick, type Target } from './pick';
+import { planArea, type Anchor, type AreaPlan } from './areas';
+import { createAreaPreview } from '../render/areaPreview';
+import { drawsShapes } from '../ui/build';
 
 export interface Pointer {
   /** Placement problem under the cursor, shown next to it. */
@@ -25,6 +29,9 @@ export function bindPointer(canvas: HTMLCanvasElement, camera: THREE.Camera, sce
   const ghost = createGhost();
   scene.add(ghost);
   const buildingGhost = createBuildingGhost(scene);
+  const preview = createAreaPreview(scene);
+  /** A shape being dragged out with a house tool. */
+  let drag: { a: Anchor; b: Anchor } | null = null;
   const ray = new THREE.Raycaster();
   const ground = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
   const hit = new THREE.Vector3();
@@ -107,13 +114,29 @@ export function bindPointer(canvas: HTMLCanvasElement, camera: THREE.Camera, sce
     return f ? { item: 'floor', id: f.id } : null;
   };
 
+  /** True when the tool in hand draws a shape: always for a room, and for floors, walls, and clearing while the shape toggle is on. */
+  const shaped = () => state.tool !== null && state.tool.kind !== 'site' && (state.tool.kind === 'room' || (state.fill && drawsShapes(state.tool)));
+  const anchorAt = (): Anchor | null => (state.tool?.kind === 'edge' ? edgeAt() : tileAt());
+  const dragPlan = (w: World): AreaPlan | null => (drag && state.tool ? planArea(w, state.tool, drag.a, drag.b, state.storey) : null);
+
   canvas.addEventListener('mousedown', (e) => {
     if (e.button !== 0 || !state.tool) return;
+    if (shaped()) {
+      const a = anchorAt();
+      if (a) drag = { a, b: a };
+      return;
+    }
     painting = true;
     lastTool = '';
     useTool(true);
   });
-  window.addEventListener('mouseup', () => (painting = false));
+  window.addEventListener('mouseup', () => {
+    painting = false;
+    if (!drag) return;
+    const plan = dragPlan(world());
+    drag = null;
+    if (plan?.command && !plan.blocked) pushCommand(world().commands, plan.command);
+  });
   window.addEventListener('keyup', (e) => {
     if (e.code === 'Tab') state.peek = false;
   });
@@ -123,6 +146,7 @@ export function bindPointer(canvas: HTMLCanvasElement, camera: THREE.Camera, sce
     mouse.y = e.clientY;
     mouse.ndc.set((e.clientX / canvas.clientWidth) * 2 - 1, -(e.clientY / canvas.clientHeight) * 2 + 1);
     mouse.inside = true;
+    if (drag) drag.b = anchorAt() ?? drag.b;
     if (painting) useTool(false);
   });
   canvas.addEventListener('mouseleave', () => (mouse.inside = false));
@@ -130,6 +154,7 @@ export function bindPointer(canvas: HTMLCanvasElement, camera: THREE.Camera, sce
     e.preventDefault();
     state.placing = null;
     state.tool = null;
+    drag = null;
   });
   canvas.addEventListener('click', () => {
     if (state.tool) return;
@@ -153,6 +178,12 @@ export function bindPointer(canvas: HTMLCanvasElement, camera: THREE.Camera, sce
     if (['Digit1', 'Digit2', 'Digit3'].includes(e.code)) [state.speed, state.paused] = [Number(e.code.slice(5)), false];
     if (e.code === 'KeyB') state.buildOpen = !state.buildOpen;
     if (e.code === 'KeyR') state.rotated = !state.rotated;
+    if (e.code === 'KeyZ') state.fill = !state.fill;
+    // Tool hotkeys avoid the camera keys: F floor, T wall, Y room, X take apart.
+    const toolKeys: Record<string, HouseTool> = {
+      KeyF: { kind: 'floor', floor: 'boards' }, KeyT: { kind: 'edge', edge: 'wall', level: 1 }, KeyY: { kind: 'room', floor: 'boards', level: 1 }, KeyX: { kind: 'erase' },
+    };
+    if (toolKeys[e.code]) [state.tool, state.placing, state.buildCat] = [toolKeys[e.code], null, 'Structure'];
     if (e.code === 'KeyH') state.rooms = !state.rooms;
     if (e.code === 'PageUp' || e.code === 'BracketRight') state.storey = Math.min(maxStorey(world()), state.storey + 1);
     if (e.code === 'PageDown' || e.code === 'BracketLeft') state.storey = Math.max(0, state.storey - 1);
@@ -162,7 +193,7 @@ export function bindPointer(canvas: HTMLCanvasElement, camera: THREE.Camera, sce
       e.preventDefault();
       state.peek = true;
     }
-    if (e.code === 'Escape') [state.placing, state.tool, state.selected] = [null, null, null];
+    if (e.code === 'Escape') [state.placing, state.tool, state.selected, drag] = [null, null, null, null];
   });
 
   /** Shows where the tool in hand would act, green when it can and red with the reason when it cannot. */
@@ -170,6 +201,13 @@ export function bindPointer(canvas: HTMLCanvasElement, camera: THREE.Camera, sce
     const tool = state.tool!;
     let error: string | null = null;
     ghost.visible = true;
+    if (drag) {
+      const plan = dragPlan(w)!;
+      ghost.visible = false;
+      preview.show(plan.items, state.storey, w.map.width, w.map.height, performance.now() / 1000);
+      pointer.tip = { text: plan.text, x: mouse.x, y: mouse.y };
+      return;
+    }
     if (tool.kind === 'site') {
       const t = tileAt();
       ghost.visible = t !== null;
@@ -190,7 +228,7 @@ export function bindPointer(canvas: HTMLCanvasElement, camera: THREE.Camera, sce
       ghost.visible = t !== null;
       if (!t) return;
       const target = tool.kind === 'erase' ? eraseTarget(w) : null;
-      error = tool.kind === 'floor' ? floorPlacementError(w, t.x, t.y, tool.floor, state.storey) : target ? removeError(w, target.item, target.id) : 'Nothing to remove';
+      error = tool.kind === 'floor' || tool.kind === 'room' ? floorPlacementError(w, t.x, t.y, tool.floor, state.storey) : target ? removeError(w, target.item, target.id) : 'Nothing to remove';
       ghost.position.set(t.x - w.map.width / 2, state.storey * STOREY_HEIGHT, t.y - w.map.height / 2);
       ghost.scale.set(1, 0.1, 1);
     }
@@ -211,6 +249,7 @@ export function bindPointer(canvas: HTMLCanvasElement, camera: THREE.Camera, sce
     update(w) {
       pointer.tip = null;
       if (state.tool || !state.placing) buildingGhost.hide();
+      if (!drag) preview.hide();
       const free = mouse.inside && !state.tool && !state.placing;
       const uv = free ? cursorUV() : null;
       pointer.hover = uv ? pick(w, uv.u, uv.v, state.storey) : null;
