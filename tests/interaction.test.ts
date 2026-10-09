@@ -111,6 +111,7 @@ describe('the selection panel for the house (section 14)', () => {
     expect(buildMenuHtml(w, 'Escape', null, null, false)).toMatch(/Needs the old owner/);
     w.airship.blueprint = true;
     expect(buildMenuHtml(w, 'Escape', null, null, false)).toMatch(/Choose the site in the Airship tab/);
-    expect(buildMenuHtml(w, 'Structure', null, null, false)).toContain('Gun Port');
+    expect(buildMenuHtml(w, 'Defense', null, null, false)).toContain('Gun Port');
+    expect(buildMenuHtml(w, 'Structure', null, null, false)).toContain('Wood Room');
   });
 });
