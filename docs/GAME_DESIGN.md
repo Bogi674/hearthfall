@@ -59,7 +59,7 @@ Time controls are pause, 1x, 2x, and 3x. The game auto pauses on dusk start in t
 
 ## 4. World and Map
 
-- **Grid.** Square tiles of 1 world unit. The map is 128 by 128 tiles.
+- **Grid.** Square tiles of 1 world unit. The map is 160 by 160 tiles. People and furniture are drawn smaller than the tile, so a room holds more and the lot and the map feel roomy.
 - **Generation.** Seed based and deterministic. The same seed always produces the same map.
 - **The paddock.** An open 10 by 10 square of ground sits about 11 tiles from the house, in a random one of the eight directions. It is the old owner's launch field and keeps room for the launch pad on every map (section 11.2).
 - **Layout.** The hearth sits in a central clearing. Around it are ruined houses, streets, trees, rubble, and a few points of interest at increasing distance and danger. The forest starts to thicken about 17 tiles out, so the first gathering spots stay close. The nearest point of interest is 24 tiles away and the farthest is 54.
@@ -133,7 +133,7 @@ The house is not only repaired in stages. The colony also builds onto it, the wa
 ### 5.6 Building the house: floors, walls, and doors
 The house is built tile by tile, like a survivor shelter growing from a ruin.
 
-- **House lot.** The lot around the hearth grows with the Hearth House stage: 3, 4, 5, 6, and 7 tiles from the hearth, so 7 by 7 up to 15 by 15. Floors, walls, and furniture go only on the lot.
+- **House lot.** The lot around the hearth grows with the Hearth House stage: 4, 5, 6, 7, and 8 tiles from the hearth, so 9 by 9 up to 17 by 17. Floors, walls, and furniture go only on the lot.
 - **Floors.** Plank Floor (2 wood) and Stone Floor (2 stone). A floor tile must touch the house or another floor. Drag to paint.
 - **Walls, doors, windows, and gun ports.** These sit on the border between two tiles and need a floor on one side. Walls come in wood, reinforced, stone, and metal. Doors come in wood and reinforced. Windows let light through and stop people. Gun ports are walls a defender fires through (section 9.8). A built piece can be upgraded or changed to another kind. The old piece stands until the work is done.
 - **The house itself** is a wall with a front door on its south side. A door can be cut into any other house wall.
@@ -142,14 +142,27 @@ The house is built tile by tile, like a survivor shelter growing from a ruin.
 - **Walking.** Near the house colonists walk tile to tile. Finished walls and windows stop them and doors let them through. Away from the house they still walk straight. Until the first floor or wall is built, the old house does not block walking.
 - **Removing.** An untouched site refunds its full cost. Anything finished refunds half. A building outside the house can be taken apart by colonists, who bring back 75 percent of the cost.
 
+### 5.8 Storeys and the builder tools (M11)
+The house can grow upward like a stack of cabins on a tower.
+
+- **Storeys.** The ground floor is storey 0. The Hearth House stage sets how high the house may go: 1 storey at stage 1, 2 from stage 2, and 3 from stage 4. The roof of the top storey is the roof deck.
+- **Upper floors.** A floor on storey 1 or 2 needs a floor right under it, or a floor beside it that has one, so a balcony may stick out one tile. Posts hold up any tile with nothing under it. Walls, doors, windows, gun ports, and furniture go on any storey. Upper floors cannot cover the hearth hall.
+- **Stairs.** A flight of stairs stands on one tile of a floor and climbs to the floor above through the same tile. The tile above has no floor and needs a floor beside it. The stairs cost 14 wood. Colonists walk up and down them. The top of the stairs counts as the entrance of an upper room, so an upstairs room needs no door to the outside.
+- **Living upstairs.** Beds, tables, and sofas work on any storey. A colonist upstairs in a closed room is safe like one downstairs. Monsters only break the walls of the ground floor. Guns fire 1.2 tiles farther for each storey up.
+- **Tools.** Floors, rooms, walls, doors, and windows all have drag tools. Turn on Drag shapes (Z) to fill a rectangle of floor, run a straight wall, or clear an area. The Room tool (Y) raises floors, walls, and a door in one drag. Rooms and fills show every piece they cover in green or red, with the cost, before the drag ends. Hotkeys: F floor, T wall, Y room, X take apart. Page Up and Page Down change the working storey and L shows every storey or only up to the current one.
+- **Tabs.** Structure holds floors, rooms, walls, doors, windows, and stairs. Furniture holds beds, seats, rugs, and plants. Utility holds lamps, string lights, crates, shelves, the stove, and workbenches. Defense holds gun ports, turrets, spotlights, and the outside walls.
+
 ### 5.7 Furniture and the evening
 Furniture goes on floor tiles. Colonists use it, so a furnished house is lived in, not only built.
 
 | Furniture | Cost | Use |
 |---|---|---|
-| Bed | 6 wood | One sleeper. A bed in a closed room rests and heals 1.5 times faster |
-| Sickbed | 8 planks, 1 part | One sleeper who rests and heals 3 times faster |
+| Bed | 6 wood | One tile. One sleeper. A bed in a closed room rests and heals 1.5 times faster |
+| Sickbed | 8 planks, 1 part | One tile. One sleeper who rests and heals 3 times faster |
 | Shelf | 8 wood | Plus 60 storage |
+| Storage Crate | 10 wood | Plus 80 storage |
+| String Lights | 5 scrap, 1 wood | Decor with a warm glow |
+| Stairs | 14 wood | Join a floor to the one above (section 5.8) |
 | Table | 10 wood | Two seats where colonists eat in the evening |
 | Sofa | 10 wood, 4 scrap | Two seats where colonists talk in the evening |
 | Stove | 6 planks, 4 stone | One cook makes meals indoors. Same rate as the Kitchen |
@@ -465,6 +478,11 @@ Orthographic camera at a classic isometric angle. Zoom with scroll. Rotate in 90
 - Doors slide open when someone is close. Gun ports are walls with a dark slit and a short barrel. Damaged walls darken and show a health bar.
 - A ghost of a building shows the real model in translucent green where it can go and red where it cannot, on a footprint plate that pulses softly. The reason it cannot go there shows next to the cursor.
 - Floors rise out of the ground as builders work on them. So do walls.
+
+### 12.5b Seeing inside
+- **Wall view.** Walls up shows every wall. Walls cut keeps only the back walls and sinks the rest to a low sill, like a diorama. Walls down cuts every wall low. V cycles the view. Holding Tab shows walls down. Building or selecting a house piece opens the house at least to walls cut. Walls and roofs ease between states.
+- **Floors.** Every storey is drawn, with posts under balconies. Working on a lower floor cuts away the floors above it.
+- **Look.** Floors are worn planks or flagstone, walls are board siding, brick, or patched sheet, and roofs are rusty corrugated sheet that carries snow. Upper floors have rails on their open sides. Shelves, hanging clothes, lamps, books, boots, and sacks dress the rooms. Low mist drifts over the cold ground.
 
 ### 12.6 Readability
 - Every building shows a status icon when blocked.

@@ -2,6 +2,15 @@
 
 Newest entries first. Each entry names the milestone it belongs to.
 
+## 2026-10-10 (M11: The House That Grows)
+
+- **Wall views (M11a).** Walls up, walls cut, and walls down, cycled with V or a button. Tab peeks with every wall down.
+- **Room to breathe (M11b).** The map is 160 by 160, the house lot is 4 to 8 tiles, beds and sickbeds are one tile, and people and monsters are drawn smaller. Place distances and lookout sight grew to match.
+- **Storeys (M11c).** Up to three storeys, set by the Hearth House stage. Upper floors, walls, doors, windows, gun ports, and furniture work like the ground floor. Stairs join storeys. Colonists route through stairs, sleep and eat upstairs, and build upper floors from below. Monsters only break ground floor walls. Save version is now 7.
+- **Builder tools (M11d).** A Room tool, rectangle floor fill, straight wall runs, and take apart an area, with a live preview and cost. New hotkeys and a floor switcher. The build menu has Structure, Furniture, Utility, and Defense tabs. New String Lights and Storage Crate.
+- **Look (M11e).** Painted plank, siding, brick, sheet, and roof surfaces. Rails on open upper floors, shelves, clothes, lamps, books, boots and sacks on floors and walls, richer beds, sofas, tables, shelves, plants, and a low ground mist.
+- **Balance.** The scripted full run launches on 24 of 24 seeds with the wave curve at 1.18 and a 1.55 Blood Moon, and the forest starts 19 tiles out.
+
 ## 2026-10-09 (M10.2c: Art Pass and Balance Pass 2)
 
 - **Surface detail.** Building materials darken near the ground. House pieces vary in shade, window glow flickers, and roofs carry snow that follows the weather. Wrecked cars line the roads and drums sit among the rubble.

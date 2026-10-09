@@ -4,6 +4,11 @@ Bugs, shortcuts, and loose ends that are known but not fixed yet.
 
 ## Open
 
+- **M11.** The Hearth House stays a fixed model. It does not cut away with the wall views, and upper floors cannot be built over it.
+- **M11.** Selecting a thing on another storey needs that storey to be the current one. Colonists on other storeys cannot be clicked in the world, only from the list.
+- **M11.** Builders of an upper floor that sticks out two storeys over nothing walk straight to it. Stairs and balconies of one tile never hit this.
+- **M11.** The Structure tab is tall. Shrinking it with a collapsed view is still to do.
+
 - **M10.2a.** Weather has no sound and no window frost or roof snow growth yet.
 
 - **Balance pass 2.** With weather on, the scripted full run launches on 24 of 24 seeds, mostly between days 8 and 10. The hearth falls to 81 percent on average and to 40 percent at worst. A steeper curve of 1.24 and 1.7 launches on 21 of 24. The test checks seeds 2, 4, and 7.

@@ -202,6 +202,16 @@ Design and architecture decisions that are not already in `docs/GAME_DESIGN.md`.
 - **A blizzard shrinks outdoor heat reach but not closed rooms.** This gives the player a reason to wall in the rooms they live in, without changing the starting hearth radius on clear days.
 - **No mid day temperature swings other than the day and night split.** A smooth curve would recompute the warmth map every tick. Four steps per day are cheap and readable.
 
+## M11: The house that grows
+
+- **The tile stays the unit, and everything else shrinks.** The request was that a bedroom takes too many tiles. Splitting tiles in two would have made rooms take more tiles, not fewer. So the tile now holds more: beds are one tile and people are drawn smaller. The map grew so the base has room.
+- **Storeys are a number on each piece.** Floors, edges, and furniture carry a storey, and every query takes it with a default of 0. That kept the ground rules and tests as they were and made upper floors work with the same room, door, and routing logic.
+- **Stairs are a building on one tile.** They link a tile to the same tile one storey up. A two tile staircase would have needed facing and a ramp, and the one tile version already gives a real route. The top landing needs a floor beside it, so nobody is stranded.
+- **Upper storeys are reached through the stairs, not through a door.** The room that holds the top of the stairs counts as connected, so the no sealed rooms rule still holds upstairs.
+- **Monsters ignore upper floors.** They break ground floor walls and reach people on balconies from below. Walls above the ground fall only to guns that miss. This keeps the monster code as it was, and the reward for building up is the range bonus and a safer bed.
+- **Area tools are loops over the single piece rules.** A room, a fill, a line, and a demolish each call the same checks as one piece, so no rule could be skipped. They live in the simulation, so they work from commands and tests.
+- **Surfaces are mapped from world position.** A painted texture on a stretched thin box would smear. World mapping keeps boards the same size on any wall and costs one shader patch.
+
 ## M10.2c and balance pass 2
 
 - **The launch needs the burn, not just the load.** With weather, the hearth and four heaters burned about 30 fuel during the night, which broke a run that had followed the written rule. The rule now includes the burn and the reserve, and the UI says so. This is a rule change the player can read, not a hidden fudge.
