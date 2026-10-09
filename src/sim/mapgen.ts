@@ -51,7 +51,7 @@ function placePois(map: MapState, rng: RngState, hx: number, hy: number): Genera
     const r = POIS[type].distance;
     const x = Math.max(3, Math.min(map.width - 4, Math.round(hx + Math.cos(a) * r)));
     const y = Math.max(3, Math.min(map.height - 4, Math.round(hy + Math.sin(a) * r)));
-    clearAround(map, x, y, 1.5);
+    clearAround(map, x, y, 4);
     return { type, x, y, clears: 0, seen: 'hidden' as const };
   });
 }

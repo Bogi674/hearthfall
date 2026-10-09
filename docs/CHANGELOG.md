@@ -2,6 +2,13 @@
 
 Newest entries first. Each entry names the milestone it belongs to.
 
+## 2026-10-09 (M10.2b: Animation and Places)
+
+- **Fluent characters.** Each figure now has its own motion state. Walking blends in and out, the stride only advances while moving, and the body bobs, leans, and sways. Turning and arm poses ease. Idle figures breathe. Workers lean into the swing.
+- **New poses.** Sit, eat, talk, and lie. Colonists sit on stools and sofas at dusk, with a hand to the mouth when eating and gestures when talking. Sleepers lie on house beds and mats and show when the roof is cut away.
+- **Six unique places.** The farmhouse, gas station, hardware store, clinic, rail depot, and old airfield are real buildings with their own props. A rumor shows the beacon only. A known place shows the whole building. A searched place loses its loot props. The lot around each place is cleared to 4 tiles, up from 1.5.
+- Screenshots in `docs/screenshots/m10-2-*.jpg`.
+
 ## 2026-10-09 (M10.2a: Weather and Temperature)
 
 - **Weather.** Clear, overcast, snow, and blizzard, picked by a seeded chain with a one day forecast in the top bar. It uses its own hash of seed and day, so no other random roll moved. Save version is now 6.

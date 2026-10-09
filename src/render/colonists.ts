@@ -3,7 +3,7 @@
 import { BUILDINGS, type WorkAnim } from '../data/buildings';
 import { COLONIST_NAMES } from '../data/colonists';
 import { lookFor } from '../data/looks';
-import { center } from '../sim/query';
+import { center, isBuilt } from '../sim/query';
 import type { World } from '../sim/world';
 import type { Figure } from './meshes/figures';
 
@@ -19,8 +19,15 @@ export function colonistFigures(w: World, alpha: number, heading: Map<number, nu
   const people: Figure[] = [];
   for (const c of w.colonists) {
     const job = c.job === null ? undefined : byId.get(c.job);
-    // Sleepers and people taking shelter are indoors and out of sight.
-    if (c.asleep || c.task === 'shelter') continue;
+    // People taking shelter are out of sight. Sleepers show only in house beds and on mats, since a tent hides them.
+    if (c.task === 'shelter') continue;
+    if (c.asleep) {
+      const bed = c.bed === null ? undefined : byId.get(c.bed);
+      if (bed && !BUILDINGS[bed.type].furniture && isBuilt(bed)) continue;
+      const on = bed && isBuilt(bed) ? center(bed) : { x: c.x, y: c.y };
+      people.push({ id: c.id, x: on.x - width / 2, y: bed && isBuilt(bed) ? 0.31 : 0.06, z: on.y - height / 2, yaw: bed ? 0 : (c.id % 4) * 0.6, moving: false, look: lookFor(w.seed, COLONIST_NAMES.indexOf(c.name)), pose: 'lie' });
+      continue;
+    }
     const dx = c.x - c.px;
     const dy = c.y - c.py;
     const moving = dx !== 0 || dy !== 0;
@@ -29,6 +36,7 @@ export function colonistFigures(w: World, alpha: number, heading: Map<number, nu
     let face: { x: number; y: number } | null = null;
     let y = 0;
     let shift = 0;
+    let sit = { x: 0, y: 0 };
     if (c.task === 'work' && job) {
       pose = BUILDINGS[job.type].work ?? 'hammer';
       tool = TOOL_FOR[pose];
@@ -45,10 +53,21 @@ export function colonistFigures(w: World, alpha: number, heading: Map<number, nu
       // Guards look out, away from the house.
       face = { x: c.x * 2 - w.hearth.x, y: c.y * 2 - w.hearth.y };
     }
+    else if ((c.task === 'eat' || c.task === 'mingle') && !moving) {
+      // Seated at a table stool or on a sofa, facing the table or out from the sofa back.
+      const seat = w.buildings.find((b) => isBuilt(b) && BUILDINGS[b.type].social === c.task && c.x >= b.x - 0.5 && c.x < b.x + b.w - 0.5 && c.y >= b.y - 0.5 && c.y < b.y + b.h - 0.5);
+      if (seat) {
+        const long = seat.w >= seat.h;
+        const side = c.task === 'eat' ? 0.38 : 0.1;
+        pose = c.task === 'eat' ? 'eat' : c.id % 3 === 0 ? 'sit' : 'talk';
+        sit = long ? { x: 0, y: side } : { x: side, y: 0 };
+        face = { x: c.x + (long ? 0 : c.task === 'eat' ? -1 : 1), y: c.y + (long ? (c.task === 'eat' ? -1 : 1) : 0) };
+      }
+    }
     if (moving) heading.set(c.id, Math.atan2(dx, dy));
     else if (face && Math.hypot(face.x - c.x, face.y - c.y) > 0.05) heading.set(c.id, Math.atan2(face.x - c.x, face.y - c.y));
     people.push({
-      id: c.id, x: c.px + dx * alpha - width / 2 + shift, y, z: c.py + dy * alpha - height / 2, yaw: heading.get(c.id) ?? 0, moving,
+      id: c.id, x: c.px + dx * alpha - width / 2 + shift + sit.x, y, z: c.py + dy * alpha - height / 2 + sit.y, yaw: heading.get(c.id) ?? 0, moving,
       look: lookFor(w.seed, COLONIST_NAMES.indexOf(c.name)), pose, tool,
     });
   }

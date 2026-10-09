@@ -12,7 +12,7 @@ import { paintLight } from './lightMap';
 import { createGroundMaterial } from './groundShader';
 import { createHearthLight } from './lighting';
 import { createBars, type Bar } from './meshes/bars';
-import { createBuildingMesh, createConstructionSite, createLandmark, WALL_EAST, WALL_NORTH, WALL_SOUTH, WALL_TYPES, WALL_WEST } from './meshes/buildings';
+import { createBuildingMesh, createConstructionSite, WALL_EAST, WALL_NORTH, WALL_SOUTH, WALL_TYPES, WALL_WEST } from './meshes/buildings';
 import { createEnemyMeshes } from './meshes/enemies';
 import { colonistFigures } from './colonists';
 import { createFigureSet } from './meshes/figures';
@@ -20,6 +20,7 @@ import { PERSON_RIG } from './meshes/people';
 import { createHearthMesh } from './meshes/hearth';
 import { createHouseView } from './houseView';
 import { buildProps, colorPropsByWarmth } from './meshes/props';
+import { createPoiMesh } from './meshes/pois';
 import { createSnow } from './meshes/snow';
 import { createAtmosphere } from './atmosphere';
 import type { View } from './scene';
@@ -84,7 +85,7 @@ export function createWorldView(world: World, view: Pick<View, 'scene' | 'fog' |
   const colonistHeading = new Map<number, number>();
   let launchedAt = 0;
   const landmarks = world.pois.map((p) => {
-    const g = createLandmark();
+    const g = createPoiMesh(p.type);
     g.position.set(p.x - width / 2, 0, p.y - height / 2);
     scene.add(g);
     return g;
@@ -139,6 +140,7 @@ export function createWorldView(world: World, view: Pick<View, 'scene' | 'fog' |
       w.pois.forEach((p, i) => {
         landmarks[i].visible = p.seen !== 'hidden';
         landmarks[i].getObjectByName('site')!.visible = p.seen === 'known';
+        landmarks[i].getObjectByName('loot')!.visible = p.clears === 0;
       });
       groundMat.uniforms.uFrost.value = atmosphere.update(w, time);
       const lights = lightSources(w);

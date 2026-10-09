@@ -8,7 +8,7 @@ Bugs, shortcuts, and loose ends that are known but not fixed yet.
 - **M10.2a.** Weather has no sound and no window frost or roof snow growth yet.
 
 - **Balance pass 1.** The scripted full run launches on 24 of 24 seeds, mostly between days 7 and 10. The test checks seeds 2, 4, and 7.
-- **M10.1b.** Colonists at tables and sofas stand on their tiles with the normal stand pose. There is no sitting or eating animation yet.
+- **M10.2b.** Mat sleepers lie inside the Hearth House hall, which has its own roof, so they are not visible. The sit pose lowers the body by a fixed amount, so a figure on a stool can overlap the table edge a little.
 - **M10.1b.** Drifters are not drawn and monsters ignore them. A drifter appears as a colonist when they reach the light.
 - **M10.1c.** Roof turrets stand on a raised deck where the roof is open, and their defender stands on it, not on the roof.
 - **M10.1b.** There is no tool for moving a wall outward. Players place new walls and take the old ones apart.

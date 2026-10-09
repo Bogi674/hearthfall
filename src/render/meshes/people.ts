@@ -130,4 +130,7 @@ const hairParts: Part[] = [
   { geo: ball, mat: cloth, tint: 'accent', when: (l) => l.hat === 'beanie', at: [0, 1.01, -0.01], size: [0.07, 0.07, 0.07] },
 ];
 
+// Legs fold forward when a figure sits.
+for (const p of legs) if (p.swing) p.leg = Math.sign(p.at[0]);
+
 export const PERSON_RIG: Part[] = [...legs, ...body, ...arms, ...tools, ...head, ...hairParts];

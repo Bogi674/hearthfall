@@ -373,6 +373,7 @@ Generated per map. Each has a name, distance, danger level from 1 to 5, and a lo
 - The 3 closest are known at the start. The farther ones are more dangerous and more rewarding.
 - A Lookout Post marks every point of interest within its sight radius as a rumor. The map shows a question mark there. Sight is 44 tiles at stage 1, 56 at stage 2, and 66 at stage 3, measured from the post.
 - An expedition can be sent to a rumor. When the squad arrives the place becomes known and the search begins.
+- Each kind of place is its own building, not a marker: a farmhouse with a barn and silo, a gas station with a canopy and pumps, a hardware store with a lumber yard, a clinic with a red cross and an ambulance wreck, a rail depot with a locomotive and water tower, and an airfield with a hangar, tower, and plane wreck. A rumor shows only the cold beacon. A known place shows the whole building. After a squad has searched it the loot props are gone. Each place sits on a cleared lot 4 tiles in radius.
 - A squad also discovers any point of interest that comes within 8 tiles of its path. Squads walk 1.6 tiles per second, so the far trips still fit in one day.
 
 ---
@@ -445,6 +446,13 @@ Orthographic camera at a classic isometric angle. Zoom with scroll. Rotate in 90
 - Colonists are small chunky low poly people in winter clothes. There are ten designs for women and ten for men. They differ in height, build, skin, hair style and color, beards, hats, coats, and trousers or skirts. They animate their work: chopping with an axe, swinging a pick, prying scrap with a crowbar, gathering into a basket, stirring a pot, sawing, hammering, and tending the kiln. They carry their weapon when not working. Monsters share the chunky build with torn clothes, horns, spines, and Blight eyes.
 - The moon casts soft shadows from buildings, trees, and characters.
 - Soft vignette and a light film grain.
+
+### 12.4b Character animation
+- Every figure keeps its own motion state, so nothing snaps. Walking blends in and out over a fraction of a second, the stride only advances while moving, and the body bobs, leans forward, and sways a little with each step.
+- Turning is eased. Arms ease toward the pose of the current task, so changing from walking to chopping, or from working to sitting, is one smooth move.
+- Idle figures breathe, each on its own rhythm.
+- Workers lean into the work while they swing, hammer, or saw.
+- Colonists sit at tables and sofas when they eat or talk, with legs folded and the body lowered. Eating raises a hand to the mouth. Talking uses gestures. Sleepers lie on their beds in the house or on mats, and show when the roof is cut away. A tent still hides its sleeper.
 
 ### 12.5 The house
 - Walls are low enough to see over from the isometric camera. Closed rooms have a snow covered roof. The roofs fade away for the cutaway, which is on while the player holds Tab, has a house tool in hand, or has a piece of the house selected.

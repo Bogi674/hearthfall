@@ -29,10 +29,16 @@ export interface Part {
   when?: (look: Look, f: Figure) => boolean;
   /** Arm side, 1 right and -1 left. Arms follow the figure's pose when it stands still. */
   arm?: number;
+  /** Leg side, 1 right and -1 left. Legs fold forward when the figure sits. */
+  leg?: number;
 }
 
 /** What a standing figure is doing. Work poses come from the building it works at (section 12.4). */
-export type Pose = 'stand' | 'guard' | WorkAnim;
+export type Pose = 'stand' | 'guard' | 'sit' | 'eat' | 'talk' | 'lie' | WorkAnim;
+
+const SEATED: Pose[] = ['sit', 'eat', 'talk'];
+/** Poses where the body leans into the work. */
+const LEANING: Pose[] = ['chop', 'pick', 'hammer', 'saw', 'pry', 'gather'];
 
 /** Rises fast and falls back, like a swing of an axe. */
 const pulse = (t: number, rate: number) => ((Math.sin(t * rate) + 1) / 2) ** 2;
@@ -41,6 +47,10 @@ const pulse = (t: number, rate: number) => ((Math.sin(t * rate) + 1) / 2) ** 2;
 const ARM_POSES: Record<Pose, (side: number, t: number) => number> = {
   stand: (side, t) => 0.05 * Math.sin(t * 1.3 + side),
   guard: () => -1.35,
+  sit: () => -0.65,
+  eat: (side, t) => (side > 0 ? -0.55 - 1.15 * pulse(t, 1.7) : -0.6),
+  talk: (side, t) => (side > 0 ? -0.95 + 0.45 * Math.sin(t * 3.1) : -0.6 + 0.2 * Math.sin(t * 2.3 + 1)),
+  lie: (side) => 0.1 - side * 0.05,
   chop: (_, t) => -2.5 + 2 * pulse(t, 4.5),
   pick: (_, t) => -2.5 + 2.1 * pulse(t, 3.5),
   hammer: (side, t) => (side > 0 ? -1.9 + 1.2 * pulse(t, 6) : -0.7),
@@ -143,6 +153,23 @@ export interface FigureSet {
   update(figures: Figure[], time: number, stride: number): void;
 }
 
+interface FigureState {
+  /** Eased 0 to 1 amounts. */
+  move: number;
+  sit: number;
+  lie: number;
+  lean: number;
+  /** Walk cycle angle. It only advances while the figure moves, so a stop never jumps. */
+  phase: number;
+  yaw: number;
+  /** Eased arm angle for the left and right arm when the figure is not walking. */
+  arm: [number, number];
+  seen: number;
+}
+
+const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
+const ease = (dt: number, rate: number) => 1 - Math.exp(-dt * rate);
+
 export function createFigureSet(rig: Part[], max: number, scale = 1): FigureSet {
   const group = new THREE.Group();
   const meshes = rig.map((p) => {
@@ -164,20 +191,48 @@ export function createFigureSet(rig: Part[], max: number, scale = 1): FigureSet 
   const size = new THREE.Vector3();
   const one = new THREE.Vector3(1, 1, 1);
   const s = new THREE.Vector3();
-  const up = new THREE.Vector3(0, 1, 0);
   const hidden = new THREE.Matrix4().makeScale(0, 0, 0);
   const used = rig.map(() => false);
+  const states = new Map<number, FigureState>();
+  let last = -1;
 
   return {
     group,
     update(figures, time, stride) {
+      const dt = last < 0 ? 0.016 : Math.min(0.1, Math.max(0, time - last));
+      last = time;
       const shown = figures.slice(0, max);
       used.fill(false);
       shown.forEach((f, i) => {
         const look = f.look;
-        s.set(scale * (look?.build ?? 1), scale * (look?.height ?? 1), scale * (look?.build ?? 1));
-        base.compose(v.set(f.x, f.y ?? 0, f.z), q.setFromAxisAngle(up, f.yaw), s);
-        const phase = f.moving ? Math.sin(time * stride + f.id * 1.7) : 0;
+        const pose = f.pose ?? 'stand';
+        let st = states.get(f.id);
+        if (!st) {
+          st = { move: f.moving ? 1 : 0, sit: SEATED.includes(pose) ? 1 : 0, lie: pose === 'lie' ? 1 : 0, lean: 0, phase: f.id * 1.7, yaw: f.yaw, arm: [0, 0], seen: time };
+          states.set(f.id, st);
+        }
+        st.seen = time;
+        st.move += ((f.moving ? 1 : 0) - st.move) * ease(dt, 9);
+        st.sit += ((SEATED.includes(pose) ? 1 : 0) - st.sit) * ease(dt, 7);
+        st.lie += ((pose === 'lie' ? 1 : 0) - st.lie) * ease(dt, 5);
+        st.lean += ((LEANING.includes(pose) && !f.moving ? 0.11 : 0) - st.lean) * ease(dt, 6);
+        st.phase += dt * stride * st.move;
+        st.yaw += wrap(f.yaw - st.yaw) * ease(dt, 11);
+        const walk = Math.sin(st.phase) * st.move;
+        const anim = time + f.id * 0.37;
+        // The arms ease toward their pose, so changing tasks never snaps.
+        for (const side of [-1, 1] as const) {
+          const k = side > 0 ? 1 : 0;
+          st.arm[k] += (ARM_POSES[pose](side, anim) - st.arm[k]) * ease(dt, 16);
+        }
+
+        const sc = scale * (look?.height ?? 1);
+        const breathe = 1 + 0.012 * Math.sin(time * (st.lie > 0.5 ? 1.4 : 2.3) + f.id * 2.1) * (1 - st.move);
+        s.set(scale * (look?.build ?? 1), sc * breathe, scale * (look?.build ?? 1));
+        // Bob in step with the stride, sink into a seat, and lie back on a bed.
+        const y = (f.y ?? 0) + Math.abs(walk) * 0.035 * scale - st.sit * 0.2 * scale + st.lie * 0.12;
+        e.set(st.lean + st.move * 0.07 - st.lie * Math.PI / 2, st.yaw, walk * 0.035, 'YXZ');
+        base.compose(v.set(f.x, y, f.z), q.setFromEuler(e), s);
         rig.forEach((p, k) => {
           if (p.when && !(look && p.when(look, f))) {
             meshes[k].setMatrixAt(i, hidden);
@@ -185,8 +240,10 @@ export function createFigureSet(rig: Part[], max: number, scale = 1): FigureSet 
           }
           used[k] = true;
           const r = p.rot ?? [0, 0, 0];
-          const pose = p.arm && !f.moving ? ARM_POSES[f.pose ?? 'stand'](p.arm, time + f.id * 0.37) : 0;
-          e.set(r[0] + (p.swing ?? 0) * phase + pose, r[1], r[2]);
+          let angle = (p.swing ?? 0) * walk;
+          if (p.arm) angle += st.arm[p.arm > 0 ? 1 : 0] * (1 - st.move);
+          if (p.leg) angle += -1.45 * st.sit;
+          e.set(r[0] + angle, r[1], r[2], 'XYZ');
           // Pivot, then rotation, then the offset along the limb, then the part's own size.
           local.compose(v.set(...p.at), q.setFromEuler(e), one);
           tail.compose(v.set(...(p.offset ?? [0, 0, 0])), none, size.set(...p.size));
@@ -194,6 +251,8 @@ export function createFigureSet(rig: Part[], max: number, scale = 1): FigureSet 
           if (p.tint && look) meshes[k].setColorAt(i, LOOK_COLORS[look[p.tint]]);
         });
       });
+      // Forget figures that left the scene a while ago.
+      if (states.size > shown.length + 24) for (const [id, st] of states) if (time - st.seen > 5) states.delete(id);
       meshes.forEach((m, k) => {
         // Parts no figure shows are skipped entirely.
         m.count = used[k] ? shown.length : 0;
