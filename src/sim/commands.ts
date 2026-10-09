@@ -5,7 +5,8 @@ import { CRAFTABLE, type WeaponId } from '../data/weapons';
 import { ITEMS } from '../data/pois';
 import { RESOURCE_NAMES, type Resource } from '../data/resources';
 import { COMPONENT_IDS, COMPONENTS, LAST_NIGHT, type ComponentId } from '../data/vehicle';
-import { placeBuilding } from './placement';
+import { ROOMS, WALL_MODULES } from '../data/rooms';
+import { placeBuilding, placeRoom, placeWallModule, roomPlacementError, wallModulePlacementError } from './placement';
 import { center, missing, pay } from './query';
 import { recall } from './systems/expeditions';
 import { addLog, type Building, type World } from './world';
@@ -21,7 +22,12 @@ export type Command =
   | { type: 'upgradeBuilding'; id: number }
   | { type: 'setShelter'; id: number; on: boolean }
   | { type: 'alarm'; on: boolean }
-  | { type: 'setCraft'; id: number; weapon: WeaponId };
+  | { type: 'setCraft'; id: number; weapon: WeaponId }
+  | { type: 'addRoom'; roomId: string; x: number; y: number; rotated: boolean }
+  | { type: 'removeRoom'; id: number }
+  | { type: 'upgradeWall'; roomId: number; edge: number; segment: number; wallType: string }
+  | { type: 'addWallModule'; moduleId: string; x: number; y: number }
+  | { type: 'removeWallModule'; id: number };
 
 export function pushCommand(queue: Command[], command: Command): void {
   queue.push(command);
@@ -70,12 +76,57 @@ export function applyCommands(world: World): void {
       addLog(world, 'The Last Night begins. Load the fuel and hold the line.');
     }
     if (c.type === 'recall') {
-      const ex = world.expeditions.find((e) => e.id === c.id);
-      if (ex) recall(world, ex);
+          const ex = world.expeditions.find((e) => e.id === c.id);
+          if (ex) recall(world, ex);
+        }
+        if (c.type === 'addRoom' && !roomPlacementError(world, c.roomId, c.x, c.y, c.rotated)) {
+          placeRoom(world, c.roomId, c.x, c.y, c.rotated);
+        }
+        if (c.type === 'removeRoom') {
+          const idx = world.rooms.findIndex(r => r.id === c.id);
+          if (idx >= 0) {
+            const room = world.rooms[idx];
+            // Refund half cost
+            const def = ROOMS.find(r => r.id === room.roomId);
+            if (def) {
+              for (const [res, amt] of Object.entries(def.cost)) {
+                world.stock[res as Resource] += Math.floor(amt / 2);
+              }
+            }
+            world.rooms.splice(idx, 1);
+            world.buildRev++;
+          }
+        }
+        if (c.type === 'upgradeWall') {
+          const room = world.rooms.find(r => r.id === c.roomId);
+          if (room && room.walls[c.edge]?.[c.segment]) {
+            const module = WALL_MODULES.find(m => m.wallType === c.wallType);
+            if (module && !missing(world, module.cost)) {
+              pay(world, module.cost);
+              room.walls[c.edge][c.segment] = { type: c.wallType as any, hp: module.hp, maxHp: module.hp };
+            }
+          }
+        }
+        if (c.type === 'addWallModule' && !wallModulePlacementError(world, c.moduleId, c.x, c.y)) {
+          placeWallModule(world, c.moduleId, c.x, c.y);
+        }
+        if (c.type === 'removeWallModule') {
+          const idx = world.wallModules.findIndex(w => w.id === c.id);
+          if (idx >= 0) {
+            const mod = world.wallModules[idx];
+            const def = WALL_MODULES.find(m => m.id === mod.moduleId);
+            if (def) {
+              for (const [res, amt] of Object.entries(def.cost)) {
+                world.stock[res as Resource] += Math.floor(amt / 2);
+              }
+            }
+            world.wallModules.splice(idx, 1);
+            world.buildRev++;
+          }
+        }
+      }
+      world.commands.length = 0;
     }
-  }
-  world.commands.length = 0;
-}
 
 /** Why this squad cannot leave, or null when it can (section 10.2). */
 export function expeditionError(world: World, poi: number, members: number[]): string | null {

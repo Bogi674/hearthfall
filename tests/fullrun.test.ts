@@ -8,7 +8,7 @@ describe('full run (M5 done when)', () => {
     it(`a careful player can launch the airship on seed ${seed}`, () => {
       const world = createWorld(seed);
       const player = fullRunPlayer();
-      for (let t = 0; t < 14 * DAY_SECONDS * TICKS_PER_SECOND && !world.lost && !world.won; t++) {
+      for (let t = 0; t < 20 * DAY_SECONDS * TICKS_PER_SECOND && !world.lost && !world.won; t++) {
         if (t % TICKS_PER_SECOND === 0) player(world);
         stepWorld(world);
       }

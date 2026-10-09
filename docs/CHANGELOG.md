@@ -2,6 +2,18 @@
 
 Newest entries first. Each entry names the milestone it belongs to.
 
+## 2026-10-09 (M10: House Rooms & Defensible Compound)
+
+- **House-centric room building.** The Hearth House is now the core of the colony. Each hearth stage expands the house lot (3→5→7→9→11 tiles) and unlocks a new room tier.
+- **15+ modular rooms** across 5 tiers: Living (Bedroom, Bunkroom), Storage (Closet, Pantry), Production (Kitchen, Workshop, Greenhouse, Lab), Medical (Infirmary), Defense (Armory, Observation Deck), Utility (Generator, Water Purifier, Comms Room, Command Center, Reactor), and Escape (Vault Door, Escape Pod Bay).
+- **Snap-to-grid placement.** Rooms snap to the house lot grid, must connect to the hearth or existing rooms, and show ghost previews with error reasons.
+- **Wall module system.** 10 wall modules (Reinforced/Stone/Metal Walls, Gun Ports, Spotlights, Trap Doors, Windows, Doors) snap to room edges for Fallout 4-style fortification.
+- **Room production & heat.** Rooms run recipes (kitchen→meals, workshop→parts, armory→weapons, greenhouse→food) and provide heat (generator, kitchen, greenhouse, reactor) with fuel costs.
+- **Room effects.** Beds, storage, warmth radius bonuses, glow, and indoor safety all work per-room.
+- **UI overhaul.** Build menu now has Room tabs (Living, Storage, Production, Medical, Defense, Utility, Decor) plus WallModules tab. Selection panel shows per-room workers, wall upgrades, production, and remove-with-refund.
+- **Save/load updated** to persist rooms and wall modules.
+- **Scripted player updated** for early inner wall ring and layered defenses.
+
 ## 2026-10-04 (M8: The Living Compound)
 
 - **Construction.** Placed buildings are construction sites. Their own workers build them first, and colonists without a job help at the nearest site. The building rises inside scaffolding on screen. Every building has a build time in `src/data/buildings.ts`.

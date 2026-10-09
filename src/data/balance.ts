@@ -59,20 +59,20 @@ export const BALANCE = {
     edgeFalloff: 0.6,
   },
   hearth: {
-    /** Radius in tiles per hearth level, from section 5.2. */
-    /** The Hearth House stages from section 5.2. Cost is what it takes to reach that stage. */
-    levels: [
-      { name: 'Ruined House', radius: 8, fuelPerMinute: 3, hp: 4000, cost: {} },
-      { name: 'Patched Roof', radius: 10, fuelPerMinute: 4, hp: 4500, cost: { wood: 20, planks: 10 } },
-      { name: 'Rebuilt Walls', radius: 12, fuelPerMinute: 5, hp: 5000, cost: { planks: 40, stone: 10 } },
-      { name: 'Glazed and Stoved', radius: 14, fuelPerMinute: 6, hp: 5500, cost: { planks: 40, metal: 20 } },
-      { name: 'Restored Lodge', radius: 16, fuelPerMinute: 8, hp: 6000, cost: { planks: 80, metal: 60, parts: 10 } },
-    ],
-    /** The run is lost after the hearth is out this long. */
-    outLossSeconds: 60,
-    /** Tiles kept for house rooms in every direction from the hearth (section 5.5). */
-    lot: 3,
-  },
+      /** Radius in tiles per hearth level, from section 5.2. */
+      /** The Hearth House stages from section 5.2. Cost is what it takes to reach that stage. */
+      levels: [
+        { name: 'Ruined House', radius: 8, fuelPerMinute: 3, hp: 4000, cost: {}, lotRadius: 3, roomTier: 1 },
+        { name: 'Patched Roof', radius: 10, fuelPerMinute: 4, hp: 4500, cost: { wood: 20, planks: 10 }, lotRadius: 5, roomTier: 2 },
+        { name: 'Rebuilt Walls', radius: 12, fuelPerMinute: 5, hp: 5000, cost: { planks: 40, stone: 10 }, lotRadius: 7, roomTier: 3 },
+        { name: 'Glazed and Stoved', radius: 14, fuelPerMinute: 6, hp: 5500, cost: { planks: 40, metal: 20 }, lotRadius: 9, roomTier: 4 },
+        { name: 'Restored Lodge', radius: 16, fuelPerMinute: 8, hp: 6000, cost: { planks: 80, metal: 60, parts: 10 }, lotRadius: 11, roomTier: 5 },
+      ],
+      /** The run is lost after the hearth is out this long. */
+      outLossSeconds: 60,
+      /** Base tiles kept for house rooms in every direction from the hearth. Expanded by hearth level. */
+      baseLot: 3,
+    },
   colonist: {
     /** Tiles per second. */
     speed: 3,

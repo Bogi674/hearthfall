@@ -2,6 +2,7 @@
 // Reads world state and only changes the world through the command queue.
 import { BALANCE } from '../data/balance';
 import { type BuildingCategory, type BuildingType } from '../data/buildings';
+import { type RoomCategory } from '../data/rooms';
 import { ENEMIES, ENEMY_TYPES } from '../data/enemies';
 import { RESOURCE_NAMES, RESOURCES } from '../data/resources';
 import { COMPONENT_IDS, type ComponentId } from '../data/vehicle';
@@ -18,14 +19,16 @@ import { rightPanel, type Tab } from './panels';
 import { selectionHtml } from './selection';
 import type { Settings } from './settings';
 
+export type BuildCat = BuildingCategory | RoomCategory | 'WallModules';
+
 export interface UiState {
-  placing: BuildingType | null;
+  placing: BuildingType | string | null; // BuildingType or roomId or wallModuleId
   rotated: boolean;
   selected: number | 'hearth' | null;
   speed: number;
   paused: boolean;
   buildOpen: boolean;
-  buildCat: BuildingCategory;
+  buildCat: BuildCat;
   tab: Tab;
   /** POI picked in the expedition panel, and the colonists picked for the squad. */
   poi: number | null;
@@ -77,62 +80,64 @@ export function createHud(root: HTMLElement, state: UiState, world: () => World,
   };
 
   // Act on press, not on click. Panels re-render several times a second, and a button swapped
-  // between press and release would lose its click.
-  root.addEventListener('pointerdown', (e) => {
-    if (e.button !== 0) return;
-    const t = (e.target as HTMLElement).closest<HTMLElement>('[data-act]');
-    if (!t || (t as HTMLButtonElement).disabled) return;
-    const [act, arg, arg2] = t.dataset.act!.split(':');
-    if (act === 'build') state.placing = state.placing === arg ? null : (arg as BuildingType);
-    if (act === 'speed') [state.speed, state.paused] = arg === '0' ? [state.speed, !state.paused] : [Number(arg), false];
-    if (act === 'workers') pushCommand(world().commands, { type: 'setWorkers', id: Number(arg), count: Number(arg2) });
-    if (act === 'restart') actions.toTitle();
-    if (act === 'tab') state.tab = arg as Tab;
-    if (act === 'cat') state.buildCat = arg as BuildingCategory;
-    if (act === 'poi') state.poi = Number(arg);
-    if (act === 'squad') state.squad = state.squad.includes(Number(arg)) ? state.squad.filter((id) => id !== Number(arg)) : [...state.squad, Number(arg)];
-    if (act === 'send' && state.poi !== null) {
-      pushCommand(world().commands, { type: 'sendExpedition', poi: state.poi, members: state.squad });
-      state.squad = [];
-    }
-    if (act === 'recall') pushCommand(world().commands, { type: 'recall', id: Number(arg) });
-    if (act === 'focus') actions.focus(Number(arg), Number(arg2));
-    if (act === 'menu') [state.menu, state.view, note] = [!state.menu, 'main', ''];
-    if (act === 'view') [state.view, note] = [arg as MenuView, ''];
-    if (act === 'story') [state.intro, state.menu] = [true, false];
-    if (act === 'begin') state.intro = false;
-    if (act === 'saveslot') note = actions.save(arg as SlotId);
-    if (act === 'loadslot') actions.load(arg as SlotId);
-    if (act === 'delslot') actions.remove(arg as SlotId);
-    if (act === 'continue') actions.continueRun();
-    if (act === 'export') actions.exportSave();
-    if (act === 'import') actions.importSave();
-    if (act === 'title') actions.toTitle();
-    if (act === 'randomize') state.seed = String(Math.floor(Math.random() * 1e9));
-    if (act === 'start') {
-      const input = document.getElementById('seed') as HTMLInputElement | null;
-      const seed = Number.parseInt(input?.value ?? state.seed, 10);
-      if (Number.isFinite(seed) && seed >= 0) actions.newGame(seed);
-      else note = 'The map number must be a whole number.';
-    }
-    if (act === 'alarm') pushCommand(world().commands, { type: 'alarm', on: !world().alarm });
-    if (act === 'shelter') pushCommand(world().commands, { type: 'setShelter', id: Number(arg), on: arg2 === '1' });
-    if (act === 'craft') pushCommand(world().commands, { type: 'setCraft', id: Number(arg), weapon: arg2 as WeaponId });
-    if (act === 'set') {
-      const key = arg as 'autoPause' | 'hints';
-      actions.settings[key] = !actions.settings[key];
-      actions.settingsChanged();
-    }
-    if (act === 'volume') {
-      actions.settings.volume = Math.min(1, Math.max(0, Math.round((actions.settings.volume + Number(arg) * 0.1) * 10) / 10));
-      actions.settingsChanged();
-    }
-    if (act === 'component') pushCommand(world().commands, { type: 'buildComponent', component: arg as ComponentId });
-    if (act === 'launch') pushCommand(world().commands, { type: 'launch' });
-    if (act === 'upgrade') pushCommand(world().commands, { type: 'upgradeHearth' });
-    if (act === 'stage') pushCommand(world().commands, { type: 'upgradeBuilding', id: Number(arg) });
-    api.update();
-  });
+    // between press and release would lose its click.
+    root.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return;
+      const t = (e.target as HTMLElement).closest<HTMLElement>('[data-act]');
+      if (!t || (t as HTMLButtonElement).disabled) return;
+      const [act, arg, arg2] = t.dataset.act!.split(':');
+      if (act === 'build') state.placing = state.placing === arg ? null : (arg as BuildingType);
+      if (act === 'room') state.placing = state.placing === arg ? null : arg;
+      if (act === 'wallModule') state.placing = state.placing === arg ? null : arg;
+      if (act === 'speed') [state.speed, state.paused] = arg === '0' ? [state.speed, !state.paused] : [Number(arg), false];
+      if (act === 'workers') pushCommand(world().commands, { type: 'setWorkers', id: Number(arg), count: Number(arg2) });
+      if (act === 'restart') actions.toTitle();
+      if (act === 'tab') state.tab = arg as Tab;
+      if (act === 'cat') state.buildCat = arg as BuildCat;
+      if (act === 'poi') state.poi = Number(arg);
+      if (act === 'squad') state.squad = state.squad.includes(Number(arg)) ? state.squad.filter((id) => id !== Number(arg)) : [...state.squad, Number(arg)];
+      if (act === 'send' && state.poi !== null) {
+        pushCommand(world().commands, { type: 'sendExpedition', poi: state.poi, members: state.squad });
+        state.squad = [];
+      }
+      if (act === 'recall') pushCommand(world().commands, { type: 'recall', id: Number(arg) });
+      if (act === 'focus') actions.focus(Number(arg), Number(arg2));
+      if (act === 'menu') [state.menu, state.view, note] = [!state.menu, 'main', ''];
+      if (act === 'view') [state.view, note] = [arg as MenuView, ''];
+      if (act === 'story') [state.intro, state.menu] = [true, false];
+      if (act === 'begin') state.intro = false;
+      if (act === 'saveslot') note = actions.save(arg as SlotId);
+      if (act === 'loadslot') actions.load(arg as SlotId);
+      if (act === 'delslot') actions.remove(arg as SlotId);
+      if (act === 'continue') actions.continueRun();
+      if (act === 'export') actions.exportSave();
+      if (act === 'import') actions.importSave();
+      if (act === 'title') actions.toTitle();
+      if (act === 'randomize') state.seed = String(Math.floor(Math.random() * 1e9));
+      if (act === 'start') {
+        const input = document.getElementById('seed') as HTMLInputElement | null;
+        const seed = Number.parseInt(input?.value ?? state.seed, 10);
+        if (Number.isFinite(seed) && seed >= 0) actions.newGame(seed);
+        else note = 'The map number must be a whole number.';
+      }
+      if (act === 'alarm') pushCommand(world().commands, { type: 'alarm', on: !world().alarm });
+      if (act === 'shelter') pushCommand(world().commands, { type: 'setShelter', id: Number(arg), on: arg2 === '1' });
+      if (act === 'craft') pushCommand(world().commands, { type: 'setCraft', id: Number(arg), weapon: arg2 as WeaponId });
+      if (act === 'set') {
+        const key = arg as 'autoPause' | 'hints';
+        actions.settings[key] = !actions.settings[key];
+        actions.settingsChanged();
+      }
+      if (act === 'volume') {
+        actions.settings.volume = Math.min(1, Math.max(0, Math.round((actions.settings.volume + Number(arg) * 0.1) * 10) / 10));
+        actions.settingsChanged();
+      }
+      if (act === 'component') pushCommand(world().commands, { type: 'buildComponent', component: arg as ComponentId });
+      if (act === 'launch') pushCommand(world().commands, { type: 'launch' });
+      if (act === 'upgrade') pushCommand(world().commands, { type: 'upgradeHearth' });
+      if (act === 'stage') pushCommand(world().commands, { type: 'upgradeBuilding', id: Number(arg) });
+      api.update();
+    });
 
   const api = {
     /** Shows a short note in the open menu or title screen. */

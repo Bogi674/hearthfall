@@ -1,8 +1,9 @@
 // Read only helpers shared by systems, commands, and UI.
 import { BALANCE } from '../data/balance';
 import { BUILDINGS } from '../data/buildings';
+import { ROOMS, WALL_MODULES } from '../data/rooms';
 import { RESOURCES, type Amounts } from '../data/resources';
-import type { Building, World } from './world';
+import type { Building, Room, World } from './world';
 
 const W = BALANCE.warmth;
 export const DAY_SECONDS = BALANCE.phases.reduce((s, p) => s + p.seconds, 0);
@@ -31,11 +32,23 @@ export function center(b: Building): { x: number; y: number } {
   return { x: b.x + (b.w - 1) / 2, y: b.y + (b.h - 1) / 2 };
 }
 
+export function roomCenter(r: Room): { x: number; y: number } {
+  return { x: r.x + (r.w - 1) / 2, y: r.y + (r.h - 1) / 2 };
+}
+
 /** True once builders have finished it (section 8.2). Sites do nothing until then. */
 export const isBuilt = (b: Building) => b.construct <= 0;
 
+export const isRoomBuilt = (r: Room) => r.construct <= 0;
+
 export function capacity(world: World): number {
-  return world.buildings.reduce<number>((s, b) => s + (isBuilt(b) ? (BUILDINGS[b.type].storage ?? 0) : 0), BALANCE.start.storage);
+  const buildingStorage = world.buildings.reduce<number>((s, b) => s + (isBuilt(b) ? (BUILDINGS[b.type].storage ?? 0) : 0), BALANCE.start.storage);
+  const roomStorage = world.rooms.reduce<number>((s, r) => {
+    if (!isRoomBuilt(r)) return s;
+    const def = ROOMS.find(rd => rd.id === r.roomId);
+    return s + (def?.storage ?? 0);
+  }, 0);
+  return buildingStorage + roomStorage;
 }
 
 export interface LightSource {
@@ -55,6 +68,19 @@ export function lightSources(world: World): LightSource[] {
     if (b.lit && def.light) r = Math.max(r, def.light.radius);
     if (b.lit && def.heat) r = Math.max(r, def.heat.radius);
     if (r > 0) out.push({ ...center(b), r });
+  }
+  // Rooms with glow
+  for (const r of world.rooms) {
+    if (!isRoomBuilt(r)) continue;
+    const def = ROOMS.find(rd => rd.id === r.roomId);
+    if (def && def.glow > 0) out.push({ ...roomCenter(r), r: def.glow });
+    if (def && def.heat) out.push({ ...roomCenter(r), r: def.heat.radius });
+  }
+  // Wall modules with light
+  for (const wm of world.wallModules) {
+    if (wm.construct > 0) continue;
+    const def = WALL_MODULES.find(md => md.id === wm.moduleId);
+    if (def && def.lightRadius) out.push({ x: wm.x, y: wm.y, r: def.lightRadius });
   }
   return out;
 }
@@ -110,6 +136,16 @@ export function phaseStarted(world: World, name: string, dt: number): boolean {
 }
 
 export const hearthStage = (world: World) => BALANCE.hearth.levels[world.hearth.level - 1];
+
+/** Current house lot radius in tiles (expands with hearth level). */
+export function houseLotRadius(world: World): number {
+  return hearthStage(world).lotRadius;
+}
+
+/** Current room tier unlocked by hearth level. */
+export function roomTier(world: World): number {
+  return hearthStage(world).roomTier;
+}
 
 /** Work speed multiplier from hope (section 6.5). */
 export function hopeSpeed(world: World): number {

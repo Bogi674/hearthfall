@@ -13,8 +13,9 @@ import { bandAt, capacity, center, currentPhase, missing, stockTotal } from '../
 import type { World } from '../src/sim/world';
 import { findSpot } from './helpers';
 
-const RING = 5;
-const OUTSIDE = 8;
+const RING = 8;
+const OUTSIDE = 10;
+const WALL_RESERVE = 150; // More wood reserved for walls
 const ITEM_POIS: [ItemId, PoiType][] = [
   ['pressureValve', 'gasStation'],
   ['silkCanopy', 'farmhouse'],
@@ -111,26 +112,29 @@ export function fullRunPlayer() {
     }
 
     // Keep the walls up once a tower stands, and add traps when wood is plentiful.
-    const placeRing = (type: 'woodenBarricade' | 'spikeTrap', r: number, reserve: number) => {
-      let wood = s.wood;
-      for (const [x, y] of ring(w, r)) {
-        if (wood - BUILDINGS[type].cost.wood! < reserve || placementError(w, type, x, y, false)) continue;
-        w.commands.push({ type: 'place', building: type, x, y, rotated: false });
-        wood -= BUILDINGS[type].cost.wood!;
-      }
-    };
-    if (count(w, 'watchtower')) placeRing('woodenBarricade', RING, 20);
-    if (count(w, 'smelter')) placeRing('spikeTrap', RING + 1, 80);
+        const placeRing = (type: 'woodenBarricade' | 'reinforcedWall' | 'spikeTrap', r: number, reserve: number) => {
+          let wood = s.wood;
+          for (const [x, y] of ring(w, r)) {
+            const cost = BUILDINGS[type].cost.wood ?? BUILDINGS[type].cost.planks ?? 10;
+            if (wood - cost < reserve || placementError(w, type, x, y, false)) continue;
+            w.commands.push({ type: 'place', building: type, x, y, rotated: false });
+            wood -= cost;
+          }
+        };
+        const cost = next?.cost ?? {};
+            const partsShort = Math.max(0, (cost.parts ?? 0) - s.parts);
+            const metalNeed = (cost.metal ?? 0) + partsShort;
+            const planksNeed = (cost.planks ?? 0) + partsShort;
+            const ready = COMPONENT_IDS.every((id) => w.airship.built.includes(id));
+            const fuelTarget = w.airship.built.length >= 3 ? LAST_NIGHT.fuel + 80 : 80;
+            if (count(w, 'watchtower')) placeRing('woodenBarricade', RING, WALL_RESERVE);
+                if (count(w, 'smelter')) {
+                  placeRing('reinforcedWall', RING + 1, WALL_RESERVE);
+                  placeRing('spikeTrap', RING + 2, WALL_RESERVE);
+                }
+            if (ready) placeRing('spikeTrap', RING + 3, 60);
 
-    // Workers: food and fuel first, a full woodcutter crew, then whatever the target lacks.
-    const cost = next?.cost ?? {};
-    const partsShort = Math.max(0, (cost.parts ?? 0) - s.parts);
-    const metalNeed = (cost.metal ?? 0) + partsShort;
-    const planksNeed = (cost.planks ?? 0) + partsShort;
-    const ready = COMPONENT_IDS.every((id) => w.airship.built.includes(id));
-    const fuelTarget = w.airship.built.length >= 3 ? LAST_NIGHT.fuel + 80 : 80;
-    if (ready) placeRing('spikeTrap', RING + 2, 60);
-    // Sites without a crew of their own need colonists without a job to build them.
+            // Sites without a crew of their own need colonists without a job to build them.
     const sites = w.buildings.filter((b) => b.construct > 0).length;
     let free = w.colonists.filter((c) => c.expedition === null).length - Math.min(3, sites);
     const want: [BuildingType, number][] = [
