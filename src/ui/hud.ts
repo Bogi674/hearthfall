@@ -9,7 +9,7 @@ import { COMPONENT_IDS, PAD, type ComponentId } from '../data/vehicle';
 import type { WeaponId } from '../data/weapons';
 import type { SlotId } from '../save/save';
 import { pushCommand } from '../sim/commands';
-import { capacity, currentPhase, stockTotal } from '../sim/query';
+import { capacity, currentPhase, fuelFactor, stockTotal } from '../sim/query';
 import type { World } from '../sim/world';
 import { currentHint } from '../data/hints';
 import { INTRO } from '../data/story';
@@ -164,7 +164,7 @@ export function createHud(root: HTMLElement, state: UiState, world: () => World,
       const w = world();
       const phase = currentPhase(w);
       const next = BALANCE.phases[(BALANCE.phases.findIndex((p) => p.name === phase.name) + 1) % BALANCE.phases.length];
-      const burn = BALANCE.hearth.levels[w.hearth.level - 1].fuelPerMinute / 60;
+      const burn = (BALANCE.hearth.levels[w.hearth.level - 1].fuelPerMinute / 60) * fuelFactor(w);
       const hearth = w.hearth.lit
         ? `<span>Hearth fuel ${clock(w.stock.fuel / burn)}</span>`
         : `<span class="alert">Hearth out. Lost in ${Math.ceil(BALANCE.hearth.outLossSeconds - w.hearth.outSeconds)}s</span>`;
@@ -173,7 +173,7 @@ export function createHud(root: HTMLElement, state: UiState, world: () => World,
         .join('');
       set(
         'top',
-        `<span><b>Day ${w.day}</b> ${phase.name}, ${next.name} in ${clock(phase.left)}</span><span>${w.temperature}°</span>
+        `<span><b>Day ${w.day}</b> ${phase.name}, ${next.name} in ${clock(phase.left)}</span><span title="Tomorrow: ${BALANCE.weather.kinds[w.weatherNext].name}">${BALANCE.weather.kinds[w.weather].name} ${w.temperature}°, then ${BALANCE.weather.kinds[w.weatherNext].name.toLowerCase()}</span>
          <span>Colonists ${w.colonists.length}</span><span class="${w.hope < BALANCE.hope.lowBelow ? 'alert' : ''}">Hope ${Math.round(w.hope)}</span>
          <span>Airship ${w.airship.built.length}/${COMPONENT_IDS.length}</span>${RESOURCES.map((r) => `<span>${RESOURCE_NAMES[r]} ${Math.floor(w.stock[r])}</span>`).join('')}
          <span>Storage ${Math.floor(stockTotal(w))}/${capacity(w)}</span>${hearth}`,

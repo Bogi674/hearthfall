@@ -110,6 +110,12 @@ export function phaseStarted(world: World, name: string, dt: number): boolean {
   return p.name === name && p.seconds - p.left < dt - 1e-9;
 }
 
+/** Numbers for today's weather (M10.2). */
+export const weatherNow = (world: World) => BALANCE.weather.kinds[world.weather];
+
+/** Heat sources burn more fuel the colder it is. */
+export const fuelFactor = (world: World): number => 1 + Math.max(0, -world.temperature) * BALANCE.weather.fuelPerDegree;
+
 export const hearthStage = (world: World) => BALANCE.hearth.levels[world.hearth.level - 1];
 
 /** Work speed multiplier from hope (section 6.5). */

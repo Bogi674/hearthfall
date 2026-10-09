@@ -112,7 +112,18 @@ The player can set the hearth to Low, Normal, or Overdrive. Low halves fuel use 
 - People inside a standing building are safe: sleepers in beds, workers inside indoor buildings, and anyone taking shelter (section 9.7). If the building falls, they are exposed.
 
 ### 5.4 Temperature schedule
-Outdoor temperature starts at minus 2 degrees on day 1 and drops by 1 degree per day. Cold snaps are announced one day ahead and drop the temperature by 10 extra degrees for one day.
+Outdoor temperature has a base of minus 2 degrees on day 1 that drops by 1 degree per day. Weather and the time of day add to it.
+
+**Weather.** Each day has one weather: clear, overcast, snow, or blizzard. Day 1 is clear. A seeded chain picks each day from the day before, and tomorrow's weather is always shown in the top bar. Blizzards cannot start before day 4.
+
+| Weather | Day | Night | Outdoor work | Lookout sight | Other |
+| --- | --- | --- | --- | --- | --- |
+| Clear | +2 | minus 4 | 1.0 | 1.1 | Brightest moon |
+| Overcast | 0 | minus 1 | 1.0 | 0.95 | Flat light, no snow |
+| Snow | minus 1 | minus 2 | 0.9 | 0.85 | Squads risk 1.1 times |
+| Blizzard | minus 5 | minus 6 | 0.7 | 0.5 | Squads risk 1.5 times, outdoor heat reach 0.85, whiteout fog |
+
+**Cold has a cost.** Hearths and heaters burn 1.2 percent more fuel per degree below zero. Outdoor warmth falls with the temperature as in section 5.1. In a blizzard heat is pushed back outdoors, but tiles inside a closed room keep the full reach. Gatherers work slower in bad weather. Expedition risk and lookout sight follow the table. Dusk and night use the night column.
 
 ---
 
@@ -406,6 +417,7 @@ Orthographic camera at a classic isometric angle. Zoom with scroll. Rotate in 90
 ### 12.2 Warm inside, cold outside
 - The ground shader samples the warmth map and blends between two palettes.
 - Warm tiles show golden ground, soft light pools, and dry earth. The light fades gradually from the bright core into the dark, with no hard edge.
+- The sky follows the weather. Clear is crisp with a bright moon and no snow. Overcast is flat and grey with no snow. Snow is the base look. A blizzard is a whiteout with dense fast flakes and fog that closes in to about 36 tiles. Changes ease in over about twenty seconds. The hearth glow and the warm radius look the same in every weather.
 - Cold tiles show desaturated blue ground with a frost and snow overlay that grows over days.
 - Snow particles fall only outside the warm radius.
 - Fog is cold blue and thickens with distance from the hearth.
@@ -666,6 +678,12 @@ Each milestone must meet its acceptance criteria before the next starts.
 - Hover, click, and selection feedback (section 14).
 - Selection panels for colonists, wall pieces, and floors, and the room overlay (section 14).
 - **Done when:** the player can place a floor, walls, a door, and furniture, see what each will look like before placing it, hold Tab to see inside, hover and click anything to select it, and read why something cannot be placed. The scripted full run still launches the airship by day 10.
+
+### M10.2a: Weather and Temperature
+- Seeded weather chain, one day forecast, temperature by weather and phase (section 5.4).
+- Fuel use, outdoor work, lookout sight, expedition risk, and heat reach follow the weather.
+- Sky, fog, light, and snow follow the weather (section 12.2).
+- **Done when:** the weather changes day to day, the top bar shows today and tomorrow, cold costs fuel, and a careful scripted run still launches on most seeds.
 
 ### Later milestones
 - Physical hauling, hand carts, and conveyor lines.

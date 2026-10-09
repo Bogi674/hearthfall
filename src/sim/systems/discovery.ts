@@ -3,7 +3,7 @@
 import { BALANCE } from '../../data/balance';
 import { BUILDINGS } from '../../data/buildings';
 import { POIS } from '../../data/pois';
-import { center, directionFromHearth } from '../query';
+import { center, directionFromHearth, weatherNow } from '../query';
 import { addLog, type World } from '../world';
 
 const D = BALANCE.discovery;
@@ -39,7 +39,7 @@ export function discoverySystem(world: World, _dt: number): void {
     if (!def.sight) continue;
     reveal(world, at.x, at.y, D.lookoutReveal);
     for (const p of world.pois) {
-      if (p.seen === 'hidden' && Math.hypot(p.x - at.x, p.y - at.y) <= def.sight[b.level - 1]) {
+      if (p.seen === 'hidden' && Math.hypot(p.x - at.x, p.y - at.y) <= def.sight[b.level - 1] * weatherNow(world).sight) {
         p.seen = 'rumored';
         addLog(world, `The lookout spotted something to the ${directionFromHearth(world, p.x, p.y)}.`, p);
       }

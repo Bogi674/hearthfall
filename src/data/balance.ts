@@ -48,6 +48,28 @@ export const BALANCE = {
     day1: -2,
     dropPerDay: 1,
   },
+  /** Weather (M10.2). A seeded chain picks each day's weather. Offsets add to the day's base temperature. */
+  weather: {
+    /** The first day is always this weather. */
+    firstDay: 'clear' as const,
+    /** Blizzards cannot start before this day. */
+    blizzardFromDay: 4,
+    /** Chance of each next weather, in the order clear, overcast, snow, blizzard. */
+    chain: {
+      clear: [0.45, 0.35, 0.2, 0],
+      overcast: [0.3, 0.3, 0.4, 0],
+      snow: [0.15, 0.3, 0.4, 0.15],
+      blizzard: [0.1, 0.3, 0.5, 0.1],
+    },
+    kinds: {
+      clear: { name: 'Clear', dayOffset: 2, nightOffset: -4, work: 1, sight: 1.1, heatReach: 1, risk: 1 },
+      overcast: { name: 'Overcast', dayOffset: 0, nightOffset: -1, work: 1, sight: 0.95, heatReach: 1, risk: 1 },
+      snow: { name: 'Snow', dayOffset: -1, nightOffset: -2, work: 0.9, sight: 0.85, heatReach: 1, risk: 1.1 },
+      blizzard: { name: 'Blizzard', dayOffset: -5, nightOffset: -6, work: 0.7, sight: 0.5, heatReach: 0.85, risk: 1.5 },
+    },
+    /** Heat sources burn this much more fuel per degree below zero. */
+    fuelPerDegree: 0.012,
+  },
   warmth: {
     /** Baseline tile warmth at 0 degrees outdoor temperature. */
     baselineAtZero: 30,

@@ -4,6 +4,9 @@ Bugs, shortcuts, and loose ends that are known but not fixed yet.
 
 ## Open
 
+- **M10.2a.** The scripted full run launches on 23 of 24 seeds once weather is on. Seed 5 loses the hearth fuel on day 11 after a slow start.
+- **M10.2a.** Weather has no sound and no window frost or roof snow growth yet.
+
 - **Balance pass 1.** The scripted full run launches on 24 of 24 seeds, mostly between days 7 and 10. The test checks seeds 2, 4, and 7.
 - **M10.1b.** Colonists at tables and sofas stand on their tiles with the normal stand pose. There is no sitting or eating animation yet.
 - **M10.1b.** Drifters are not drawn and monsters ignore them. A drifter appears as a colonist when they reach the light.

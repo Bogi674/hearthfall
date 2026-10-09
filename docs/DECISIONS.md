@@ -195,6 +195,13 @@ Design and architecture decisions that are not already in `docs/GAME_DESIGN.md`.
 - **The Launch Pad lists its first blocking reason.** The blueprint and the site come before the cost, since resources do not help until those are done.
 - **Dev builds expose `project` and `ui`.** Browser scripts use them to point at a tile and to read the selection. Production builds do not.
 
+## M10.2a: Weather and temperature
+
+- **The forecast is a pure function of seed and day.** Using the world rng would have shifted every other random roll and broken old tests. A separate hash also lets the HUD and the sim agree on tomorrow without storing a table.
+- **Fuel is the main thermal cost.** A larger fuel multiplier (2 percent) lost 4 of 24 scripted runs. 1.2 percent keeps weather felt but fair, and 23 of 24 still win.
+- **A blizzard shrinks outdoor heat reach but not closed rooms.** This gives the player a reason to wall in the rooms they live in, without changing the starting hearth radius on clear days.
+- **No mid day temperature swings other than the day and night split.** A smooth curve would recompute the warmth map every tick. Four steps per day are cheap and readable.
+
 ## Balance pass 1
 
 - **The threat curve is 1.2 with a 1.6 Blood Moon.** Measured on 24 seeds with the scripted player: 1.2 won 24 and lost 0.04 colonists a run, 1.26 won 22 and lost 0.17, and the old 1.32 won 16 and lost 0.21. The steep curve made the run depend on being half a day faster. At 1.2 a day of delay still wins and the nights still hurt, since the hearth falls to about 70 percent at its worst.

@@ -1,6 +1,8 @@
 // Hearth fuel and the warmth map. Each tile holds 0 to 100. The map is recomputed only when its inputs change.
 import { BALANCE } from '../../data/balance';
 import { BUILDINGS } from '../../data/buildings';
+import { isIndoors } from '../house';
+import { fuelFactor, weatherNow } from '../query';
 import type { World } from '../world';
 
 const CFG = BALANCE.warmth;
@@ -21,7 +23,8 @@ export function hearthRadius(world: World): number {
 
 export function warmthSystem(world: World, dt: number): void {
   const h = world.hearth;
-  const burn = (BALANCE.hearth.levels[h.level - 1].fuelPerMinute / 60) * dt;
+  const cold = fuelFactor(world);
+  const burn = (BALANCE.hearth.levels[h.level - 1].fuelPerMinute / 60) * dt * cold;
   h.lit = world.stock.fuel >= burn;
   world.stock.fuel = Math.max(0, world.stock.fuel - burn);
   h.outSeconds = h.lit ? 0 : h.outSeconds + dt;
@@ -31,13 +34,15 @@ export function warmthSystem(world: World, dt: number): void {
   for (const b of world.buildings) {
     const heat = BUILDINGS[b.type].heat;
     if (!heat || b.construct > 0) continue;
-    const fuel = (heat.fuelPerMinute / 60) * dt;
+    const fuel = (heat.fuelPerMinute / 60) * dt * cold;
     b.lit = world.stock.fuel >= fuel;
     world.stock.fuel = Math.max(0, world.stock.fuel - fuel);
     b.status = b.lit ? 'ok' : 'noFuel';
     if (b.lit) sources.push({ x: b.x, y: b.y, r: heat.radius });
   }
-  const key = `${world.temperature}|${sources.map((s) => `${s.x},${s.y},${s.r}`).join(';')}`;
+  // In a blizzard the wind pushes heat back. Closed rooms keep their full reach.
+  const reach = weatherNow(world).heatReach;
+  const key = `${world.temperature}|${reach}|${reach < 1 ? world.buildRev : 0}|${sources.map((s) => `${s.x},${s.y},${s.r}`).join(';')}`;
   if (key === world.warmthKey) return;
 
   const { width, height } = world.map;
@@ -45,7 +50,8 @@ export function warmthSystem(world: World, dt: number): void {
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       let w = base;
-      for (const s of sources) w = Math.max(w, sourceWarmth(Math.hypot(x - s.x, y - s.y), s.r));
+      const shrink = reach < 1 && !isIndoors(world, x, y) ? reach : 1;
+      for (const s of sources) w = Math.max(w, sourceWarmth(Math.hypot(x - s.x, y - s.y), s.r * shrink));
       world.warmth[y * width + x] = Math.round(w);
     }
   }

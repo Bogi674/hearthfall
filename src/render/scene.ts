@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { CameraRig } from './camera';
-import { addAmbientLights, followWithShadow } from './lighting';
+import { addAmbientLights, followWithShadow, type AmbientLights } from './lighting';
 import { installHearthFog, PALETTE } from './materials';
 import { createPost } from './post';
 
@@ -12,6 +12,7 @@ export interface View {
   renderer: THREE.WebGLRenderer;
   scene: THREE.Scene;
   fog: THREE.Fog;
+  lights: AmbientLights;
   rig: CameraRig;
   render(time: number): void;
 }
@@ -31,7 +32,7 @@ export function createView(container: HTMLElement, mapSize: number): View {
   const scene = new THREE.Scene();
   const fog = new THREE.Fog(PALETTE.deepCold, FOG_NEAR, FOG_FAR);
   scene.fog = fog;
-  const moon = addAmbientLights(scene);
+  const lights = addAmbientLights(scene);
   // The ground uses its own shader, so a transparent catcher plane on top of it shows the shadows.
   const catcher = new THREE.Mesh(
     new THREE.PlaneGeometry(mapSize + 80, mapSize + 80).rotateX(-Math.PI / 2),
@@ -58,9 +59,10 @@ export function createView(container: HTMLElement, mapSize: number): View {
     renderer,
     scene,
     fog,
+    lights,
     rig,
     render: (time) => {
-      followWithShadow(moon, rig.target);
+      followWithShadow(lights.moon, rig.target);
       post.render(time);
     },
   };

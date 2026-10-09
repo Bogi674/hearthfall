@@ -5,7 +5,7 @@ import { RECIPES, type Recipe } from '../../data/recipes';
 import { WEAPONS } from '../../data/weapons';
 import type { Amounts } from '../../data/resources';
 import { Tile } from '../grid';
-import { bandAt, capacity, center, currentPhase, hopeSpeed, isBuilt, missing, pay, stockTotal } from '../query';
+import { bandAt, capacity, center, currentPhase, hopeSpeed, isBuilt, missing, pay, stockTotal, weatherNow } from '../query';
 import type { Building, World } from '../world';
 
 export function productionSystem(world: World, dt: number): void {
@@ -30,7 +30,7 @@ export function productionSystem(world: World, dt: number): void {
       if (!b.loaded && recipe.inputs) pay(world, recipe.inputs);
       b.loaded = true;
       const speed = crew.reduce((s, c) => s + (c.rest > 0 ? 1 : BALANCE.needs.tiredWorkSpeed), 0) / slots;
-      b.progress = Math.min(recipe.cycle, b.progress + dt * speed * hopeSpeed(world) * (band === 'cold' ? BALANCE.production.coldSpeed : 1));
+      b.progress = Math.min(recipe.cycle, b.progress + dt * speed * hopeSpeed(world) * (recipe.gather ? weatherNow(world).work : 1) * (band === 'cold' ? BALANCE.production.coldSpeed : 1));
       b.status = 'ok';
       if (b.progress >= recipe.cycle) finishCycle(world, b, recipe.outputs, node);
     }

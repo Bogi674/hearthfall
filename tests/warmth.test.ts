@@ -34,6 +34,8 @@ describe('warmth', () => {
 
   it('fades gradually past the radius instead of dropping at once', () => {
     const world = createWorld(1);
+    world.temperature = -10;
+    warmthSystem(world, 0.1);
     const r = hearthRadius(world);
     const values = [1, 2, 3].map((k) => warmthAt(world, r + k, 0));
     expect(values[0]).toBeLessThan(W.warmThreshold);

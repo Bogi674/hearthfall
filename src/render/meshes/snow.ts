@@ -4,11 +4,13 @@ import { PALETTE } from '../materials';
 // Falling snow as GPU points. Each flake samples the warmth map and fades out over warm tiles,
 // so snow falls only outside the warm radius (section 12.2).
 
-const COUNT = 20000;
+const COUNT = 40000;
 const HEIGHT = 10;
 
 export interface Snow {
   points: THREE.Points;
+  /** Weather: density is the share of flakes drawn (1 is a light snowfall), speed scales the fall, wind drifts them sideways. */
+  setWeather(density: number, speed: number, wind: number): void;
   update(time: number, pixelsPerUnit: number, viewDir: THREE.Vector3): void;
 }
 
@@ -33,6 +35,9 @@ export function createSnow(warmth: THREE.Texture, mapSize: THREE.Vector2, warmTh
     depthWrite: false,
     uniforms: {
       uTime: { value: 0 },
+      uFall: { value: 0 },
+      uSize: { value: 1 },
+      uDrift: { value: 0 },
       uViewDir: { value: new THREE.Vector3(0, -1, 0) },
       uPixelsPerUnit: { value: 20 },
       uWarmth: { value: warmth },
@@ -44,6 +49,9 @@ export function createSnow(warmth: THREE.Texture, mapSize: THREE.Vector2, warmTh
     vertexShader: /* glsl */ `
 attribute float aSeed;
 uniform float uTime;
+uniform float uFall;
+uniform float uSize;
+uniform float uDrift;
 uniform vec3 uViewDir;
 uniform float uPixelsPerUnit;
 uniform sampler2D uWarmth;
@@ -53,8 +61,8 @@ uniform float uFogFar;
 varying float vAlpha;
 void main() {
   vec3 p = position;
-  p.y = mod(p.y - uTime * (0.9 + aSeed * 0.8), ${HEIGHT.toFixed(1)});
-  p.x += sin(uTime * 0.6 + aSeed * 40.0) * 0.6 + uTime * 0.25;
+  p.y = mod(p.y - uFall * (0.9 + aSeed * 0.8), ${HEIGHT.toFixed(1)});
+  p.x += sin(uTime * 0.6 + aSeed * 40.0) * 0.6 + uDrift;
   p.z += cos(uTime * 0.5 + aSeed * 25.0) * 0.4;
   p.x = mod(p.x + ${(area / 2).toFixed(1)}, ${area.toFixed(1)}) - ${(area / 2).toFixed(1)};
   // Fade by the warmth under the flake and under the ground point it overlaps on screen,
@@ -67,7 +75,7 @@ void main() {
   vAlpha = (1.0 - smoothstep(uWarmT - 0.12, uWarmT, w)) * (0.45 + aSeed * 0.5);
   vAlpha *= 1.0 - smoothstep(uFogFar * 0.7, uFogFar * 1.1, length(p.xz));
   gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
-  gl_PointSize = (0.06 + aSeed * 0.06) * uPixelsPerUnit;
+  gl_PointSize = (0.06 + aSeed * 0.06) * uPixelsPerUnit * uSize;
 }
 `,
     fragmentShader: /* glsl */ `
@@ -83,10 +91,28 @@ void main() {
   });
 
   const points = new THREE.Points(geometry, material);
+  let density = 1;
+  let speed = 1;
+  let wind = 0.25;
+  let fall = 0;
+  let drift = 0;
+  let last = 0;
   return {
     points,
+    setWeather(d, s, w) {
+      [density, speed, wind] = [d, s, w];
+    },
     update(time, pixelsPerUnit, viewDir) {
+      const dt = Math.min(0.1, Math.max(0, time - last));
+      last = time;
+      fall += dt * speed;
+      drift += dt * wind;
+      geometry.setDrawRange(0, Math.round(COUNT * Math.min(1, density / 2.2)));
+      points.visible = density > 0.01;
       material.uniforms.uTime.value = time;
+      material.uniforms.uFall.value = fall;
+      material.uniforms.uSize.value = 1 + 0.7 * Math.max(0, density - 1);
+      material.uniforms.uDrift.value = drift;
       material.uniforms.uViewDir.value.copy(viewDir);
       material.uniforms.uPixelsPerUnit.value = pixelsPerUnit;
     },

@@ -2,6 +2,15 @@
 
 Newest entries first. Each entry names the milestone it belongs to.
 
+## 2026-10-09 (M10.2a: Weather and Temperature)
+
+- **Weather.** Clear, overcast, snow, and blizzard, picked by a seeded chain with a one day forecast in the top bar. It uses its own hash of seed and day, so no other random roll moved. Save version is now 6.
+- **Temperature by weather and phase.** Dusk and night are colder. A blizzard day is 7 degrees colder than a clear one.
+- **Cold costs.** Fuel burn rises 1.2 percent per degree below zero. Gatherers slow in bad weather. Lookout sight, expedition risk, and outdoor heat reach follow the weather. Closed rooms keep their heat in a blizzard.
+- **Sky.** Fog, ambient light, moon, exposure, and snow density, speed, size, and wind blend over about twenty seconds. Frost on the ground follows the weather too.
+- Measured on 24 seeds with the scripted player: 23 launch. Fuel at 2 percent a degree dropped it to 20, so it is 1.2 percent.
+- New tests in `tests/weather.test.ts`.
+
 ## 2026-10-09 (Balance pass 1: a run that is hard to lose by accident)
 
 - **Gentler waves.** Threat for night n is now `10 * 1.2^(n - 1)` and a Blood Moon is 1.6 times, down from 1.32 and 2 times. The old curve reached 240 threat on the night 10 Blood Moon, so a delay of half a day flipped a run. The scripted player now launches on 24 of 24 seeds, and on 24 of 24 when it skips half of its turns.

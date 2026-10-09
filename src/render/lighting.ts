@@ -7,8 +7,14 @@ import { PALETTE } from './materials';
 const MOON_OFFSET = new THREE.Vector3(-22, 40, 14);
 const SHADOW_HALF = 24;
 
-export function addAmbientLights(scene: THREE.Scene): THREE.DirectionalLight {
-  scene.add(new THREE.HemisphereLight(PALETTE.frost, PALETTE.deepCold, 0.9));
+export interface AmbientLights {
+  hemi: THREE.HemisphereLight;
+  moon: THREE.DirectionalLight;
+}
+
+export function addAmbientLights(scene: THREE.Scene): AmbientLights {
+  const hemi = new THREE.HemisphereLight(PALETTE.frost, PALETTE.deepCold, 0.9);
+  scene.add(hemi);
   const moon = new THREE.DirectionalLight(PALETTE.frost, 1.3);
   moon.castShadow = true;
   moon.shadow.mapSize.set(2048, 2048);
@@ -17,7 +23,7 @@ export function addAmbientLights(scene: THREE.Scene): THREE.DirectionalLight {
   moon.shadow.bias = -0.0005;
   moon.shadow.normalBias = 0.03;
   scene.add(moon, moon.target);
-  return moon;
+  return { hemi, moon };
 }
 
 export function followWithShadow(moon: THREE.DirectionalLight, target: THREE.Vector3): void {

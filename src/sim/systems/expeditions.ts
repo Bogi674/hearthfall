@@ -3,7 +3,7 @@
 import { BALANCE } from '../../data/balance';
 import { INJURIES, ITEMS, POIS } from '../../data/pois';
 import { RESOURCE_NAMES, type Resource } from '../../data/resources';
-import { capacity, currentPhase, stockTotal } from '../query';
+import { capacity, currentPhase, stockTotal, weatherNow } from '../query';
 import { chance, nextFloat, nextInt } from '../rng';
 import { addColonist, addLog, recordDeath, type Expedition, type World } from '../world';
 
@@ -99,7 +99,7 @@ function roll(world: World, ex: Expedition): void {
 
 /** Chance of a danger event on one search roll (section 10.2). Exported for the UI. */
 export function expeditionRisk(world: World, danger: number, squadSize: number): number {
-  return (danger * E.riskPerDanger * (currentPhase(world).work ? 1 : E.nightRisk)) / Math.sqrt(Math.max(1, squadSize));
+  return (danger * E.riskPerDanger * (currentPhase(world).work ? 1 : E.nightRisk) * weatherNow(world).risk) / Math.sqrt(Math.max(1, squadSize));
 }
 
 export function recall(world: World, ex: Expedition): void {

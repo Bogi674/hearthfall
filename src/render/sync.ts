@@ -21,6 +21,8 @@ import { createHearthMesh } from './meshes/hearth';
 import { createHouseView } from './houseView';
 import { buildProps, colorPropsByWarmth } from './meshes/props';
 import { createSnow } from './meshes/snow';
+import { createAtmosphere } from './atmosphere';
+import type { View } from './scene';
 
 // Maps simulation state to scene objects. Reads the world and never writes to it.
 // Tile (x, y) has its center at world (x - width / 2, 0, y - height / 2), so the hearth is at the origin.
@@ -35,7 +37,8 @@ export interface WorldView {
   update(world: World, time: number, alpha: number, pixelsPerUnit: number, camera: THREE.Camera, cutaway: boolean): void;
 }
 
-export function createWorldView(world: World, scene: THREE.Scene, fog: THREE.Fog): WorldView {
+export function createWorldView(world: World, view: Pick<View, 'scene' | 'fog' | 'lights' | 'renderer'>): WorldView {
+  const { scene, fog } = view;
   const { width, height, tiles } = world.map;
   const mapSize = new THREE.Vector2(width, height);
   const warmThreshold = BALANCE.warmth.warmThreshold;
@@ -103,6 +106,7 @@ export function createWorldView(world: World, scene: THREE.Scene, fog: THREE.Fog
   const snow = createSnow(warmthTex, mapSize, warmThreshold, fog.far);
   scene.add(snow.points);
 
+  const atmosphere = createAtmosphere({ renderer: view.renderer, fog, lights: view.lights, snow, ground: groundMat.uniforms as never, frost: frostForDay });
   const viewDir = new THREE.Vector3();
   let warmthKey = '';
   let revealRev = -1;
@@ -136,7 +140,7 @@ export function createWorldView(world: World, scene: THREE.Scene, fog: THREE.Fog
         landmarks[i].visible = p.seen !== 'hidden';
         landmarks[i].getObjectByName('site')!.visible = p.seen === 'known';
       });
-      groundMat.uniforms.uFrost.value = frostForDay(w.day);
+      groundMat.uniforms.uFrost.value = atmosphere.update(w, time);
       const lights = lightSources(w);
       const key = lights.map((l) => `${l.x},${l.y},${l.r}`).join(';');
       if (key !== lightKey) {

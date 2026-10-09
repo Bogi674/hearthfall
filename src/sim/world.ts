@@ -13,6 +13,7 @@ import type { MapState } from './grid';
 import { generateMap } from './mapgen';
 import { placeBuilding } from './placement';
 import { createRng, type RngState } from './rng';
+import { nextWeather, temperatureFor, type WeatherKind } from './weather';
 import { arrivalsSystem } from './systems/arrivals';
 import { jobsSystem } from './systems/jobs';
 import { needsSystem } from './systems/needs';
@@ -150,6 +151,9 @@ export interface World {
   dayTime: number;
   /** Outdoor temperature in degrees. */
   temperature: number;
+  /** Today's weather and the forecast for tomorrow (M10.2). */
+  weather: WeatherKind;
+  weatherNext: WeatherKind;
   rng: RngState;
   commands: Command[];
   map: MapState;
@@ -287,7 +291,9 @@ export function createWorld(seed: number): World {
     tick: 0,
     day: 1,
     dayTime: 0,
-    temperature: BALANCE.temperature.day1,
+    temperature: temperatureFor(1, BALANCE.weather.firstDay, 'Day'),
+    weather: BALANCE.weather.firstDay,
+    weatherNext: nextWeather(seed, 1, BALANCE.weather.firstDay),
     rng,
     commands: [],
     map,
