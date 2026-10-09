@@ -1,7 +1,6 @@
 // Hearth fuel and the warmth map. Each tile holds 0 to 100. The map is recomputed only when its inputs change.
 import { BALANCE } from '../../data/balance';
 import { BUILDINGS } from '../../data/buildings';
-import { ROOMS, WALL_MODULES } from '../../data/rooms';
 import type { World } from '../world';
 
 const CFG = BALANCE.warmth;
@@ -36,25 +35,8 @@ export function warmthSystem(world: World, dt: number): void {
     b.lit = world.stock.fuel >= fuel;
     world.stock.fuel = Math.max(0, world.stock.fuel - fuel);
     b.status = b.lit ? 'ok' : 'noFuel';
-    if (b.lit) sources.push({ x: b.x + b.w / 2, y: b.y + b.h / 2, r: heat.radius });
+    if (b.lit) sources.push({ x: b.x, y: b.y, r: heat.radius });
   }
-  // Rooms with heat
-  for (const r of world.rooms) {
-    if (r.construct > 0) continue;
-    const def = ROOMS.find(rd => rd.id === r.roomId);
-    if (!def || !def.heat) continue;
-    const fuel = (def.heat.fuelPerMinute / 60) * dt;
-    const hasFuel = world.stock.fuel >= fuel;
-    world.stock.fuel = Math.max(0, world.stock.fuel - fuel);
-    if (hasFuel) sources.push({ x: r.x + r.w / 2, y: r.y + r.h / 2, r: def.heat.radius });
-  }
-  // Wall modules with light (spotlights)
-  for (const wm of world.wallModules) {
-    if (wm.construct > 0) continue;
-    const def = WALL_MODULES.find(md => md.id === wm.moduleId);
-    if (def && def.lightRadius) sources.push({ x: wm.x, y: wm.y, r: def.lightRadius });
-  }
-
   const key = `${world.temperature}|${sources.map((s) => `${s.x},${s.y},${s.r}`).join(';')}`;
   if (key === world.warmthKey) return;
 

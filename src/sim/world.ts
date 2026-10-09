@@ -124,8 +124,6 @@ export interface World {
   warmthKey: string;
   stock: Record<Resource, number>;
   buildings: Building[];
-  rooms: Room[];
-  wallModules: WallModule[];
   colonists: Colonist[];
   nextId: number;
   enemies: Enemy[];
@@ -158,43 +156,6 @@ export interface World {
   log: { day: number; text: string; x?: number; y?: number }[];
   /** Set when the run is lost. The world stops advancing. */
   lost: string | null;
-}
-
-export interface Room {
-  id: number;
-  roomId: string;
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  rotated: boolean;
-  /** Seconds of builder work left. 0 once finished. */
-  construct: number;
-  hp: number;
-  /** Wall segments per edge: [north, east, south, west], each an array of WallSegment */
-  walls: { type: import('../data/rooms').WallType; hp: number; maxHp: number }[][];
-  /** Production status */
-  status?: string;
-  /** Current node being worked */
-  node?: number;
-  /** Production progress */
-  progress?: number;
-  /** Inputs loaded */
-  loaded?: boolean;
-  /** Workers sheltering */
-  shelter?: boolean;
-  /** Weapon being crafted (for armory) */
-  craft?: string;
-}
-
-export interface WallModule {
-  id: number;
-  moduleId: string;
-  x: number;
-  y: number;
-  /** Seconds of builder work left. */
-  construct: number;
-  hp: number;
 }
 
 export interface Enemy {
@@ -283,11 +244,9 @@ export function createWorld(seed: number): World {
     warmth: new Array<number>(map.width * map.height).fill(0),
     warmthKey: '',
     stock,
-        buildings: [],
-        rooms: [],
-        wallModules: [],
-        colonists: [],
-        nextId: 1,
+    buildings: [],
+    colonists: [],
+    nextId: 1,
     enemies: [],
     wave: { night: 0, threat: 0, bloodMoon: false, edges: [], plan: [], spawned: 0, final: false },
     flow: { key: '', normal: [], runner: [] },
