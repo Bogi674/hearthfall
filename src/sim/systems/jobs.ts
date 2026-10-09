@@ -5,7 +5,7 @@ import { BALANCE } from '../../data/balance';
 import { BUILDINGS } from '../../data/buildings';
 import { HOUSE } from '../../data/house';
 import { LAST_NIGHT } from '../../data/vehicle';
-import { floorAt, houseExtent, isHearthTile } from '../house';
+import { covered, houseExtent, walkable } from '../house';
 import { bandAt, center, currentPhase, isBuilt } from '../query';
 import { routeFor } from '../route';
 import type { Building, Colonist, HouseEdge, Task, World } from '../world';
@@ -22,12 +22,14 @@ interface Site {
   /** Most builders at once. */
   cap: number;
   /** Where the nth builder stands. */
-  spot: (n: number) => { x: number; y: number };
+  spot: (n: number) => { x: number; y: number; storey?: number };
 }
 
 interface Plan {
   x: number;
   y: number;
+  /** Storey of the target. Ground when missing. */
+  storey?: number;
   task: Task;
   site?: number;
 }
@@ -93,7 +95,7 @@ export function jobsSystem(world: World, dt: number): void {
     c.px = c.x;
     c.py = c.y;
     // Near the house colonists follow a route through its doors. Elsewhere they walk straight.
-    const key = `${world.buildRev}|${Math.round(plan.x * 2)},${Math.round(plan.y * 2)}`;
+    const key = `${world.buildRev}|${Math.round(plan.x * 2)},${Math.round(plan.y * 2)},${plan.storey ?? 0}`;
     if (c.routeKey !== key) {
       c.routeKey = key;
       c.route = routeFor(world, c, plan) ?? [];
@@ -107,8 +109,12 @@ export function jobsSystem(world: World, dt: number): void {
       c.x += (dx / d) * step;
       c.y += (dy / d) * step;
     }
-    if (c.route.length > 0 && d - step < 0.05) c.route.shift();
+    if (c.route.length > 0 && d - step < 0.05) {
+      const wp = c.route.shift()!;
+      if (wp.storey !== undefined) c.storey = wp.storey;
+    }
     const arrived = c.route.length === 0 && Math.hypot(plan.x - c.x, plan.y - c.y) < 0.05;
+    if (arrived) c.storey = plan.storey ?? 0;
     c.task = arrived ? plan.task : 'walk';
     c.asleep = c.task === 'sleep';
     if (c.task === 'eat' || c.task === 'mingle') world.socialSeconds += dt;
@@ -120,6 +126,7 @@ export function jobsSystem(world: World, dt: number): void {
 interface Seat {
   x: number;
   y: number;
+  storey: number;
   kind: 'eat' | 'mingle';
 }
 
@@ -128,7 +135,7 @@ function seatPlan(world: World, byId: Map<number, Building>): Map<number, Seat> 
   for (const kind of ['eat', 'mingle'] as const) {
     for (const b of world.buildings) {
       if (BUILDINGS[b.type].social !== kind || !isBuilt(b) || b.hp <= 0) continue;
-      for (let y = b.y; y < b.y + b.h; y++) for (let x = b.x; x < b.x + b.w; x++) seats.push({ x, y, kind });
+      for (let y = b.y; y < b.y + b.h; y++) for (let x = b.x; x < b.x + b.w; x++) seats.push({ x, y, storey: b.storey, kind });
     }
   }
   const plan = new Map<number, Seat>();
@@ -165,7 +172,7 @@ function planFor(world: World, c: Colonist, byId: Map<number, Building>, ports: 
   const duty = c.duty === null ? undefined : byId.get(c.duty);
   const port = c.duty === null ? undefined : ports.get(c.duty);
   // A defender stands at a tower or turret, or just inside the wall at a gun port.
-  const post = duty && isBuilt(duty) ? center(duty) : port ? portSpot(world, port) : undefined;
+  const post = duty && isBuilt(duty) ? { ...center(duty), storey: duty.storey } : port ? portSpot(world, port) : undefined;
   // The alarm sends defenders to their posts and everyone else under a roof (section 9.7).
   if (world.alarm && post) return { ...post, task: 'guard' };
   if (world.alarm || (work && job?.shelter)) return { ...shelterFor(world, c, job, byId), task: 'shelter' };
@@ -173,13 +180,13 @@ function planFor(world: World, c: Colonist, byId: Map<number, Building>, ports: 
   if (!work) {
     if (post) return { ...post, task: 'guard' };
     // At dusk everyone with a seat sits down to eat or to talk. At night they sleep (section 5.7).
-    if (seat) return { x: seat.x, y: seat.y, task: seat.kind };
+    if (seat) return { x: seat.x, y: seat.y, storey: seat.storey, task: seat.kind };
     const bed = c.bed === null ? undefined : byId.get(c.bed);
-    if (bed) return { ...center(bed), task: 'sleep' };
+    if (bed) return { ...center(bed), storey: bed.storey, task: 'sleep' };
     return mat ? { ...mat, task: 'sleep' } : idleSpot(world, c);
   }
 
-  if (job && !isBuilt(job)) return { ...buildSpot(job, siteLoad.get(job.id) ?? 0), task: 'build', site: job.id };
+  if (job && !isBuilt(job)) return { ...buildSpot(job, siteLoad.get(job.id) ?? 0), storey: job.storey, task: 'build', site: job.id };
   // Nobody stands at a job that is too cold to work. They wait by the hearth.
   if (job && bandAt(world, center(job).x, center(job).y) !== 'freezing') return { ...workSpot(world, job, index), task: 'work' };
   if (!job) {
@@ -202,30 +209,39 @@ function idleSpot(world: World, c: Colonist): Plan {
 }
 
 /** The floor tile just inside a gun port, where its defender stands. */
-function portSpot(world: World, e: HouseEdge): { x: number; y: number } {
+function portSpot(world: World, e: HouseEdge): { x: number; y: number; storey: number } {
   const [a, b] = e.side === 'n' ? [[e.x, e.y], [e.x, e.y - 1]] : [[e.x, e.y], [e.x - 1, e.y]];
-  const floored = (p: number[]) => isHearthTile(world, p[0], p[1]) || floorAt(world, p[0], p[1]) !== undefined;
+  const floored = (p: number[]) => covered(world, p[0], p[1], e.storey);
   const inside = floored(a) ? a : b;
-  return { x: inside[0], y: inside[1] };
+  return { x: inside[0], y: inside[1], storey: e.storey };
+}
+
+/**
+ * Where a builder stands to work on a piece at (x, y) on a storey: on the piece's own floor when there is one,
+ * else on the floor below it, so floors of an upper storey go up from underneath.
+ */
+function standStorey(world: World, x: number, y: number, storey: number): number {
+  for (let s = storey; s > 0; s--) if (walkable(world, x, y, s)) return s;
+  return 0;
 }
 
 /** Every unfinished building, floor, and wall edge. */
 function sitesOf(world: World): Site[] {
   const out: Site[] = [];
   for (const b of world.buildings) {
-    if (!isBuilt(b) || b.salvage !== null) out.push({ id: b.id, ...center(b), cap: C.buildersPerSite, spot: (n) => buildSpot(b, n) });
+    if (!isBuilt(b) || b.salvage !== null) out.push({ id: b.id, ...center(b), cap: C.buildersPerSite, spot: (n) => ({ ...buildSpot(b, n), storey: b.storey }) });
   }
   const around = (x: number, y: number) => (n: number) => ({ x: x + Math.cos(n * 2.1) * 0.25, y: y + Math.sin(n * 2.1) * 0.25 });
   for (const f of world.house.floors) {
-    if (f.construct > 0) out.push({ id: f.id, x: f.x, y: f.y, cap: HOUSE.buildersPerPiece, spot: around(f.x, f.y) });
+    if (f.construct > 0) out.push({ id: f.id, x: f.x, y: f.y, cap: HOUSE.buildersPerPiece, spot: (n) => ({ ...around(f.x, f.y)(n), storey: standStorey(world, f.x, f.y, f.storey) }) });
   }
   for (const e of world.house.edges) {
     if (e.construct <= 0 && !e.pending) continue;
     // Builders stand on the open side of the wall, away from the floor if there is one.
     const [a, b] = e.side === 'n' ? [[e.x, e.y], [e.x, e.y - 1]] : [[e.x, e.y], [e.x - 1, e.y]];
-    const floored = (p: number[]) => isHearthTile(world, p[0], p[1]) || floorAt(world, p[0], p[1]) !== undefined;
+    const floored = (p: number[]) => covered(world, p[0], p[1], e.storey);
     const at = floored(a) && !floored(b) ? b : a;
-    out.push({ id: e.id, x: (a[0] + b[0]) / 2, y: (a[1] + b[1]) / 2, cap: HOUSE.buildersPerPiece, spot: around(at[0], at[1]) });
+    out.push({ id: e.id, x: (a[0] + b[0]) / 2, y: (a[1] + b[1]) / 2, cap: HOUSE.buildersPerPiece, spot: (n) => ({ ...around(at[0], at[1])(n), storey: standStorey(world, at[0], at[1], e.storey) }) });
   }
   return out;
 }
@@ -266,15 +282,15 @@ function workSpot(world: World, b: Building, index: number): { x: number; y: num
 }
 
 /** The colonist's own building if it can hold people, else their bed, else the nearest shelter, else the house. */
-function shelterFor(world: World, c: Colonist, job: Building | undefined, byId: Map<number, Building>): { x: number; y: number } {
+function shelterFor(world: World, c: Colonist, job: Building | undefined, byId: Map<number, Building>): { x: number; y: number; storey?: number } {
   const bed = c.bed === null ? undefined : byId.get(c.bed);
   const own = [job, bed].find((b) => b && canShelter(b));
-  if (own) return center(own);
+  if (own) return { ...center(own), storey: own.storey };
   let best: Building | null = null;
   for (const b of world.buildings) {
     if (canShelter(b) && (!best || dist(center(b), c) < dist(center(best), c))) best = b;
   }
-  return best && dist(center(best), c) < dist(world.hearth, c) ? center(best) : { x: world.hearth.x, y: world.hearth.y };
+  return best && dist(center(best), c) < dist(world.hearth, c) ? { ...center(best), storey: best.storey } : { x: world.hearth.x, y: world.hearth.y };
 }
 
 /** Finished buildings with room for people. Walls, traps, posts, and towers are not shelters. */

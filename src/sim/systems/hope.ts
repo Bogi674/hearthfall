@@ -24,7 +24,7 @@ export function hopeSystem(world: World, dt: number): void {
   }
   let change = 0;
   // The evening in the house: sitting together lifts hope. Lamps, rugs, and plants lift the most it can give.
-  const comfort = world.buildings.filter((b) => BUILDINGS[b.type].decor && isBuilt(b) && isIndoors(world, b.x, b.y)).length;
+  const comfort = world.buildings.filter((b) => BUILDINGS[b.type].decor && isBuilt(b) && isIndoors(world, b.x, b.y, b.storey)).length;
   const mingleMax = H.mingleMax + Math.min(H.decorMax, comfort * H.decorBonus);
   change += Math.min(mingleMax, world.socialSeconds / H.mingleSecondsPerPoint);
   world.socialSeconds = 0;

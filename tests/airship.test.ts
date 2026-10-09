@@ -240,7 +240,7 @@ describe('the blueprint, the launch pad, and the crew (section 11.2)', () => {
     w2.hearth.level = 5;
     const pad2 = openSpot(w2);
     w2.hearth.level = 5;
-    w2.house.floors.push({ id: 900, x: pad2.x - 1, y: pad2.y + 2, kind: 'boards', construct: 0 });
+    w2.house.floors.push({ id: 900, x: pad2.x - 1, y: pad2.y + 2, storey: 0, kind: 'boards', construct: 0 });
     w2.buildRev++;
     expect(placementError(w2, 'airshipDock', pad2.x, pad2.y, false)).toMatch(/House floors are in the way/);
   });

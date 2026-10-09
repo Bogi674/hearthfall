@@ -1,4 +1,5 @@
 import type { BuildingType } from '../../../data/buildings';
+import { STOREY_HEIGHT } from '../../../data/house';
 import { GEO, glowPart, MAT, part } from '../kit';
 import type { Builder } from './parts';
 
@@ -10,6 +11,24 @@ const bed: Builder = (g, w, h) => {
   g.add(part(GEO.block, MAT.sheetWarm, [0, 0.2, h * 0.06], [w * 0.76, 0.1, h * 0.7]));
   g.add(part(GEO.block, MAT.sheet, [0, 0.3, -h * 0.34], [w * 0.62, 0.08, h * 0.2]));
   g.add(part(GEO.block, MAT.darkWood, [0, 0.2, -h * 0.45], [w * 0.86, 0.34, 0.07]));
+};
+
+/**
+ * A steep flight of rough planks that rises one storey through its tile, climbing toward -z. The scene turns it
+ * to face the floor above. The treads sit between two stringers and the top meets the upper floor.
+ */
+const stairs: Builder = (g) => {
+  const steps = 7;
+  const run = 0.9;
+  for (let i = 0; i < steps; i++) {
+    const top = ((i + 1) / steps) * STOREY_HEIGHT;
+    g.add(part(GEO.block, MAT.wood, [0, 0, run / 2 - ((i + 0.5) * run) / steps], [0.72, top, run / steps + 0.01]));
+  }
+  for (const s of [-1, 1]) {
+    g.add(part(GEO.block, MAT.darkWood, [s * 0.4, STOREY_HEIGHT * 0.5, 0], [0.07, 0.07, 1.25], [Math.atan2(STOREY_HEIGHT, run), 0, 0]));
+    g.add(part(GEO.block, MAT.darkWood, [s * 0.4, 0, -run / 2 + 0.03], [0.07, STOREY_HEIGHT + 0.5, 0.07]));
+    g.add(part(GEO.block, MAT.darkWood, [s * 0.4, 0, run / 2 - 0.03], [0.07, 0.55, 0.07]));
+  }
 };
 
 const sickbed: Builder = (g, w, h) => {
@@ -112,4 +131,4 @@ const draftingTable: Builder = (g, w, h) => {
   g.add(part(GEO.rod, MAT.rope, [long ? w * 0.3 : 0, 0.7, long ? h * 0.3 : h * 0.3], [0.08, 0.5, 0.08], [0, 0, Math.PI / 2]));
 };
 
-export const FURNITURE = { bed, sickbed, shelf, table, sofa, stove, workbench, lamp, rug, plant, roofTurret, spotlight, draftingTable } satisfies Partial<Record<BuildingType, Builder>>;
+export const FURNITURE = { bed, sickbed, stairs, shelf, table, sofa, stove, workbench, lamp, rug, plant, roofTurret, spotlight, draftingTable } satisfies Partial<Record<BuildingType, Builder>>;

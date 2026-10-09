@@ -4,7 +4,12 @@ import type { Amounts } from './resources';
 // The house layer (M10.1): floors, wall edges, doors, and windows built on the house lot around the hearth.
 // Furniture is in buildings.ts. Costs and times are balance numbers.
 
+/** Height of one storey in world units, floor to floor. Walls are 1.15 tall, the rest is the floor slab. */
+export const STOREY_HEIGHT = 1.4;
+
 export const HOUSE = {
+  /** Storeys the house may have at each hearth stage. Storey 0 is the ground floor (M11). */
+  storeys: [1, 2, 2, 3, 3],
   /** Tiles from the hearth to the edge of the house lot at each hearth stage. */
   lotRadius: [4, 5, 6, 7, 8],
   /** Builders on one floor tile or wall edge at a time. */

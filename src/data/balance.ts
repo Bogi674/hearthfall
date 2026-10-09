@@ -163,6 +163,8 @@ export const BALANCE = {
     huntRadius: 10,
     trapDps: 20,
     trapWearPerSecond: 3,
+    /** A gun on a higher storey reaches this many tiles farther for each storey up. */
+    storeyRange: 1.2,
   },
   /**
    * Light steps from the core of a light out to its fringe (section 5.3). Reach is the distance as a

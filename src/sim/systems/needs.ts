@@ -15,7 +15,7 @@ export function needsSystem(world: World, dt: number): void {
   for (const c of world.colonists) {
     // A bed in a closed room, a sickbed, and a mat each change how fast sleepers rest and heal (section 5.6).
     const bed = c.asleep && c.bed !== null ? byId.get(c.bed) : undefined;
-    const bonus = !c.asleep ? 1 : !bed ? BALANCE.house.matRest : BUILDINGS[bed.type].restBonus ?? (BUILDINGS[bed.type].furniture && isIndoors(world, bed.x, bed.y) ? BALANCE.house.roomRest : 1);
+    const bonus = !c.asleep ? 1 : !bed ? BALANCE.house.matRest : BUILDINGS[bed.type].restBonus ?? (BUILDINGS[bed.type].furniture && isIndoors(world, bed.x, bed.y, bed.storey) ? BALANCE.house.roomRest : 1);
     c.hunger = clamp01(c.hunger - dt / (N.hungerDays * DAY_SECONDS));
     const mayEat = !hasTable || c.task === 'eat' || c.hunger < N.eatAnywhereBelow;
     if (c.hunger < N.eatBelow && mayEat && world.stock.meals >= 1) {

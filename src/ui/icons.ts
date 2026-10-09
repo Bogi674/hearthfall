@@ -41,6 +41,10 @@ export const BUILDING_ICONS: Record<BuildingType, string> = {
     `<rect x="5" y="14" width="22" height="8" ${ACCENT}/>` +
       `<path d="M4 24V8M4 18h24v6M28 24v-3"/><rect x="6" y="12" width="7" height="5" rx="1.5"/>`,
   ),
+  stairs: svg(
+    `<path d="M5 26h6v-5h6v-5h6v-5h4v15z" ${ACCENT}/>` +
+      `<path d="M4 26h6v-5h6v-5h6v-5h6"/><path d="M4 26h24"/>`,
+  ),
   sickbed: svg(
     `<rect x="5" y="14" width="22" height="8" ${ACCENT}/>` +
       `<path d="M4 24V10M4 18h24v6M28 24v-3"/><path d="M15 15v6M12 18h6"/>`,

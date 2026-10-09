@@ -61,6 +61,8 @@ export interface BuildingDef {
   armory?: boolean;
   /** Sleepers here rest and heal faster. */
   restBonus?: number;
+  /** Joins its storey to the one above, through the same tile (M11). */
+  stairs?: boolean;
 }
 
 export const GUN_MAKESHIFT: Gun = { name: 'Makeshift gun', range: 6, damage: 12, interval: 1 };
@@ -77,6 +79,7 @@ const DEFS = {
   shelf: { name: 'Shelf', category: 'Furniture', cost: { wood: 8 }, size: [1, 1], build: 5, workers: 0, hp: 60, storage: 60, furniture: true, indoor: true },
   table: { name: 'Table', category: 'Furniture', cost: { wood: 10 }, size: [2, 1], build: 6, workers: 0, hp: 60, social: 'eat', furniture: true, indoor: true },
   sofa: { name: 'Sofa', category: 'Furniture', cost: { wood: 10, scrap: 4 }, size: [2, 1], build: 6, workers: 0, hp: 60, social: 'mingle', furniture: true, indoor: true },
+  stairs: { name: 'Stairs', category: 'Furniture', cost: { wood: 14 }, size: [1, 1], build: 8, workers: 0, hp: 80, furniture: true, indoor: true, stairs: true },
   stove: { name: 'Stove', category: 'Furniture', cost: { planks: 6, stone: 4 }, size: [1, 1], build: 8, workers: 1, hp: 80, furniture: true, indoor: true, work: 'stir' },
   workbench: { name: 'Workbench', category: 'Furniture', cost: { planks: 10, metal: 6 }, size: [2, 1], build: 10, workers: 1, hp: 80, furniture: true, indoor: true, work: 'hammer', armory: true },
   draftingTable: { name: 'Drafting Table', category: 'Furniture', cost: { planks: 12, metal: 6 }, size: [2, 1], build: 10, workers: 4, hp: 80, furniture: true, indoor: true, work: 'hammer' },

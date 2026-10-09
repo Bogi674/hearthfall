@@ -13,7 +13,7 @@ import { recall } from './systems/expeditions';
 import { addLog, type Building, type World } from './world';
 
 export type Command =
-  | { type: 'place'; building: BuildingType; x: number; y: number; rotated: boolean }
+  | { type: 'place'; building: BuildingType; x: number; y: number; rotated: boolean; storey?: number }
   | { type: 'setWorkers'; id: number; count: number }
   | { type: 'sendExpedition'; poi: number; members: number[] }
   | { type: 'recall'; id: number }
@@ -28,8 +28,8 @@ export type Command =
   | { type: 'setShelter'; id: number; on: boolean }
   | { type: 'alarm'; on: boolean }
   | { type: 'setCraft'; id: number; weapon: WeaponId }
-  | { type: 'paintFloor'; x: number; y: number; kind: FloorId }
-  | { type: 'buildEdge'; x: number; y: number; side: Side; kind: EdgeKind; level: number }
+  | { type: 'paintFloor'; x: number; y: number; kind: FloorId; storey?: number }
+  | { type: 'buildEdge'; x: number; y: number; side: Side; kind: EdgeKind; level: number; storey?: number }
   | { type: 'removeHouseItem'; item: HouseItem; id: number };
 
 export function pushCommand(queue: Command[], command: Command): void {
@@ -38,9 +38,9 @@ export function pushCommand(queue: Command[], command: Command): void {
 
 export function applyCommands(world: World): void {
   for (const c of world.commands) {
-    if (c.type === 'place') placeBuilding(world, c.building, c.x, c.y, c.rotated);
-    if (c.type === 'paintFloor') placeFloor(world, c.x, c.y, c.kind);
-    if (c.type === 'buildEdge') placeEdge(world, c.x, c.y, c.side, c.kind, c.level);
+    if (c.type === 'place') placeBuilding(world, c.building, c.x, c.y, c.rotated, false, c.storey ?? 0);
+    if (c.type === 'paintFloor') placeFloor(world, c.x, c.y, c.kind, c.storey ?? 0);
+    if (c.type === 'buildEdge') placeEdge(world, c.x, c.y, c.side, c.kind, c.level, c.storey ?? 0);
     if (c.type === 'removeHouseItem') removeHouseItem(world, c.item, c.id);
     if (c.type === 'setWorkers') {
       const b = world.buildings.find((b) => b.id === c.id);
@@ -126,7 +126,7 @@ function sendExpedition(world: World, poiIndex: number, members: number[]): void
   const gate = gates.reduce((a, b) => (Math.hypot(b.x - poi.x, b.y - poi.y) < Math.hypot(a.x - poi.x, a.y - poi.y) ? b : a));
   const squad = world.colonists.filter((c) => members.includes(c.id));
   const id = world.nextId++;
-  for (const c of squad) [c.expedition, c.job, c.duty, c.asleep] = [id, null, null, false];
+  for (const c of squad) [c.expedition, c.job, c.duty, c.asleep, c.storey] = [id, null, null, false, 0];
   const x = squad.reduce((s, c) => s + c.x, 0) / squad.length;
   const y = squad.reduce((s, c) => s + c.y, 0) / squad.length;
   world.expeditions.push({

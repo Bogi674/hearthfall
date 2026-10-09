@@ -74,6 +74,8 @@ export interface Building {
   craft: WeaponId;
   /** Seconds of builder work left to take it apart for salvage, or null when it is not marked. */
   salvage: number | null;
+  /** Storey the building stands on. Only house furniture leaves the ground (M11). */
+  storey: number;
 }
 
 /** One tile of house floor. It is a construction site until construct reaches 0. */
@@ -81,6 +83,8 @@ export interface HouseFloor {
   id: number;
   x: number;
   y: number;
+  /** 0 is the ground floor. */
+  storey: number;
   kind: FloorId;
   construct: number;
 }
@@ -93,6 +97,7 @@ export interface HouseEdge {
   id: number;
   x: number;
   y: number;
+  storey: number;
   side: 'n' | 'w';
   kind: EdgeKind;
   /** Stage in EDGES[kind].levels, starting at 1. */
@@ -119,6 +124,8 @@ export interface Colonist {
   y: number;
   px: number;
   py: number;
+  /** Storey the colonist stands on. */
+  storey: number;
   /** Needs and health run from 0 to 1. */
   health: number;
   hunger: number;
@@ -138,7 +145,7 @@ export interface Colonist {
   /** Seconds until this colonist can hit or fire again. */
   cooldown: number;
   /** Waypoints to the current target, ending at the target. Empty means walk straight. */
-  route: { x: number; y: number }[];
+  route: { x: number; y: number; storey?: number }[];
   /** The target and house layout the route was made for. */
   routeKey: string;
 }
@@ -351,7 +358,7 @@ export function addLog(world: World, text: string, at?: { x: number; y: number }
 export function addColonist(world: World, x: number, y: number): Colonist {
   const name = COLONIST_NAMES[(world.colonists.length + world.dead.length) % COLONIST_NAMES.length];
   const c: Colonist = {
-    id: world.nextId++, name, x, y, px: x, py: y,
+    id: world.nextId++, name, x, y, px: x, py: y, storey: 0,
     health: 1, hunger: 1, rest: 1, warmth: 1, job: null, bed: null, duty: null, expedition: null, asleep: false,
     task: 'idle', site: null, weapon: BALANCE.start.weapon, cooldown: 0, route: [], routeKey: '',
   };

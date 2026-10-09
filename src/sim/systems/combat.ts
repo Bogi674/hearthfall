@@ -118,8 +118,8 @@ export function combatSystem(world: World, dt: number): void {
  * So does standing in a closed room of the house. Once a wall is down, anyone on its floor is exposed.
  */
 function isExposed(world: World, c: Colonist, byId: Map<number, Building>): boolean {
-  if (isIndoors(world, c.x, c.y)) return false;
-  if (isBreached(world, c.x, c.y)) return true;
+  if (isIndoors(world, c.x, c.y, c.storey)) return false;
+  if (isBreached(world, c.x, c.y, c.storey)) return true;
   if (c.asleep || c.task === 'shelter') return false;
   const job = c.job === null ? undefined : byId.get(c.job);
   return !(c.task === 'work' && job && BUILDINGS[job.type].indoor);
@@ -170,7 +170,7 @@ function fireGuns(world: World): void {
     const at = center(b);
     for (const c of world.colonists) {
       if (c.duty !== b.id || c.task !== 'guard' || c.cooldown > 0) continue;
-      const target = nearestEnemy(world, at.x, at.y, gun.range);
+      const target = nearestEnemy(world, at.x, at.y, gun.range + b.storey * D.storeyRange);
       if (!target) break;
       target.hp -= gun.damage;
       c.cooldown = gun.interval;
@@ -185,7 +185,7 @@ function firePorts(world: World): void {
     const gun = EDGES.gunPort.levels[e.level - 1].gun!;
     const c = world.colonists.find((o) => o.duty === e.id && o.task === 'guard' && o.cooldown <= 0);
     if (!c) continue;
-    const target = nearestEnemy(world, e.x - (e.side === 'w' ? 0.5 : 0), e.y - (e.side === 'n' ? 0.5 : 0), gun.range);
+    const target = nearestEnemy(world, e.x - (e.side === 'w' ? 0.5 : 0), e.y - (e.side === 'n' ? 0.5 : 0), gun.range + e.storey * D.storeyRange);
     if (!target) continue;
     target.hp -= gun.damage;
     c.cooldown = gun.interval;
