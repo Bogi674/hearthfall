@@ -48,12 +48,13 @@ describe('house layer rules (M10.1)', () => {
     expect(placeFloor(w, hx + 2, hy, 'boards')).toBe(true);
     expect(w.stock.wood).toBe(98);
     expect(floorPlacementError(w, hx + 2, hy, 'boards')).toBe('Already has a floor');
-    // Stage 1 lot is 3 tiles. A floor at 4 tiles out is off the lot until the house grows.
+    // Stage 1 lot is 4 tiles. A floor at 5 tiles out is off the lot until the house grows.
     expect(placeFloor(w, hx + 3, hy, 'boards')).toBe(true);
-    expect(floorPlacementError(w, hx + 4, hy, 'boards')).toMatch(/Outside the house lot/);
+    expect(placeFloor(w, hx + 4, hy, 'boards')).toBe(true);
+    expect(floorPlacementError(w, hx + 5, hy, 'boards')).toMatch(/Outside the house lot/);
     w.hearth.level = 2;
-    expect(floorPlacementError(w, hx + 4, hy, 'boards')).toBeNull();
-    expect(HOUSE.lotRadius).toEqual([3, 4, 5, 6, 7]);
+    expect(floorPlacementError(w, hx + 5, hy, 'boards')).toBeNull();
+    expect(HOUSE.lotRadius).toEqual([4, 5, 6, 7, 8]);
   });
 
   it('ordinary buildings cannot be placed on a floor, and furniture needs one', () => {
@@ -142,9 +143,9 @@ describe('house layer rules (M10.1)', () => {
     placeBuilding(w, 'bed', hx + 2, hy, false);
     const f = w.house.floors[0];
     expect(removeError(w, 'floor', f.id)).toBe('Remove the furniture first');
-    placeEdge(w, hx + 2, hy, 'n', 'wall', 1);
+    placeEdge(w, hx + 2, hy + 2, 'n', 'wall', 1);
     const g = w.house.floors[1];
-    expect(removeError(w, 'floor', g.id)).toBe('Remove the furniture first');
+    expect(removeError(w, 'floor', g.id)).toBe('Remove the walls on it first');
   });
 });
 

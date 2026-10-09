@@ -13,10 +13,10 @@ describe('mapgen', () => {
     expect(generateMap(createRng(1)).map.tiles).not.toEqual(generateMap(createRng(2)).map.tiles);
   });
 
-  it('builds a 128 by 128 map with the hearth in the center', () => {
+  it('builds a 160 by 160 map with the hearth in the center', () => {
     const { map, hearth } = generateMap(createRng(3));
-    expect(map.tiles.length).toBe(128 * 128);
-    expect(hearth).toEqual({ x: 64, y: 64 });
+    expect(map.tiles.length).toBe(160 * 160);
+    expect(hearth).toEqual({ x: 80, y: 80 });
   });
 
   it('keeps a clear ground circle around the hearth', () => {

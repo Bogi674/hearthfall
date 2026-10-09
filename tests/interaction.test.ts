@@ -27,7 +27,7 @@ describe('what is under the cursor (section 14.2)', () => {
     // The colonist stands on the bed. The bed tile is the building under them.
     expect(pick(w, x + 2, y)?.kind).toBe('colonist');
     c.asleep = true;
-    expect(pick(w, x + 2, y)).toMatchObject({ kind: 'building', w: 1, h: 2 });
+    expect(pick(w, x + 2, y)).toMatchObject({ kind: 'building', w: 1, h: 1 });
     expect(pick(w, x, y)?.kind).toBe('hearth');
     expect(pick(w, x + 30, y)).toBeNull();
   });
@@ -40,7 +40,8 @@ describe('what is under the cursor (section 14.2)', () => {
     expect(wall?.kind).toBe('edge');
     expect(wall).toMatchObject({ w: 1.1, h: 0.24 });
     // The middle of the floor tile next to the bed is a floor.
-    expect(pick(w, x + 2, y + 1)?.kind).toBe('building');
+    expect(pick(w, x + 2, y + 1)?.kind).toBe('floor');
+    expect(pick(w, x + 2, y + 0.2)?.kind).toBe('building');
     w.buildings = w.buildings.filter((b) => b.type !== 'bed');
     w.buildRev++;
     expect(pick(w, x + 2, y + 0.05)?.kind).toBe('floor');

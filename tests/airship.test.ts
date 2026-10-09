@@ -7,7 +7,7 @@ import { padError, placeBuilding, placementError } from '../src/sim/placement';
 import { currentPhase } from '../src/sim/query';
 import { createWorld, stepWorld, type World } from '../src/sim/world';
 import { launchFuelNeeded, seatCount } from '../src/sim/query';
-import { build, closedRoom, finish } from './helpers';
+import { build, closedRoom, finish, findSpot } from './helpers';
 
 const seconds = (w: World, s: number, each?: () => void) => {
   for (let i = 0; i < s * 10 && !w.lost && !w.won; i++) {
@@ -248,11 +248,11 @@ describe('the blueprint, the launch pad, and the crew (section 11.2)', () => {
   it('clearing the area marks buildings, and colonists salvage them for most of their cost', () => {
     const w = createWorld(1);
     fill(w, { wood: 100 });
-    const { x, y } = w.hearth;
-    placeBuilding(w, 'storageShed', x + 12, y - 3, false);
+    const spot = findSpot(w, 'storageShed', 10, 0)!;
+    placeBuilding(w, 'storageShed', spot.x, spot.y, false);
     finish(w);
     const shed = w.buildings.find((b) => b.type === 'storageShed')!;
-    w.commands.push({ type: 'clearArea', x: x + 10, y: y - 5, w: 6, h: 6 });
+    w.commands.push({ type: 'clearArea', x: spot.x - 2, y: spot.y - 2, w: 6, h: 6 });
     stepWorld(w);
     expect(shed.salvage).not.toBeNull();
     // The cart is never marked.

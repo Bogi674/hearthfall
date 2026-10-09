@@ -16,7 +16,7 @@ export interface EnemyMeshes {
 
 export function createEnemyMeshes(): EnemyMeshes {
   const group = new THREE.Group();
-  const sets = Object.fromEntries(ENEMY_TYPES.map((t) => [t, createFigureSet(ENEMY_RIGS[t], MAX, 1.2)])) as Record<EnemyType, FigureSet>;
+  const sets = Object.fromEntries(ENEMY_TYPES.map((t) => [t, createFigureSet(ENEMY_RIGS[t], MAX, 0.95)])) as Record<EnemyType, FigureSet>;
   for (const set of Object.values(sets)) group.add(set.group);
   const heading = new Map<number, number>();
 

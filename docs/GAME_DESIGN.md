@@ -371,7 +371,7 @@ Generated per map. Each has a name, distance, danger level from 1 to 5, and a lo
 ### 10.4 Discovery
 - Each point of interest is hidden, rumored, or known.
 - The 3 closest are known at the start. The farther ones are more dangerous and more rewarding.
-- A Lookout Post marks every point of interest within its sight radius as a rumor. The map shows a question mark there. Sight is 44 tiles at stage 1, 56 at stage 2, and 66 at stage 3, measured from the post.
+- A Lookout Post marks every point of interest within its sight radius as a rumor. The map shows a question mark there. Sight is 52 tiles at stage 1, 66 at stage 2, and 78 at stage 3, measured from the post.
 - An expedition can be sent to a rumor. When the squad arrives the place becomes known and the search begins.
 - Each kind of place is its own building, not a marker: a farmhouse with a barn and silo, a gas station with a canopy and pumps, a hardware store with a lumber yard, a clinic with a red cross and an ambulance wreck, a rail depot with a locomotive and water tower, and an airfield with a hangar, tower, and plane wreck. A rumor shows only the cold beacon. A known place shows the whole building. After a squad has searched it the loot props are gone. Each place sits on a cleared lot 4 tiles in radius.
 - A squad also discovers any point of interest that comes within 8 tiles of its path. Squads walk 1.6 tiles per second, so the far trips still fit in one day.

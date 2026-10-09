@@ -19,14 +19,14 @@ export const BALANCE = {
     { name: 'Dawn', seconds: 30, work: true },
   ],
   map: {
-    width: 128,
-    height: 128,
+    width: 160,
+    height: 160,
     /** Tiles around the hearth that are always clear ground. */
-    clearingRadius: 6,
+    clearingRadius: 8,
     /** Ruined town extends this far from the hearth. Trees thicken beyond it. */
-    townRadius: 40,
-    houseAttempts: 420,
-    houseCountMax: 50,
+    townRadius: 50,
+    houseAttempts: 560,
+    houseCountMax: 70,
     houseWidth: [4, 7],
     houseDepth: [4, 6],
     /** Chance that a wall tile of a ruined house has collapsed. */
@@ -35,14 +35,14 @@ export const BALANCE = {
     streetRubbleChance: 0.04,
     ponds: 4,
     /** Side streets run parallel to the main roads at these offsets from the hearth. */
-    sideStreets: [-26, -14, 13, 25],
+    sideStreets: [-32, -17, 16, 31],
     pondRadius: [3, 5],
     forestNoiseScale: 9,
     /** Trees start to thicken this far from the hearth and reach full density this many tiles later. */
     /** The paddock beside the house that is always open ground (section 4). Size is in tiles, distance from the hearth. */
-    yard: { size: 10, distance: 11 },
-    forestStart: 17,
-    forestRamp: 40,
+    yard: { size: 12, distance: 13 },
+    forestStart: 22,
+    forestRamp: 48,
   },
   temperature: {
     day1: -2,

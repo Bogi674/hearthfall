@@ -6,7 +6,7 @@ import type { Amounts } from './resources';
 
 export const HOUSE = {
   /** Tiles from the hearth to the edge of the house lot at each hearth stage. */
-  lotRadius: [3, 4, 5, 6, 7],
+  lotRadius: [4, 5, 6, 7, 8],
   /** Builders on one floor tile or wall edge at a time. */
   buildersPerPiece: 2,
 };

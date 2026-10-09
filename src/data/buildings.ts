@@ -72,8 +72,8 @@ const DEFS = {
   bunkhouse: { name: 'Bunkhouse', category: 'Shelter', cost: { planks: 30, stone: 10 }, size: [3, 3], build: 40, workers: 0, hp: 300, beds: 10, glow: 3 },
   storageShed: { name: 'Storage Shed', category: 'Shelter', cost: { wood: 20 }, size: [2, 2], build: 15, workers: 0, hp: 150, storage: 200, glow: 2 },
   heater: { name: 'Heater', category: 'Shelter', cost: { metal: 10, parts: 5 }, size: [1, 1], build: 10, workers: 0, hp: 80, heat: { radius: 4, fuelPerMinute: 1 } },
-  bed: { name: 'Bed', category: 'Furniture', cost: { wood: 6 }, size: [1, 2], build: 6, workers: 0, hp: 60, beds: 1, furniture: true, indoor: true },
-  sickbed: { name: 'Sickbed', category: 'Furniture', cost: { planks: 8, parts: 1 }, size: [1, 2], build: 8, workers: 0, hp: 60, beds: 1, restBonus: 3, furniture: true, indoor: true },
+  bed: { name: 'Bed', category: 'Furniture', cost: { wood: 6 }, size: [1, 1], build: 6, workers: 0, hp: 60, beds: 1, furniture: true, indoor: true },
+  sickbed: { name: 'Sickbed', category: 'Furniture', cost: { planks: 8, parts: 1 }, size: [1, 1], build: 8, workers: 0, hp: 60, beds: 1, restBonus: 3, furniture: true, indoor: true },
   shelf: { name: 'Shelf', category: 'Furniture', cost: { wood: 8 }, size: [1, 1], build: 5, workers: 0, hp: 60, storage: 60, furniture: true, indoor: true },
   table: { name: 'Table', category: 'Furniture', cost: { wood: 10 }, size: [2, 1], build: 6, workers: 0, hp: 60, social: 'eat', furniture: true, indoor: true },
   sofa: { name: 'Sofa', category: 'Furniture', cost: { wood: 10, scrap: 4 }, size: [2, 1], build: 6, workers: 0, hp: 60, social: 'mingle', furniture: true, indoor: true },
@@ -109,7 +109,7 @@ const DEFS = {
   lampPost: { name: 'Lamp Post', category: 'Defense', cost: { scrap: 10, metal: 5, parts: 2 }, size: [1, 1], build: 8, workers: 0, hp: 90, light: { radius: 6, fuel: 1 } },
   lookoutPost: {
     name: 'Lookout Post', category: 'Escape', cost: { wood: 20, planks: 10 }, size: [1, 1], build: 15, workers: 0, hp: 120,
-    sight: [44, 56, 66], upgrades: [{ planks: 30, stone: 10 }, { planks: 40, metal: 15 }], glow: 1.5,
+    sight: [52, 66, 78], upgrades: [{ planks: 30, stone: 10 }, { planks: 40, metal: 15 }], glow: 1.5,
   },
   airshipDock: { name: 'Launch Pad', category: 'Escape', cost: { planks: 70, metal: 50, parts: 12 }, size: [6, 6], build: 40, workers: 4, hp: 500, work: 'hammer', glow: 3 },
 } satisfies Record<string, BuildingDef>;

@@ -80,7 +80,7 @@ export function createWorldView(world: World, view: Pick<View, 'scene' | 'fog' |
   // Walls join their neighbors, so a wall mesh is rebuilt when its neighbor mask changes.
   const wallMasks = new Map<number, number>();
   // Characters are drawn a little larger than true scale so they read from the isometric camera.
-  const colonists = createFigureSet(PERSON_RIG, 64, 1.3);
+  const colonists = createFigureSet(PERSON_RIG, 64, 1.0);
   scene.add(colonists.group);
   const colonistHeading = new Map<number, number>();
   let launchedAt = 0;
