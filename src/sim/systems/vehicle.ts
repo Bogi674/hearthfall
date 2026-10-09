@@ -2,7 +2,7 @@
 import { BALANCE } from '../../data/balance';
 import { BUILDINGS } from '../../data/buildings';
 import { BERTH, BLUEPRINT, COMPONENTS, LAST_NIGHT, SCORE } from '../../data/vehicle';
-import { bandAt, center, hopeSpeed, phaseStarted, seatCount } from '../query';
+import { bandAt, center, fuelBurnPerSecond, hopeSpeed, phaseStarted, seatCount } from '../query';
 import { addLog, type World } from '../world';
 
 export function vehicleSystem(world: World, dt: number): void {
@@ -51,7 +51,7 @@ export function vehicleSystem(world: World, dt: number): void {
   }
   launch.elapsed += dt;
   // The hearth must not starve while the airship drinks, so some fuel stays in the stockpile.
-  const reserve = (BALANCE.hearth.levels[world.hearth.level - 1].fuelPerMinute / 60) * LAST_NIGHT.hearthReserveSeconds;
+  const reserve = fuelBurnPerSecond(world) * LAST_NIGHT.hearthReserveSeconds;
   const load = Math.max(0, Math.min(world.stock.fuel - reserve, (LAST_NIGHT.fuel / LAST_NIGHT.seconds) * dt, LAST_NIGHT.fuel - launch.fuel));
   world.stock.fuel -= load;
   launch.fuel += load;

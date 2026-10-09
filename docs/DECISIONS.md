@@ -202,6 +202,12 @@ Design and architecture decisions that are not already in `docs/GAME_DESIGN.md`.
 - **A blizzard shrinks outdoor heat reach but not closed rooms.** This gives the player a reason to wall in the rooms they live in, without changing the starting hearth radius on clear days.
 - **No mid day temperature swings other than the day and night split.** A smooth curve would recompute the warmth map every tick. Four steps per day are cheap and readable.
 
+## M10.2c and balance pass 2
+
+- **The launch needs the burn, not just the load.** With weather, the hearth and four heaters burned about 30 fuel during the night, which broke a run that had followed the written rule. The rule now includes the burn and the reserve, and the UI says so. This is a rule change the player can read, not a hidden fudge.
+- **Ground darkening is done in the material, not with a decal.** It costs nothing per object and works for every kit part, since the height test is in the shader.
+- **The wave curve stays at 1.2 and 1.6.** At 1.24 and 1.7 three seeds fell. The nights already hurt, with the hearth at 40 percent in the worst run.
+
 ## Balance pass 1
 
 - **The threat curve is 1.2 with a 1.6 Blood Moon.** Measured on 24 seeds with the scripted player: 1.2 won 24 and lost 0.04 colonists a run, 1.26 won 22 and lost 0.17, and the old 1.32 won 16 and lost 0.21. The steep curve made the run depend on being half a day faster. At 1.2 a day of delay still wins and the nights still hurt, since the hearth falls to about 70 percent at its worst.

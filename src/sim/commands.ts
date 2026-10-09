@@ -4,11 +4,11 @@ import { BUILDINGS, type BuildingType } from '../data/buildings';
 import { CRAFTABLE, type WeaponId } from '../data/weapons';
 import { ITEMS } from '../data/pois';
 import { RESOURCE_NAMES, type Resource } from '../data/resources';
-import { BERTH, COMPONENT_IDS, COMPONENTS, LAST_NIGHT, type ComponentId } from '../data/vehicle';
+import { BERTH, COMPONENT_IDS, COMPONENTS, type ComponentId } from '../data/vehicle';
 import type { EdgeKind, FloorId } from '../data/house';
 import type { Side } from './house';
 import { placeBuilding, placeEdge, placeFloor, removeHouseItem, siteError, type HouseItem } from './placement';
-import { center, missing, pay } from './query';
+import { center, launchFuelNeeded, missing, pay } from './query';
 import { recall } from './systems/expeditions';
 import { addLog, type Building, type World } from './world';
 
@@ -168,7 +168,7 @@ export function launchError(world: World): string | null {
   if (world.airship.launch) return 'The launch has started';
   if (!world.buildings.some((b) => b.type === 'airshipDock' && b.construct <= 0)) return 'Build the Launch Pad first';
   if (COMPONENT_IDS.some((id) => !world.airship.built.includes(id))) return 'Build every component first';
-  if (world.stock.fuel < LAST_NIGHT.fuel / 4) return `Gather fuel first. Loading takes ${LAST_NIGHT.fuel}`;
+  if (world.stock.fuel < launchFuelNeeded(world)) return `Gather fuel first. Loading and the night's burning need ${launchFuelNeeded(world)}`;
   return null;
 }
 

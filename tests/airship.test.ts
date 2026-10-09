@@ -6,7 +6,7 @@ import { berthError, componentError, launchError } from '../src/sim/commands';
 import { padError, placeBuilding, placementError } from '../src/sim/placement';
 import { currentPhase } from '../src/sim/query';
 import { createWorld, stepWorld, type World } from '../src/sim/world';
-import { seatCount } from '../src/sim/query';
+import { launchFuelNeeded, seatCount } from '../src/sim/query';
 import { build, closedRoom, finish } from './helpers';
 
 const seconds = (w: World, s: number, each?: () => void) => {
@@ -119,15 +119,23 @@ describe('The Last Night', () => {
     w.stock.fuel = 10;
     expect(launchError(w)).toMatch('Gather fuel first');
     w.airship.built.pop();
-    w.stock.fuel = 200;
+    w.stock.fuel = launchFuelNeeded(w);
     expect(launchError(w)).toBe('Build every component first');
+    w.airship.built.push(COMPONENT_IDS[COMPONENT_IDS.length - 1]);
+    w.stock.fuel = LAST_NIGHT.fuel;
+    expect(launchError(w)).toMatch('Gather fuel first');
+    w.stock.fuel = launchFuelNeeded(w);
+    expect(launchError(w)).toBeNull();
   });
 
   it('loading fuel leaves enough in the stockpile to keep the hearth burning', () => {
     const w = readyColony();
-    w.stock.fuel = 205;
+    w.stock.fuel = launchFuelNeeded(w);
     w.commands.push({ type: 'launch' });
-    seconds(w, 150, () => {
+    seconds(w, 1);
+    // A burst of use drains the stockpile after the launch begins.
+    w.stock.fuel = 205;
+    seconds(w, 149, () => {
       w.enemies.length = 0;
     });
     const reserve = (BALANCE.hearth.levels[w.hearth.level - 1].fuelPerMinute / 60) * LAST_NIGHT.hearthReserveSeconds;

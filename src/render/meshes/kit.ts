@@ -5,9 +5,6 @@ import { mixPalette, PALETTE } from '../materials';
 // Shared parts for the stylized low poly look (section 12.4): soft edged blocks, scavenged materials,
 // and placement helpers. Every color is a palette color or a mix of two.
 
-const std = (color: THREE.Color, roughness = 0.85) => new THREE.MeshStandardMaterial({ color, roughness, flatShading: true });
-const metal = (color: THREE.Color) => new THREE.MeshStandardMaterial({ color, roughness: 0.55, metalness: 0.25, flatShading: true });
-
 /** Profile of a ridged sheet: a zigzag strip one unit wide, extruded along y. */
 function corrugatedGeometry(ridges: number): THREE.BufferGeometry {
   const top: THREE.Vector2[] = [];
@@ -23,6 +20,25 @@ function drumGeometry(): THREE.BufferGeometry {
   const pts = [[0, 0], [0.5, 0], [0.5, 0.3], [0.53, 0.32], [0.5, 0.34], [0.5, 0.64], [0.53, 0.66], [0.5, 0.68], [0.5, 1], [0, 1]];
   return new THREE.LatheGeometry(pts.map(([x, y]) => new THREE.Vector2(x, y)), 10);
 }
+
+/**
+ * Darkens a surface near the ground so buildings sit in the snow instead of floating on it (section 12.4).
+ * It scales the albedo by height, so lighting still works as before.
+ */
+function grounded<T extends THREE.MeshStandardMaterial>(mat: T): T {
+  mat.onBeforeCompile = (shader) => {
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying float vGroundY;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvGroundY = (modelMatrix * vec4(transformed, 1.0)).y;');
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nvarying float vGroundY;')
+      .replace('#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.rgb *= mix(0.6, 1.0, smoothstep(0.0, 0.5, vGroundY));');
+  };
+  return mat;
+}
+
+const std = (color: THREE.Color, roughness = 0.85) => grounded(new THREE.MeshStandardMaterial({ color, roughness, flatShading: true }));
+const metal = (color: THREE.Color) => grounded(new THREE.MeshStandardMaterial({ color, roughness: 0.55, metalness: 0.25, flatShading: true }));
 
 export const MAT = {
   wood: std(PALETTE.oldWood),

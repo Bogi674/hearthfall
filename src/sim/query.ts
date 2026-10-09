@@ -2,7 +2,7 @@
 import { BALANCE } from '../data/balance';
 import { BUILDINGS } from '../data/buildings';
 import { RESOURCES, type Amounts } from '../data/resources';
-import { BERTH, SEATS } from '../data/vehicle';
+import { BERTH, LAST_NIGHT, SEATS } from '../data/vehicle';
 import type { Building, World } from './world';
 
 const W = BALANCE.warmth;
@@ -115,6 +115,16 @@ export const weatherNow = (world: World) => BALANCE.weather.kinds[world.weather]
 
 /** Heat sources burn more fuel the colder it is. */
 export const fuelFactor = (world: World): number => 1 + Math.max(0, -world.temperature) * BALANCE.weather.fuelPerDegree;
+
+/** Fuel per second the hearth and every finished heater burn right now, cold included. */
+export function fuelBurnPerSecond(world: World): number {
+  let perMinute = BALANCE.hearth.levels[world.hearth.level - 1].fuelPerMinute;
+  for (const b of world.buildings) if (isBuilt(b)) perMinute += BUILDINGS[b.type].heat?.fuelPerMinute ?? 0;
+  return (perMinute / 60) * fuelFactor(world);
+}
+
+/** Fuel to have in the stockpile before the launch: the 200 to load, what the burners use over the night, and the hearth reserve. */
+export const launchFuelNeeded = (world: World): number => Math.ceil(LAST_NIGHT.fuel + fuelBurnPerSecond(world) * (LAST_NIGHT.seconds + LAST_NIGHT.hearthReserveSeconds));
 
 export const hearthStage = (world: World) => BALANCE.hearth.levels[world.hearth.level - 1];
 

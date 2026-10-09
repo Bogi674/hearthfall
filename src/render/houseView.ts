@@ -27,6 +27,11 @@ const DOOR_COLOR = mixPalette(PALETTE.oldWood, PALETTE.warmShadow, 0.45);
 const WINDOW_COLOR = PALETTE.lantern.clone().multiplyScalar(1.4);
 const SLIT_COLOR = PALETTE.warmShadow;
 const ROOF_COLOR = mixPalette(PALETTE.frost, PALETTE.nightBlue, 0.35);
+/** How much of a roof is covered by snow in each weather. */
+const ROOF_SNOW = { clear: 0.25, overcast: 0.35, snow: 0.6, blizzard: 0.78 };
+const SNOW_COLOR = PALETTE.frost.clone().multiplyScalar(1.15);
+/** A steady pseudo random value in [0.94, 1.06] for one piece, so rows of planks are not identical. */
+const shade = (n: number) => 0.94 + 0.12 * (((Math.sin(n * 91.7) * 43758.5453) % 1 + 1) % 1);
 const DAMAGE_COLOR = mixPalette(PALETTE.ember, PALETTE.warmShadow, 0.5);
 
 function instanced(geometry: THREE.BufferGeometry, material: THREE.Material, shadow: boolean): THREE.InstancedMesh {
@@ -60,6 +65,8 @@ export function createHouseView(scene: THREE.Scene): HouseView {
   const p = new THREE.Vector3();
   const s = new THREE.Vector3();
   const tint = new THREE.Color();
+  const glow = new THREE.Color();
+  const roof = new THREE.Color();
   const open = new Map<number, number>();
   let roofOpacity = 1;
   let lastTime = 0;
@@ -82,7 +89,7 @@ export function createHouseView(scene: THREE.Scene): HouseView {
 
       for (const f of w.house.floors) {
         const done = 1 - f.construct / FLOORS[f.kind].build;
-        put(floors, f.x - ox, 0, f.y - oy, 1, 0.03 + 0.05 * done, 1, f.construct > 0 ? tint.copy(FLOOR_COLOR[f.kind]).multiplyScalar(0.6) : FLOOR_COLOR[f.kind]);
+        put(floors, f.x - ox, 0, f.y - oy, 1, 0.03 + 0.05 * done, 1, tint.copy(FLOOR_COLOR[f.kind]).multiplyScalar((f.construct > 0 ? 0.6 : 1) * shade(f.x * 31 + f.y)));
       }
 
       for (const e of w.house.edges) {
@@ -93,10 +100,13 @@ export function createHouseView(scene: THREE.Scene): HouseView {
         const along = e.side === 'n' ? 'x' : 'z';
         const [sx, sz] = e.side === 'n' ? [1 + THICK, THICK] : [THICK, 1 + THICK];
         const color = tint.copy(e.kind === 'door' ? DOOR_COLOR : WALL_COLOR[e.kind === 'wall' ? e.level - 1 : e.level === 1 ? 0 : 1]);
+        color.multiplyScalar(shade(e.id));
         if (e.construct > 0) color.multiplyScalar(0.7);
         if (e.hp < level.hp) color.lerp(DAMAGE_COLOR, Math.min(0.7, (1 - e.hp / level.hp) * 0.9));
         if (e.kind === 'window') {
-          put(windows, x, 0.25 * rise, z, sx * 0.96, 0.6 * rise, sz * 0.96, WINDOW_COLOR);
+          // The glow flickers a little, each window on its own rhythm.
+          glow.copy(WINDOW_COLOR).multiplyScalar(0.9 + 0.1 * Math.sin(time * 7 + e.id * 3.1) * Math.sin(time * 2.3 + e.id));
+          put(windows, x, 0.25 * rise, z, sx * 0.96, 0.6 * rise, sz * 0.96, glow);
           // Sill and lintel around the glass.
           put(walls, x, 0, z, sx, 0.25 * rise, sz, color);
           put(walls, x, 0.85 * rise, z, sx, 0.3 * rise, sz, color);
@@ -124,13 +134,14 @@ export function createHouseView(scene: THREE.Scene): HouseView {
       }
 
       // Roofs cover every closed room except the hearth hall, which has its own. A roof turret stands where the roof is open.
+      roof.copy(ROOF_COLOR).lerp(SNOW_COLOR, ROOF_SNOW[w.weather]);
       const turrets = new Set(w.buildings.filter((b) => BUILDINGS[b.type].roofed).map((b) => b.y * w.map.width + b.x));
       for (const room of houseRooms(w)) {
         for (const t of room.tiles) {
           const tx = t % w.map.width;
           const ty = Math.floor(t / w.map.width);
           if (isHearthTile(w, tx, ty) || !floorAt(w, tx, ty) || floorAt(w, tx, ty)!.construct > 0 || turrets.has(t)) continue;
-          put(roofs, tx - ox, WALL_HEIGHT, ty - oy, 1.08, ROOF_THICK, 1.08, ROOF_COLOR);
+          put(roofs, tx - ox, WALL_HEIGHT, ty - oy, 1.08, ROOF_THICK, 1.08, roof);
         }
       }
       roofOpacity += ((cutaway ? 0 : 1) - roofOpacity) * Math.min(1, dt * 8);

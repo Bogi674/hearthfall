@@ -2,6 +2,12 @@
 
 Newest entries first. Each entry names the milestone it belongs to.
 
+## 2026-10-09 (M10.2c: Art Pass and Balance Pass 2)
+
+- **Surface detail.** Building materials darken near the ground. House pieces vary in shade, window glow flickers, and roofs carry snow that follows the weather. Wrecked cars line the roads and drums sit among the rubble.
+- **The launch fuel number is honest.** Hearths and heaters burn fuel through the last night, and cold makes it worse. The Launch button now needs the 200 to load plus that burn plus the 90 second hearth reserve. One seed had launched with 229 fuel and run dry. The Airship panel states the number and the scripted player aims for it.
+- **Balance pass 2.** With weather on, 24 of 24 seeds launch and the hearth falls to 81 percent on average. A steeper curve of 1.24 and 1.7 launched 21 of 24, so the curve stays at 1.2 and 1.6.
+
 ## 2026-10-09 (M10.2b: Animation and Places)
 
 - **Fluent characters.** Each figure now has its own motion state. Walking blends in and out, the stride only advances while moving, and the body bobs, leans, and sways. Turning and arm poses ease. Idle figures breathe. Workers lean into the swing.

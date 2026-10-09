@@ -26,10 +26,10 @@ function tilesOfType(map: MapState, type: Tile): number[] {
 }
 
 function layer(geometry: THREE.BufferGeometry, material: THREE.Material, count: number): PropLayer {
-  const mesh = new THREE.InstancedMesh(geometry, material, count);
+  const mesh = new THREE.InstancedMesh(geometry, material, Math.max(1, count));
   mesh.castShadow = true;
   mesh.receiveShadow = true;
-  mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(count * 3), 3);
+  mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(Math.max(1, count) * 3), 3);
   return { mesh, tileOf: [] };
 }
 
@@ -141,7 +141,45 @@ export function buildProps(map: MapState): PropLayer[] {
   }
   walls.mesh.count = walls.tileOf.length;
 
-  return [foliage, trunks, rubble, walls];
+  // Abandoned cars along the roads, away from the town square, each turned to follow its road.
+  const roadTiles = tilesOfType(map, Tile.Road);
+  const isRoad = (x: number, z: number) => x >= 0 && z >= 0 && x < map.width && z < map.height && map.tiles[z * map.width + x] === Tile.Road;
+  const carTiles = roadTiles.filter((t) => hash(t + 30) < 0.012 && Math.hypot((t % map.width) - map.width / 2, Math.floor(t / map.width) - map.height / 2) > 16);
+  const carGeo = mergeGeometries([
+    new THREE.BoxGeometry(0.95, 0.26, 0.5).translate(0, 0.2, 0),
+    new THREE.BoxGeometry(0.5, 0.22, 0.44).translate(-0.05, 0.44, 0),
+    new THREE.CylinderGeometry(0.15, 0.15, 0.56, 8).rotateX(Math.PI / 2).translate(0.3, 0.15, 0),
+    new THREE.CylinderGeometry(0.15, 0.15, 0.56, 8).rotateX(Math.PI / 2).translate(-0.3, 0.15, 0),
+  ]);
+  const cars = layer(carGeo, createPropMaterial(mixPalette(PALETTE.ember, PALETTE.oldWood, 0.55), mixPalette(PALETTE.nightBlue, PALETTE.frost, 0.25), true), carTiles.length);
+  for (const t of carTiles) {
+    const x = t % map.width;
+    const z = Math.floor(t / map.width);
+    pos.set(x - ox + (hash(t + 31) - 0.5) * 0.3, 0, z - oz + (hash(t + 32) - 0.5) * 0.3);
+    q.setFromAxisAngle(up, (isRoad(x - 1, z) || isRoad(x + 1, z) ? 0 : Math.PI / 2) + (hash(t + 33) - 0.5) * 0.5 + (hash(t + 34) < 0.5 ? 0 : Math.PI));
+    scale.set(1.3, 1.3, 1.3);
+    place(cars, t, hash(t + 35));
+  }
+
+  cars.mesh.count = cars.tileOf.length;
+
+  // A few drums among the rubble.
+  const drumTiles = rubbleTiles.filter((t) => hash(t + 40) < 0.07);
+  const drums = layer(
+    new THREE.CylinderGeometry(0.16, 0.16, 0.42, 9).translate(0, 0.21, 0),
+    createPropMaterial(mixPalette(PALETTE.ember, PALETTE.warmShadow, 0.55), mixPalette(PALETTE.nightBlue, PALETTE.frost, 0.2), true),
+    drumTiles.length,
+  );
+  for (const t of drumTiles) {
+    pos.set((t % map.width) - ox + 0.3, 0, Math.floor(t / map.width) - oz + 0.25);
+    q.setFromAxisAngle(up, hash(t + 41) * 3);
+    scale.set(1, 1, 1);
+    place(drums, t, hash(t + 42));
+  }
+
+  drums.mesh.count = drums.tileOf.length;
+
+  return [foliage, trunks, rubble, walls, cars, drums];
 }
 
 /**

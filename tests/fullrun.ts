@@ -6,11 +6,11 @@ import { BALANCE } from '../src/data/balance';
 import { BUILDINGS, type BuildingType } from '../src/data/buildings';
 import { POIS, type ItemId, type PoiType } from '../src/data/pois';
 import type { Amounts } from '../src/data/resources';
-import { COMPONENT_IDS, COMPONENTS, LAST_NIGHT, type ComponentId } from '../src/data/vehicle';
+import { COMPONENT_IDS, COMPONENTS, type ComponentId } from '../src/data/vehicle';
 import { buildingUpgradeError, componentError, hearthUpgradeError, launchError } from '../src/sim/commands';
 import { floorAt } from '../src/sim/house';
 import { floorPlacementError, padError, placementError, siteError } from '../src/sim/placement';
-import { bandAt, capacity, center, currentPhase, missing, stockTotal } from '../src/sim/query';
+import { bandAt, capacity, center, currentPhase, launchFuelNeeded, missing, stockTotal } from '../src/sim/query';
 import type { World } from '../src/sim/world';
 import { findSpot } from './helpers';
 
@@ -173,7 +173,7 @@ export function fullRunPlayer() {
     const metalNeed = (cost.metal ?? 0) + partsShort;
     const planksNeed = (cost.planks ?? 0) + partsShort;
     const ready = COMPONENT_IDS.every((id) => w.airship.built.includes(id));
-    const fuelTarget = w.airship.built.length >= 3 ? LAST_NIGHT.fuel + 80 : 80;
+    const fuelTarget = w.airship.built.length >= 3 ? launchFuelNeeded(w) + 40 : 80;
     if (ready) placeRing('spikeTrap', RING + 2, 60);
     // Sites without a crew of their own need colonists without a job to build them.
     const sites = w.buildings.filter((b) => b.construct > 0).length;
@@ -230,6 +230,6 @@ export function fullRunPlayer() {
     }
     for (const ex of w.expeditions) if (phase.name !== 'Day') w.commands.push({ type: 'recall', id: ex.id });
 
-    if (ready && !launchError(w) && s.fuel >= LAST_NIGHT.fuel + 15) w.commands.push({ type: 'launch' });
+    if (ready && !launchError(w) && s.fuel >= launchFuelNeeded(w) + 5) w.commands.push({ type: 'launch' });
   };
 }

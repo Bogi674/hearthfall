@@ -5,7 +5,7 @@ import { WEAPONS } from '../data/weapons';
 import { taskText } from './people';
 import { RESOURCE_NAMES, type Resource } from '../data/resources';
 import { berthError, componentError, expeditionError, launchError } from '../sim/commands';
-import { directionFromHearth, seatCount } from '../sim/query';
+import { directionFromHearth, launchFuelNeeded, seatCount } from '../sim/query';
 import { expeditionRisk } from '../sim/systems/expeditions';
 import type { World } from '../sim/world';
 import type { UiState } from './hud';
@@ -113,7 +113,7 @@ function airship(w: World): string {
   }
   const launch = air.launch;
   out.push(`<h4>The Last Night</h4><p>Load ${LAST_NIGHT.fuel} fuel over ${LAST_NIGHT.seconds} seconds while the final horde attacks.
-    Colonists board in the last ${LAST_NIGHT.boardSeconds} seconds. Defenders on night duty stay at their post and are left behind.</p>`);
+    The hearth and heaters burn fuel all night too, so have about ${launchFuelNeeded(w)} in the stockpile. Colonists board in the last ${LAST_NIGHT.boardSeconds} seconds. Defenders on night duty stay at their post and are left behind.</p>`);
   if (launch) out.push(`<p>Fuel loaded ${Math.floor(launch.fuel)}/${LAST_NIGHT.fuel}. ${Math.max(0, Math.ceil(LAST_NIGHT.seconds - launch.elapsed))}s left.</p>`);
   else {
     const error = launchError(w);

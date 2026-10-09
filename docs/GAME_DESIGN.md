@@ -392,7 +392,7 @@ The airship is the spine of the run. Its progress is always visible on screen.
 
 ### 11.1 The Last Night
 - When all components are built, the player can start the launch.
-- Launch requires loading 200 fuel into the airship over 180 seconds.
+- Launch requires loading 200 fuel into the airship over 180 seconds. The hearth and heaters keep burning all night, more in the cold, so the Launch button needs the 200 plus that burn plus 90 seconds of hearth reserve in the stockpile. The Airship panel shows the number.
 - The final horde attacks during loading with three times the normal threat points and the Horde Mother.
 - Colonists board in the final 30 seconds. Anyone not aboard at launch is left behind.
 
@@ -446,6 +446,12 @@ Orthographic camera at a classic isometric angle. Zoom with scroll. Rotate in 90
 - Colonists are small chunky low poly people in winter clothes. There are ten designs for women and ten for men. They differ in height, build, skin, hair style and color, beards, hats, coats, and trousers or skirts. They animate their work: chopping with an axe, swinging a pick, prying scrap with a crowbar, gathering into a basket, stirring a pot, sawing, hammering, and tending the kiln. They carry their weapon when not working. Monsters share the chunky build with torn clothes, horns, spines, and Blight eyes.
 - The moon casts soft shadows from buildings, trees, and characters.
 - Soft vignette and a light film grain.
+
+### 12.4a Surface detail
+- Building materials darken near the ground, so structures sit in the snow instead of floating on it.
+- House floors, walls, and roofs vary slightly in shade piece by piece. Window glow flickers on its own rhythm.
+- Roofs carry snow. A blizzard day leaves them nearly white.
+- Wrecked cars stand along the roads away from the square. Drums stand among the rubble.
 
 ### 12.4b Character animation
 - Every figure keeps its own motion state, so nothing snaps. Walking blends in and out over a fraction of a second, the stride only advances while moving, and the body bobs, leans forward, and sways a little with each step.
