@@ -4,6 +4,8 @@ import { EDGES, FLOORS, STOREY_HEIGHT } from '../data/house';
 import { covered, floorAt, flanks, houseRooms, isHearthTile, isLanding } from '../sim/house';
 import type { World } from '../sim/world';
 import { mixPalette, PALETTE } from './materials';
+import { createHouseDecor } from './houseDecor';
+import { createSurfaceMaterial } from './surfaces';
 
 // Floors, walls, doors, windows, gun ports, and roofs of the house layer (M10.1). Reads the world and never writes to it.
 // Pieces rise out of the ground as builders work on them. Roofs cover closed rooms and fade away for the cutaway view.
@@ -64,15 +66,19 @@ export interface HouseView {
 
 export function createHouseView(scene: THREE.Scene): HouseView {
   const block = new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0);
-  const solid = new THREE.MeshStandardMaterial({ roughness: 0.9 });
   const glass = new THREE.MeshBasicMaterial();
-  const roofMat = new THREE.MeshStandardMaterial({ roughness: 0.95, transparent: true });
-  const floors = instanced(block, solid, false);
-  const walls = instanced(block, solid, true);
-  const doors = instanced(block, solid, true);
+  const roofMat = createSurfaceMaterial('roof', { roughness: 0.95, transparent: true });
+  const floorsBoards = instanced(block, createSurfaceMaterial('planks', { roughness: 0.85 }), false);
+  const floorsStone = instanced(block, createSurfaceMaterial('stone', { roughness: 0.9 }), false);
+  const wallsWood = instanced(block, createSurfaceMaterial('siding'), true);
+  const wallsMetal = instanced(block, createSurfaceMaterial('metal', { roughness: 0.7 }), true);
+  const wallsStone = instanced(block, createSurfaceMaterial('brick'), true);
+  const doors = instanced(block, createSurfaceMaterial('siding'), true);
   const windows = instanced(block, glass, false);
   const roofs = instanced(block, roofMat, true);
-  scene.add(floors, walls, doors, windows, roofs);
+  const all = [floorsBoards, floorsStone, wallsWood, wallsMetal, wallsStone, doors, windows, roofs];
+  scene.add(...all);
+  const decor = createHouseDecor(scene);
 
   const m = new THREE.Matrix4();
   const q = new THREE.Quaternion();
@@ -101,19 +107,20 @@ export function createHouseView(scene: THREE.Scene): HouseView {
       lastTime = time;
       const ox = w.map.width / 2;
       const oy = w.map.height / 2;
-      for (const mesh of [floors, walls, doors, windows, roofs]) mesh.count = 0;
+      for (const mesh of all) mesh.count = 0;
 
       for (const f of w.house.floors) {
         if (f.storey > look.storey) continue;
         const done = 1 - f.construct / FLOORS[f.kind].build;
         const color = tint.copy(FLOOR_COLOR[f.kind]).multiplyScalar((f.construct > 0 ? 0.6 : 1) * shade(f.x * 31 + f.y + f.storey * 7));
+        const floors = f.kind === 'stone' ? floorsStone : floorsBoards;
         if (f.storey === 0) put(floors, f.x - ox, 0, f.y - oy, 1, 0.03 + 0.05 * done, 1, color);
         else {
           // An upper floor is a slab with its top at the storey height. Posts hold up the tiles with nothing under them.
           const top = f.storey * STOREY_HEIGHT;
           put(floors, f.x - ox, top - SLAB, f.y - oy, 1, SLAB + 0.03 + 0.05 * done, 1, color);
           if (f.construct <= 0 && !floorAt(w, f.x, f.y, f.storey - 1)) {
-            for (const [px, pz] of [[-0.4, -0.4], [0.4, -0.4], [-0.4, 0.4], [0.4, 0.4]]) put(walls, f.x - ox + px, 0, f.y - oy + pz, 0.1, top - SLAB, 0.1, POST_COLOR);
+            for (const [px, pz] of [[-0.4, -0.4], [0.4, -0.4], [-0.4, 0.4], [0.4, 0.4]]) put(wallsWood, f.x - ox + px, 0, f.y - oy + pz, 0.1, top - SLAB, 0.1, POST_COLOR);
           }
         }
       }
@@ -121,6 +128,8 @@ export function createHouseView(scene: THREE.Scene): HouseView {
       for (const e of w.house.edges) {
         if (e.storey > look.storey) continue;
         const yo = e.storey * STOREY_HEIGHT;
+        // Wood walls and doors are board siding, stone is brick, and the reinforced and metal ones are patched sheet.
+        const walls = e.kind === 'wall' ? (e.level === 3 ? wallsStone : e.level === 1 ? wallsWood : wallsMetal) : e.kind === 'gunPort' && e.level > 1 ? wallsMetal : wallsWood;
         const level = EDGES[e.kind].levels[e.level - 1];
         // A back wall has floor on the camera side and none behind it. In the cut view only those stay up.
         const [near, far] = flanks(e.x, e.y, e.side);
@@ -191,7 +200,8 @@ export function createHouseView(scene: THREE.Scene): HouseView {
       roofMat.depthWrite = roofOpacity > 0.98;
       roofs.visible = roofOpacity > 0.02;
 
-      for (const mesh of [floors, walls, doors, windows, roofs]) {
+      decor.update(w, look.storey, (id) => cut.get(id) ?? 1);
+      for (const mesh of all) {
         mesh.instanceMatrix.needsUpdate = true;
         if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
       }

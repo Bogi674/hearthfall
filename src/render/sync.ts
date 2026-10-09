@@ -22,6 +22,7 @@ import { createHearthMesh } from './meshes/hearth';
 import { createHouseView, type HouseLook } from './houseView';
 import { buildProps, colorPropsByWarmth } from './meshes/props';
 import { createPoiMesh } from './meshes/pois';
+import { createMist } from './meshes/mist';
 import { createSnow } from './meshes/snow';
 import { createAtmosphere } from './atmosphere';
 import type { View } from './scene';
@@ -110,8 +111,10 @@ export function createWorldView(world: World, view: Pick<View, 'scene' | 'fog' |
 
   const snow = createSnow(warmthTex, mapSize, warmThreshold, fog.far);
   scene.add(snow.points);
+  const mist = createMist(warmthTex, mapSize, warmThreshold);
+  scene.add(mist.mesh);
 
-  const atmosphere = createAtmosphere({ renderer: view.renderer, fog, lights: view.lights, snow, ground: groundMat.uniforms as never, frost: frostForDay });
+  const atmosphere = createAtmosphere({ renderer: view.renderer, fog, lights: view.lights, snow, mist, ground: groundMat.uniforms as never, frost: frostForDay });
   const viewDir = new THREE.Vector3();
   let warmthKey = '';
   let revealRev = -1;
@@ -231,6 +234,7 @@ export function createWorldView(world: World, view: Pick<View, 'scene' | 'fog' |
       lastFrame = time;
 
       snow.update(time, pixelsPerUnit, camera.getWorldDirection(viewDir));
+      mist.update(time);
     },
   };
 }
