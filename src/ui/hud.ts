@@ -1,7 +1,7 @@
 // DOM overlay: top bar, build menu, selection panel, colonist list, event log, and game over screen.
 // Reads world state and only changes the world through the command queue.
 import { BALANCE } from '../data/balance';
-import { type BuildingCategory, type BuildingType } from '../data/buildings';
+import { type BuildingType } from '../data/buildings';
 import { ENEMIES, ENEMY_TYPES } from '../data/enemies';
 import { RESOURCE_NAMES, RESOURCES } from '../data/resources';
 import { COMPONENT_IDS, type ComponentId } from '../data/vehicle';
@@ -12,7 +12,7 @@ import { capacity, currentPhase, stockTotal } from '../sim/query';
 import type { World } from '../sim/world';
 import { currentHint } from '../data/hints';
 import { INTRO } from '../data/story';
-import { buildMenuHtml } from './build';
+import { buildMenuHtml, parseTool, toolId as toolIdOf, type BuildCat, type HouseTool } from './build';
 import { menuHtml, titleHtml, type MenuView } from './menu';
 import { rightPanel, type Tab } from './panels';
 import { selectionHtml } from './selection';
@@ -20,12 +20,14 @@ import type { Settings } from './settings';
 
 export interface UiState {
   placing: BuildingType | null;
+  /** The house tool in hand: a floor, a wall, a door, a window, or remove. */
+  tool: HouseTool | null;
   rotated: boolean;
   selected: number | 'hearth' | null;
   speed: number;
   paused: boolean;
   buildOpen: boolean;
-  buildCat: BuildingCategory;
+  buildCat: BuildCat;
   tab: Tab;
   /** POI picked in the expedition panel, and the colonists picked for the squad. */
   poi: number | null;
@@ -83,12 +85,13 @@ export function createHud(root: HTMLElement, state: UiState, world: () => World,
     const t = (e.target as HTMLElement).closest<HTMLElement>('[data-act]');
     if (!t || (t as HTMLButtonElement).disabled) return;
     const [act, arg, arg2] = t.dataset.act!.split(':');
-    if (act === 'build') state.placing = state.placing === arg ? null : (arg as BuildingType);
+    if (act === 'build') [state.placing, state.tool] = [state.placing === arg ? null : (arg as BuildingType), null];
+    if (act === 'tool') [state.tool, state.placing] = [state.tool && arg === toolIdOf(state.tool) ? null : parseTool(arg), null];
     if (act === 'speed') [state.speed, state.paused] = arg === '0' ? [state.speed, !state.paused] : [Number(arg), false];
     if (act === 'workers') pushCommand(world().commands, { type: 'setWorkers', id: Number(arg), count: Number(arg2) });
     if (act === 'restart') actions.toTitle();
     if (act === 'tab') state.tab = arg as Tab;
-    if (act === 'cat') state.buildCat = arg as BuildingCategory;
+    if (act === 'cat') state.buildCat = arg as BuildCat;
     if (act === 'poi') state.poi = Number(arg);
     if (act === 'squad') state.squad = state.squad.includes(Number(arg)) ? state.squad.filter((id) => id !== Number(arg)) : [...state.squad, Number(arg)];
     if (act === 'send' && state.poi !== null) {
@@ -160,7 +163,7 @@ export function createHud(root: HTMLElement, state: UiState, world: () => World,
       );
       const alarm = `<button data-act="alarm" class="${w.alarm ? 'alarm on' : 'alarm'}" title="Workers take shelter and defenders man the guns">${w.alarm ? 'All clear' : 'Alarm'}</button>`;
       set('controls', `${alarm}${speeds}<button data-act="menu">Menu</button>`);
-      set('build', state.buildOpen ? buildMenuHtml(w, state.buildCat, state.placing) : '');
+      set('build', state.buildOpen ? buildMenuHtml(w, state.buildCat, state.placing, state.tool) : '');
 
       set('forecast', forecastHtml(w));
       const hint = actions.settings.hints && !w.lost && !w.won ? currentHint(w) : null;

@@ -1,5 +1,6 @@
 import { BALANCE } from '../data/balance';
 import type { BuildingType } from '../data/buildings';
+import type { EdgeKind, FloorId } from '../data/house';
 import type { EnemyType } from '../data/enemies';
 import { COLONIST_NAMES } from '../data/colonists';
 import type { ItemId, PoiType } from '../data/pois';
@@ -71,6 +72,36 @@ export interface Building {
   craft: WeaponId;
 }
 
+/** One tile of house floor. It is a construction site until construct reaches 0. */
+export interface HouseFloor {
+  id: number;
+  x: number;
+  y: number;
+  kind: FloorId;
+  construct: number;
+}
+
+/**
+ * A wall, door, or window on the border between two tiles. The edge belongs to tile (x, y) and its
+ * north neighbor when side is 'n', or its west neighbor when side is 'w'.
+ */
+export interface HouseEdge {
+  id: number;
+  x: number;
+  y: number;
+  side: 'n' | 'w';
+  kind: EdgeKind;
+  /** Stage in EDGES[kind].levels, starting at 1. */
+  level: number;
+  hp: number;
+  construct: number;
+}
+
+export interface House {
+  floors: HouseFloor[];
+  edges: HouseEdge[];
+}
+
 /** What a colonist is doing right now. The renderer picks an animation from it. */
 export type Task = 'idle' | 'walk' | 'build' | 'work' | 'sleep' | 'guard' | 'shelter';
 
@@ -100,6 +131,10 @@ export interface Colonist {
   weapon: WeaponId;
   /** Seconds until this colonist can hit or fire again. */
   cooldown: number;
+  /** Waypoints to the current target, ending at the target. Empty means walk straight. */
+  route: { x: number; y: number }[];
+  /** The target and house layout the route was made for. */
+  routeKey: string;
 }
 
 export interface World {
@@ -124,6 +159,7 @@ export interface World {
   warmthKey: string;
   stock: Record<Resource, number>;
   buildings: Building[];
+  house: House;
   colonists: Colonist[];
   nextId: number;
   enemies: Enemy[];
@@ -245,6 +281,7 @@ export function createWorld(seed: number): World {
     warmthKey: '',
     stock,
     buildings: [],
+    house: { floors: [], edges: [] },
     colonists: [],
     nextId: 1,
     enemies: [],
@@ -290,7 +327,7 @@ export function addColonist(world: World, x: number, y: number): Colonist {
   const c: Colonist = {
     id: world.nextId++, name, x, y, px: x, py: y,
     health: 1, hunger: 1, rest: 1, warmth: 1, job: null, bed: null, duty: null, expedition: null, asleep: false,
-    task: 'idle', site: null, weapon: BALANCE.start.weapon, cooldown: 0,
+    task: 'idle', site: null, weapon: BALANCE.start.weapon, cooldown: 0, route: [], routeKey: '',
   };
   world.colonists.push(c);
   return c;

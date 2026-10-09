@@ -2,6 +2,19 @@
 
 Newest entries first. Each entry names the milestone it belongs to.
 
+## 2026-10-09 (M10.1a: The House Layer)
+
+- **Reverted the M10 scaffold.** The M10 commit added prefab rooms and wall modules that no system used. Builders never built them, nothing drew them, guns never fired, and it broke the full run on seeds 2, 3, and 5. The code was reverted and the full run passes again.
+- **House layer** (`src/sim/house.ts`, `src/data/house.ts`). Floors, wall edges, doors, and windows on a house lot that grows from 3 to 7 tiles with the Hearth House stage. Rooms are found by flood fill. A wall that would seal a room with no door is refused, and so is removing the only door into a room.
+- **Furniture** goes on floors. The Bed and the Shelf use the existing bed and storage rules.
+- **Everyone builds.** Floors, walls, and furniture are construction sites. Idle colonists build the nearest one, up to 2 on a floor tile or wall, standing on the open side of a wall.
+- **Walking through doors.** Near the house colonists follow an A star route over tiles (`src/sim/route.ts`). Walls and windows stop them. Doors let them through. Routes are cached on each colonist and rebuilt when the layout changes. Until the first floor or wall is built, the old house does not block walking, so a colony that never builds on it plays as before.
+- **Build menu.** New Structure tab with floors, walls, doors, windows, and Remove. New Furniture tab. Drag to paint floors. Click a tile border for a wall. The cursor tip shows why a spot is refused.
+- **Render.** Instanced floors and walls that rise as builders work (`src/render/houseView.ts`). This is the minimal view for M10.1a. M10.1c replaces it with roofs, cutaway, and real ghosts.
+- Saves are version 4. Version 3 saves are rejected.
+- Added `tests/house.test.ts` with 14 tests: placement rules, sealing, removal and refunds, rooms, routes, builders, a colonist sleeping behind a door, and a save round trip. Added a full run test where the scripted player also builds a room with a door and two beds.
+- The colonist list now names floor and wall sites (it showed an empty name).
+
 ## 2026-10-04 (M8: The Living Compound)
 
 - **Construction.** Placed buildings are construction sites. Their own workers build them first, and colonists without a job help at the nearest site. The building rises inside scaffolding on screen. Every building has a build time in `src/data/buildings.ts`.

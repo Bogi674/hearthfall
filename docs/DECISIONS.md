@@ -155,3 +155,17 @@ Design and architecture decisions that are not already in `docs/GAME_DESIGN.md`.
 - **Building art is split by category** under `src/render/meshes/buildings/`, with `src/render/meshes/buildings.ts` as a short registry. Shared junk props live in `parts.ts` and shared materials and geometry in `kit.ts`, so a building reuses geometry instead of making new materials.
 - **Rooms face away from the house.** A room turns on the first frame it is drawn, using its world position and the hearth at the origin. This needs no extra state in the simulation.
 - **Ground glow comes from the light map only.** Building meshes no longer carry their own ground glow decals, since the light map already paints building light. Only the heater, lantern post, and lamp post keep a glow inside their `light` child.
+
+## M10.1a: The house layer
+
+- **The house is a layer of tiles and edges, not prefab rooms.** The player asked for a Sims style house. Floors are tiles. Walls, doors, and windows are edges between tiles, so a wall never uses up floor space. Rooms are derived from the walls and are not saved.
+- **Furniture reuses the building system.** A bed or shelf is a building with `furniture: true`. It gets construction, hit points, saves, and selection with no new code.
+- **Hearth House walls are virtual.** The house is a 3 by 3 wall with a front door on its south side. They are not stored. A stored door or window on a house wall replaces the virtual wall. This lets rooms open into the house without a second set of data.
+- **No sealed rooms.** Placement analyses the planned layout, counting sites as built, and refuses a wall that shuts a room in with no door. This makes it impossible to trap colonists and keeps the rule simple to explain.
+- **Routes only near the house.** Colonists still walk straight lines outside the house area, so the cost of path finding stays tiny. A route is stored on the colonist as plain data and rebuilt when the layout or target changes.
+- **Furniture does not block walking.** Blocking furniture could trap people or block doors, so it waits for a design that keeps a clear path.
+- **Lot radius 3, 4, 5, 6, 7.** M10 used up to 11, which pushed ordinary buildings off the map and broke the full run. A lot that grows by one tile per stage keeps the compound next to the house.
+- **Floors cost wood and stone, walls cost wood first.** A new colony has only wood, so the first room must be possible from the starting stock.
+- **The idle ring follows the lot.** Idle colonists stand 1.6 tiles outside the lot so they never wait inside the house area.
+- **The house walls block walking only after the first floor or wall is built.** Always blocking made colonists detour around the 3 by 3 house and lost the scripted run on 5 of 8 seeds. With no house building the game plays exactly as it did before M10.1. Once the player builds on the house, the full rules apply.
+- **The full run test for the house uses seed 2.** A control run with ordinary buildings of the same cost loses seeds 3 and 5 as well, so those seeds say nothing about the house.

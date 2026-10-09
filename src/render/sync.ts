@@ -17,6 +17,7 @@ import { colonistFigures } from './colonists';
 import { createFigureSet } from './meshes/figures';
 import { PERSON_RIG } from './meshes/people';
 import { createHearthMesh } from './meshes/hearth';
+import { createHouseView } from './houseView';
 import { buildProps, colorPropsByWarmth } from './meshes/props';
 import { createSnow } from './meshes/snow';
 
@@ -83,6 +84,7 @@ export function createWorldView(world: World, scene: THREE.Scene, fog: THREE.Fog
     scene.add(g);
     return g;
   });
+  const houseView = createHouseView(scene);
   const enemies = createEnemyMeshes();
   scene.add(enemies.group);
   const bars = createBars();
@@ -145,6 +147,7 @@ export function createWorldView(world: World, scene: THREE.Scene, fog: THREE.Fog
       hearthLight.visible = w.hearth.lit;
       hearthLight.intensity = baseIntensity * (1 + Math.sin(time * 11) * 0.05 + Math.sin(time * 27) * 0.03);
 
+      houseView.update(w);
       const alive = new Set<number>();
       const wallAt = new Set(w.buildings.filter((b) => WALL_TYPES.includes(b.type)).map((b) => b.y * width + b.x));
       for (const b of w.buildings) {

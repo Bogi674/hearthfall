@@ -4,6 +4,16 @@ Bugs, shortcuts, and loose ends that are known but not fixed yet.
 
 ## Open
 
+- **M10.1a.** The scripted full run is fragile. Without a house it launches on 6 of 8 seeds (2, 3, 5, 6, 7, 8). Spending about 50 wood and a few builder minutes on anything, a house or three ordinary buildings alike, makes seeds 3 and 5 lose to the night 9 or 10 raid. This was measured with a control run. The game tests seed 2 with a house. The bot, not the house, is the weak point.
+- **M10.1a.** Until the player builds a floor or wall, the Hearth House does not block walking, so a colony that never builds on the house plays exactly as before. Once any floor or wall exists, the house walls and front door block and route colonists.
+- **M10.1a.** Furniture does not block walking. Colonists walk through beds and shelves.
+- **M10.1a.** House walls do not affect monsters yet. They ignore house edges and the flow field does not count them. Wall hit points are stored but unused. This arrives in M10.1b.
+- **M10.1a.** The old M8 rooms (Bedroom, Storeroom, House Kitchen, Infirmary, Armory, Rooftop Gun Nest) still exist beside the new floors. M10.1b replaces them with furniture.
+- **M10.1a.** A trip is planned as a straight walk when no route exists, for example a colonist standing inside a tile that was walled in by a save from a bug. The colonist then walks through walls instead of getting stuck.
+- **M10.1a.** Walls are drawn as plain blocks with no roof, cutaway, or corner posts. Floor sites count as floors for furniture placement before they are finished.
+- **M10.1a.** Stage 2 and above of the house grow the lot, but outside buildings may still be placed on the grown lot tiles that are not floors. They then block the lot from growing there.
+- **M10.1a.** The build ghost is still a green or red box. Rotation is still a single toggle. Both change in M10.1c.
+
 - The production bundle is about 530 kB and Vite warns about chunk size. Almost all of it is Three.js. Code splitting can wait until load time matters.
 - Performance was only checked in headless Chromium with software WebGL. It has not been measured on a real GPU. Since M8 the map is 128 by 128, so there are about three times as many trees and ruins. Props are still 4 instanced draw calls, plus 20000 snow points.
 - The `Blocked` tile type exists but map generation does not place it yet.

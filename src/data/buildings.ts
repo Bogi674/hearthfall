@@ -4,7 +4,7 @@ import type { Amounts } from './resources';
 // Size is the footprint in tiles before rotation. HP is how much damage a building takes before it is destroyed.
 // Build is the seconds of work one builder needs to put it up (section 8.2).
 
-export type BuildingCategory = 'House' | 'Shelter' | 'Production' | 'Defense' | 'Escape';
+export type BuildingCategory = 'House' | 'Furniture' | 'Shelter' | 'Production' | 'Defense' | 'Escape';
 
 /** How workers look while they work here (section 12.4). */
 export type WorkAnim = 'chop' | 'pick' | 'pry' | 'gather' | 'stir' | 'saw' | 'hammer' | 'tend';
@@ -48,6 +48,8 @@ export interface BuildingDef {
   upgrades?: Amounts[];
   /** A room of the Hearth House. It must be built on the house lot (section 5.5). */
   room?: boolean;
+  /** Furniture goes on house floors, inside the house (section 5.5). */
+  furniture?: boolean;
   /** People working or sheltering inside are safe while it stands (section 5.3). */
   indoor?: boolean;
   work?: WorkAnim;
@@ -71,6 +73,8 @@ const DEFS = {
   hearthKitchen: { name: 'House Kitchen', category: 'House', cost: { planks: 20, stone: 10 }, size: [2, 2], build: 25, workers: 2, hp: 400, room: true, indoor: true, work: 'stir', glow: 2 },
   infirmary: { name: 'Infirmary', category: 'House', cost: { planks: 30, parts: 5 }, size: [2, 2], build: 30, workers: 0, hp: 400, beds: 3, room: true, indoor: true, restBonus: 3, glow: 2 },
   armory: { name: 'Armory', category: 'House', cost: { planks: 30, metal: 10 }, size: [2, 2], build: 30, workers: 1, hp: 450, room: true, indoor: true, work: 'hammer', armory: true, glow: 2 },
+  bed: { name: 'Bed', category: 'Furniture', cost: { wood: 6 }, size: [1, 2], build: 6, workers: 0, hp: 60, beds: 1, furniture: true, indoor: true },
+  shelf: { name: 'Shelf', category: 'Furniture', cost: { wood: 8 }, size: [1, 1], build: 5, workers: 0, hp: 60, storage: 60, furniture: true, indoor: true },
   gunNest: {
     name: 'Rooftop Gun Nest', category: 'House', cost: { planks: 20, metal: 25, parts: 5 }, size: [2, 2], build: 30, workers: 2, hp: 500,
     room: true, indoor: true, nightDuty: true, guns: [GUN_HEAVY], glow: 2,

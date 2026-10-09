@@ -119,7 +119,20 @@ Outdoor temperature starts at minus 2 degrees on day 1 and drops by 1 degree per
 The house is not only repaired in stages. The colony also builds rooms onto it, the way a survivor shelter grows from a ruin into a bunker. The 7 by 7 square of tiles around the hearth is the house lot. Only rooms can be built there, and rooms can only be built there.
 
 | Room | Cost | Function |
-|---|---|---|
+|### 5.6 Building the house: floors, walls, and doors (M10.1)
+From M10.1 the house is built tile by tile, like a survivor shelter growing from a ruin. The six fixed rooms of section 5.5 stay until M10.1b replaces them with furniture.
+
+- **House lot.** The lot around the hearth grows with the Hearth House stage: 3, 4, 5, 6, and 7 tiles from the hearth, so 7 by 7 up to 15 by 15. Floors, walls, and furniture go only on the lot.
+- **Floors.** Plank Floor (2 wood) and Stone Floor (2 stone). A floor tile must touch the house or another floor. Drag to paint.
+- **Walls, doors, and windows.** These sit on the border between two tiles and need a floor on one side. Walls come in wood, reinforced, stone, and metal. Doors come in wood and reinforced. Windows let light through and stop people.
+- **The house itself** is a wall with a front door on its south side. A door can be cut into any other house wall.
+- **No sealed rooms.** A wall that would shut a room in with no door is refused with the reason "A room would have no door. Add a door first". A door that is the only way into a room cannot be removed.
+- **Builders.** Every floor tile, wall, door, window, and piece of furniture is a construction site. Colonists without a job build the nearest one. Up to 2 builders work on one floor tile or wall edge. Builders stand on the open side of a wall.
+- **Walking.** Near the house colonists walk tile to tile. Finished walls and windows stop them and doors let them through. Away from the house they still walk straight.
+- **Furniture** goes on floor tiles. In M10.1a the Bed (1 by 2, one bed) and the Shelf (60 storage) exist. Both work through the normal bed and storage rules.
+- **Removing.** An untouched site refunds its full cost. Anything finished refunds half.
+
+---|---|---|
 | Bedroom | 20 wood, 10 planks | 6 beds. Sleepers rest and heal 1.5 times faster |
 | Storeroom | 30 wood, 10 planks | Plus 400 storage |
 | House Kitchen | 20 planks, 10 stone | 2 cooks make meals indoors, a little faster than the Kitchen |
@@ -582,6 +595,12 @@ Each milestone must meet its acceptance criteria before the next starts.
 - Title screen with new game, random map, save slots, and save files (sections 14 and 15.5).
 - Rebalanced economy for construction labor.
 - **Done when:** a new player can start from the title screen, watch colonists build and work at their trade, grow the house with rooms, shelter from a day raid, arm the colony, and the scripted full run still launches the airship by day 10.
+
+### M10.1a: The House Layer
+- Floors, wall edges, doors, windows, and furniture on the house lot, built by colonists (section 5.6).
+- Colonists walk through doors and are stopped by walls near the house.
+- Rooms are found from the walls. No room can be sealed without a door.
+- **Done when:** the player can paint a floor, wall it in with a door, place a bed, and watch colonists build every piece and then walk through the door to sleep in the bed. The scripted full run still launches the airship by day 10.
 
 ### Later milestones
 - Physical hauling, hand carts, and conveyor lines.

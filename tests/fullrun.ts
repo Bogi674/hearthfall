@@ -187,3 +187,25 @@ export function fullRunPlayer() {
     if (ready && !launchError(w) && s.fuel >= LAST_NIGHT.fuel + 15) w.commands.push({ type: 'launch' });
   };
 }
+
+/**
+ * A small house built partway through a run (M10.1a): a 2 by 2 room east of the hearth with walls, a door
+ * on its east side, and two beds. Colonists build it like anything else, so the run must still launch.
+ */
+export function houseBuilder() {
+  let done = false;
+  return (w: World) => {
+    if (done || w.day < 3 || w.stock.wood < 120) return;
+    done = true;
+    const { x, y } = w.hearth;
+    for (const [dx, dy] of [[2, 0], [3, 0], [2, 1], [3, 1]]) w.commands.push({ type: 'paintFloor', x: x + dx, y: y + dy, kind: 'boards' });
+    for (const dx of [2, 3]) {
+      w.commands.push({ type: 'buildEdge', x: x + dx, y, side: 'n', kind: 'wall', level: 1 });
+      w.commands.push({ type: 'buildEdge', x: x + dx, y: y + 2, side: 'n', kind: 'wall', level: 1 });
+    }
+    w.commands.push({ type: 'buildEdge', x: x + 4, y, side: 'w', kind: 'door', level: 1 });
+    w.commands.push({ type: 'buildEdge', x: x + 4, y: y + 1, side: 'w', kind: 'wall', level: 1 });
+    w.commands.push({ type: 'place', building: 'bed', x: x + 2, y, rotated: false });
+    w.commands.push({ type: 'place', building: 'bed', x: x + 3, y, rotated: false });
+  };
+}

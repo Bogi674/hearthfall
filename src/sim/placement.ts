@@ -2,8 +2,11 @@
 import { BALANCE } from '../data/balance';
 import { BUILDINGS, type BuildingType } from '../data/buildings';
 import { RESOURCE_NAMES, type Resource } from '../data/resources';
+import { EDGES, FLOORS, type EdgeKind, type FloorId } from '../data/house';
 import { getTile, inBounds, Tile } from './grid';
+import { edgeKey, flanks, floorAt, inLot, isHearthTile, sealsRoom, storedEdgeAt, type Side } from './house';
 import { missing, pay } from './query';
+import type { Amounts } from '../data/resources';
 import type { World } from './world';
 
 export function footprint(type: BuildingType, rotated: boolean): [number, number] {
@@ -20,6 +23,11 @@ export function placementError(world: World, type: BuildingType, x: number, y: n
       const t = getTile(world.map, tx, ty);
       if (t !== Tile.Ground && t !== Tile.Road) return 'Blocked by terrain';
       if (Math.abs(tx - world.hearth.x) <= 1 && Math.abs(ty - world.hearth.y) <= 1) return 'Blocked by the hearth';
+      if (BUILDINGS[type].furniture) {
+        if (!floorAt(world, tx, ty)) return 'Furniture needs a floor';
+        continue;
+      }
+      if (floorAt(world, tx, ty)) return 'Part of the house';
       // The ring around the house is kept for its rooms (section 5.5).
       const onLot = onHouseLot(world, tx, ty);
       if (BUILDINGS[type].room && !onLot) return 'Rooms go on the house lot next to the house';
@@ -48,6 +56,112 @@ export function placeBuilding(world: World, type: BuildingType, x: number, y: nu
     id: world.nextId++, type, x, y, w, h, workers: def.workers, progress: 0, loaded: false, status: prebuilt ? 'ok' : 'building',
     hp: def.hp, lit: false, level: 1, construct: prebuilt ? 0 : def.build, node: -1, shelter: false, craft: 'spear',
   });
+  world.buildRev++;
+  return true;
+}
+
+const costError = (world: World, cost: Amounts): string | null => {
+  const short = missing(world, cost);
+  return short ? `Not enough ${RESOURCE_NAMES[short as Resource].toLowerCase()}` : null;
+};
+
+/** Returns why this floor tile cannot go here, or null when the spot is valid. */
+export function floorPlacementError(world: World, x: number, y: number, kind: FloorId): string | null {
+  if (!FLOORS[kind]) return 'Unknown floor';
+  if (!inBounds(world.map, x, y)) return 'Out of bounds';
+  const t = getTile(world.map, x, y);
+  if (t !== Tile.Ground && t !== Tile.Road) return 'Blocked by terrain';
+  if (isHearthTile(world, x, y)) return 'The house is already here';
+  if (!inLot(world, x, y)) return 'Outside the house lot. Repair the house to grow it';
+  if (floorAt(world, x, y)) return 'Already has a floor';
+  if (world.buildings.some((b) => x >= b.x && x < b.x + b.w && y >= b.y && y < b.y + b.h)) return 'Blocked by a building';
+  const touches = [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]].some(([nx, ny]) => isHearthTile(world, nx, ny) || floorAt(world, nx, ny));
+  if (!touches) return 'Floors must touch the house or another floor';
+  if (sealsRoom(world, { addFloor: { x, y } })) return 'A room would have no door';
+  return costError(world, FLOORS[kind].cost);
+}
+
+/** Returns why this wall, door, or window cannot go here, or null when the spot is valid. */
+export function edgePlacementError(world: World, x: number, y: number, side: Side, kind: EdgeKind, level: number): string | null {
+  const def = EDGES[kind]?.levels[level - 1];
+  if (!def) return 'Unknown wall';
+  const [a, b] = flanks(x, y, side);
+  if (!inBounds(world.map, a[0], a[1]) || !inBounds(world.map, b[0], b[1])) return 'Out of bounds';
+  if (!inLot(world, a[0], a[1]) && !inLot(world, b[0], b[1])) return 'Outside the house lot. Repair the house to grow it';
+  if (isHearthTile(world, a[0], a[1]) && isHearthTile(world, b[0], b[1])) return 'Inside the house';
+  const floored = (p: [number, number]) => isHearthTile(world, p[0], p[1]) || floorAt(world, p[0], p[1]) !== undefined;
+  if (!floored(a) && !floored(b)) return 'Walls need a floor beside them';
+  if (storedEdgeAt(world, x, y, side)) return 'Already built here';
+  const onHouseWall = isHearthTile(world, a[0], a[1]) !== isHearthTile(world, b[0], b[1]);
+  if (onHouseWall && kind === 'wall') return 'The house wall is already here';
+  if (onHouseWall && kind === 'door' && side === 'n' && x === world.hearth.x && y === world.hearth.y + 2) return 'The front door is already here';
+  if (sealsRoom(world, { addEdge: { x, y, side, kind } })) return 'A room would have no door. Add a door first';
+  return costError(world, def.cost);
+}
+
+export function placeFloor(world: World, x: number, y: number, kind: FloorId): boolean {
+  if (floorPlacementError(world, x, y, kind)) return false;
+  pay(world, FLOORS[kind].cost);
+  world.house.floors.push({ id: world.nextId++, x, y, kind, construct: FLOORS[kind].build });
+  world.buildRev++;
+  return true;
+}
+
+export function placeEdge(world: World, x: number, y: number, side: Side, kind: EdgeKind, level: number): boolean {
+  if (edgePlacementError(world, x, y, side, kind, level)) return false;
+  const def = EDGES[kind].levels[level - 1];
+  pay(world, def.cost);
+  world.house.edges.push({ id: world.nextId++, x, y, side, kind, level, hp: def.hp, construct: def.build });
+  world.buildRev++;
+  return true;
+}
+
+export type HouseItem = 'floor' | 'edge' | 'furniture';
+
+/** Returns why this house piece cannot be removed, or null when it can. */
+export function removeError(world: World, item: HouseItem, id: number): string | null {
+  if (item === 'furniture') {
+    const b = world.buildings.find((o) => o.id === id);
+    return b && BUILDINGS[b.type].furniture ? null : 'Nothing to remove';
+  }
+  if (item === 'edge') {
+    const e = world.house.edges.find((o) => o.id === id);
+    if (!e) return 'Nothing to remove';
+    return sealsRoom(world, { removeEdge: edgeKey(e.x, e.y, e.side) }) ? 'Removing it would shut a room in' : null;
+  }
+  const f = world.house.floors.find((o) => o.id === id);
+  if (!f) return 'Nothing to remove';
+  if (world.buildings.some((b) => BUILDINGS[b.type].furniture && f.x >= b.x && f.x < b.x + b.w && f.y >= b.y && f.y < b.y + b.h)) return 'Remove the furniture first';
+  const here = (x: number, y: number) => (x === f.x && y === f.y ? false : isHearthTile(world, x, y) || floorAt(world, x, y) !== undefined);
+  const needs = world.house.edges.some((e) => flanks(e.x, e.y, e.side).every(([x, y]) => (x === f.x && y === f.y) || !here(x, y)) && flanks(e.x, e.y, e.side).some(([x, y]) => x === f.x && y === f.y));
+  return needs ? 'Remove the walls on it first' : null;
+}
+
+/** Takes a house piece away. An untouched site refunds all of its cost. Anything else refunds half. */
+export function removeHouseItem(world: World, item: HouseItem, id: number): boolean {
+  if (removeError(world, item, id)) return false;
+  let cost: Amounts;
+  let untouched: boolean;
+  if (item === 'furniture') {
+    const i = world.buildings.findIndex((o) => o.id === id);
+    const b = world.buildings[i];
+    cost = BUILDINGS[b.type].cost;
+    untouched = b.construct >= BUILDINGS[b.type].build;
+    world.buildings.splice(i, 1);
+  } else if (item === 'edge') {
+    const i = world.house.edges.findIndex((o) => o.id === id);
+    const e = world.house.edges[i];
+    cost = EDGES[e.kind].levels[e.level - 1].cost;
+    untouched = e.construct >= EDGES[e.kind].levels[e.level - 1].build;
+    world.house.edges.splice(i, 1);
+  } else {
+    const i = world.house.floors.findIndex((o) => o.id === id);
+    const f = world.house.floors[i];
+    cost = FLOORS[f.kind].cost;
+    untouched = f.construct >= FLOORS[f.kind].build;
+    world.house.floors.splice(i, 1);
+  }
+  for (const [r, n] of Object.entries(cost) as [Resource, number][]) world.stock[r] += untouched ? n : Math.floor(n / 2);
   world.buildRev++;
   return true;
 }

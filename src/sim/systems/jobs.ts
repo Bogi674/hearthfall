@@ -3,13 +3,27 @@
 // Workers stand where the work is: next to the tree being cut, at the stove, or inside a building.
 import { BALANCE } from '../../data/balance';
 import { BUILDINGS } from '../../data/buildings';
+import { HOUSE } from '../../data/house';
 import { LAST_NIGHT } from '../../data/vehicle';
+import { floorAt, houseExtent, isHearthTile } from '../house';
 import { bandAt, center, currentPhase, isBuilt } from '../query';
+import { routeFor } from '../route';
 import type { Building, Colonist, Task, World } from '../world';
 
 const C = BALANCE.colonist;
 /** Where workers stand inside indoor buildings, relative to the center. */
 const INDOOR_SPOTS = [[-0.35, 0.25], [0.35, 0.25], [0, -0.3]];
+
+/** Something builders put up: a building, a house floor tile, or a house wall edge. */
+interface Site {
+  id: number;
+  x: number;
+  y: number;
+  /** Most builders at once. */
+  cap: number;
+  /** Where the nth builder stands. */
+  spot: (n: number) => { x: number; y: number };
+}
 
 interface Plan {
   x: number;
@@ -56,7 +70,7 @@ export function jobsSystem(world: World, dt: number): void {
     crewSeen.set(c.job, n + 1);
   }
   const siteLoad = new Map<number, number>();
-  const sites = world.buildings.filter((b) => !isBuilt(b));
+  const sites = sitesOf(world);
 
   for (const c of world.colonists) {
     if (c.expedition !== null) continue;
@@ -65,21 +79,29 @@ export function jobsSystem(world: World, dt: number): void {
     if (plan.site !== undefined) siteLoad.set(plan.site, (siteLoad.get(plan.site) ?? 0) + 1);
     c.px = c.x;
     c.py = c.y;
-    const dx = plan.x - c.x;
-    const dy = plan.y - c.y;
+    // Near the house colonists follow a route through its doors. Elsewhere they walk straight.
+    const key = `${world.buildRev}|${Math.round(plan.x * 2)},${Math.round(plan.y * 2)}`;
+    if (c.routeKey !== key) {
+      c.routeKey = key;
+      c.route = routeFor(world, c, plan) ?? [];
+    }
+    const next = c.route[0] ?? plan;
+    const dx = next.x - c.x;
+    const dy = next.y - c.y;
     const d = Math.hypot(dx, dy);
     const step = Math.min(d, C.speed * dt);
     if (d > 0) {
       c.x += (dx / d) * step;
       c.y += (dy / d) * step;
     }
-    const arrived = d - step < 0.05;
+    if (c.route.length > 0 && d - step < 0.05) c.route.shift();
+    const arrived = c.route.length === 0 && Math.hypot(plan.x - c.x, plan.y - c.y) < 0.05;
     c.task = arrived ? plan.task : 'walk';
     c.asleep = c.task === 'sleep';
   }
 }
 
-function planFor(world: World, c: Colonist, byId: Map<number, Building>, sites: Building[], siteLoad: Map<number, number>, index: number): Plan {
+function planFor(world: World, c: Colonist, byId: Map<number, Building>, sites: Site[], siteLoad: Map<number, number>, index: number): Plan {
   const work = currentPhase(world).work;
   const launch = world.airship.launch;
   const dock = world.buildings.find((b) => b.type === 'airshipDock');
@@ -105,9 +127,9 @@ function planFor(world: World, c: Colonist, byId: Map<number, Building>, sites: 
   if (!job) {
     const at = { x: c.x, y: c.y };
     const site = sites
-      .filter((s) => (siteLoad.get(s.id) ?? 0) < C.buildersPerSite)
-      .reduce<Building | null>((best, s) => (!best || dist(center(s), at) < dist(center(best), at) ? s : best), null);
-    if (site) return { ...buildSpot(site, siteLoad.get(site.id) ?? 0), task: 'build', site: site.id };
+      .filter((s) => (siteLoad.get(s.id) ?? 0) < s.cap)
+      .reduce<Site | null>((best, s) => (!best || dist(s, at) < dist(best, at) ? s : best), null);
+    if (site) return { ...site.spot(siteLoad.get(site.id) ?? 0), task: 'build', site: site.id };
   }
   return idleSpot(world, c);
 }
@@ -116,14 +138,38 @@ const dist = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.
 
 function idleSpot(world: World, c: Colonist): Plan {
   const a = c.id * 2.4;
-  return { x: world.hearth.x + Math.cos(a) * C.idleRadius, y: world.hearth.y + Math.sin(a) * C.idleRadius, task: 'idle' };
+  // The ring stays outside the house as it grows.
+  const r = Math.max(C.idleRadius, houseExtent(world) + 1.6);
+  return { x: world.hearth.x + Math.cos(a) * r, y: world.hearth.y + Math.sin(a) * r, task: 'idle' };
+}
+
+/** Every unfinished building, floor, and wall edge. */
+function sitesOf(world: World): Site[] {
+  const out: Site[] = [];
+  for (const b of world.buildings) {
+    if (!isBuilt(b)) out.push({ id: b.id, ...center(b), cap: C.buildersPerSite, spot: (n) => buildSpot(b, n) });
+  }
+  const around = (x: number, y: number) => (n: number) => ({ x: x + Math.cos(n * 2.1) * 0.25, y: y + Math.sin(n * 2.1) * 0.25 });
+  for (const f of world.house.floors) {
+    if (f.construct > 0) out.push({ id: f.id, x: f.x, y: f.y, cap: HOUSE.buildersPerPiece, spot: around(f.x, f.y) });
+  }
+  for (const e of world.house.edges) {
+    if (e.construct <= 0) continue;
+    // Builders stand on the open side of the wall, away from the floor if there is one.
+    const [a, b] = e.side === 'n' ? [[e.x, e.y], [e.x, e.y - 1]] : [[e.x, e.y], [e.x - 1, e.y]];
+    const floored = (p: number[]) => isHearthTile(world, p[0], p[1]) || floorAt(world, p[0], p[1]) !== undefined;
+    const at = floored(a) && !floored(b) ? b : a;
+    out.push({ id: e.id, x: (a[0] + b[0]) / 2, y: (a[1] + b[1]) / 2, cap: HOUSE.buildersPerPiece, spot: around(at[0], at[1]) });
+  }
+  return out;
 }
 
 /** Builders stand around the edge of the site. */
 function buildSpot(b: Building, n: number): { x: number; y: number } {
   const at = center(b);
   const a = n * 2.1 + 0.4;
-  const r = Math.max(b.w, b.h) / 2 + 0.3;
+  // Furniture stands inside the house, so its builders stay on it.
+  const r = BUILDINGS[b.type].furniture ? 0.25 : Math.max(b.w, b.h) / 2 + 0.3;
   return { x: at.x + Math.cos(a) * r, y: at.y + Math.sin(a) * r };
 }
 

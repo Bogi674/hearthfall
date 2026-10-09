@@ -17,4 +17,22 @@ export function constructionSystem(world: World, dt: number): void {
     world.buildRev++;
     if (BUILDINGS[b.type].build >= 10) addLog(world, `The ${BUILDINGS[b.type].name} is built.`, center(b));
   }
+  // House floors and walls are built the same way.
+  for (const f of world.house.floors) {
+    if (f.construct <= 0) continue;
+    f.construct = Math.max(0, f.construct - dt * crew(world, f.id) * hopeSpeed(world));
+    if (f.construct <= 0) world.buildRev++;
+  }
+  for (const e of world.house.edges) {
+    if (e.construct <= 0) continue;
+    e.construct = Math.max(0, e.construct - dt * crew(world, e.id) * hopeSpeed(world));
+    if (e.construct > 0) continue;
+    world.buildRev++;
+    if (e.kind === 'door') addLog(world, 'A door is hung.', { x: e.x, y: e.y });
+  }
+}
+
+/** Work per second from the builders standing at a site. Tired builders work slower. */
+function crew(world: World, site: number): number {
+  return world.colonists.filter((c) => c.site === site && c.task === 'build').reduce((s, c) => s + (c.rest > 0 ? 1 : BALANCE.needs.tiredWorkSpeed), 0);
 }

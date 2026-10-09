@@ -1,5 +1,6 @@
 // Right side panel with tabs: colonists, expeditions, and the airship (section 14).
 import { BUILDINGS } from '../data/buildings';
+import { EDGES } from '../data/house';
 import { ITEMS, POIS } from '../data/pois';
 import { COMPONENT_IDS, COMPONENTS, LAST_NIGHT } from '../data/vehicle';
 import { WEAPONS } from '../data/weapons';
@@ -27,7 +28,10 @@ export function rightPanel(w: World, state: UiState): string {
 function colonists(w: World): string {
   const name = (id: number | null) => {
     const b = w.buildings.find((b) => b.id === id);
-    return b ? BUILDINGS[b.type].name : '';
+    if (b) return BUILDINGS[b.type].name;
+    if (w.house.floors.some((f) => f.id === id)) return 'house floor';
+    const e = w.house.edges.find((e) => e.id === id);
+    return e ? EDGES[e.kind].name.toLowerCase() : '';
   };
   return `${w.colonists
     .map((c) => {

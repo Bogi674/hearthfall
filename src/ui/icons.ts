@@ -62,6 +62,14 @@ export const BUILDING_ICONS: Record<BuildingType, string> = {
       `<path d="M1 15.5h11M12 14h7l10 1.5v5L19 19h-7zM15 19v2.5h3"/></g>` +
       `<g transform="rotate(-45 16 16)"><path d="M3 16h20M23 13l8 3-8 3zM20 14.5v3"/></g>`,
   ),
+  bed: svg(
+    `<rect x="5" y="14" width="22" height="8" ${ACCENT}/>` +
+      `<path d="M4 24V8M4 18h24v6M28 24v-3"/><rect x="6" y="12" width="7" height="5" rx="1.5"/>`,
+  ),
+  shelf: svg(
+    `<rect x="9" y="6" width="14" height="20" ${ACCENT}/>` +
+      `<rect x="7" y="4" width="18" height="24" rx="1"/><path d="M7 12h18M7 20h18"/><rect x="11" y="14" width="4" height="6"/>`,
+  ),
   gunNest: svg(
     `<rect x="9" y="9" width="9" height="5" rx="1" ${ACCENT}/>` +
       `<rect x="9" y="9" width="9" height="5" rx="1"/><path d="M18 11l10-4M13 14v3"/>` +

@@ -5,7 +5,9 @@ import { CRAFTABLE, type WeaponId } from '../data/weapons';
 import { ITEMS } from '../data/pois';
 import { RESOURCE_NAMES, type Resource } from '../data/resources';
 import { COMPONENT_IDS, COMPONENTS, LAST_NIGHT, type ComponentId } from '../data/vehicle';
-import { placeBuilding } from './placement';
+import type { EdgeKind, FloorId } from '../data/house';
+import type { Side } from './house';
+import { placeBuilding, placeEdge, placeFloor, removeHouseItem, type HouseItem } from './placement';
 import { center, missing, pay } from './query';
 import { recall } from './systems/expeditions';
 import { addLog, type Building, type World } from './world';
@@ -21,7 +23,10 @@ export type Command =
   | { type: 'upgradeBuilding'; id: number }
   | { type: 'setShelter'; id: number; on: boolean }
   | { type: 'alarm'; on: boolean }
-  | { type: 'setCraft'; id: number; weapon: WeaponId };
+  | { type: 'setCraft'; id: number; weapon: WeaponId }
+  | { type: 'paintFloor'; x: number; y: number; kind: FloorId }
+  | { type: 'buildEdge'; x: number; y: number; side: Side; kind: EdgeKind; level: number }
+  | { type: 'removeHouseItem'; item: HouseItem; id: number };
 
 export function pushCommand(queue: Command[], command: Command): void {
   queue.push(command);
@@ -30,6 +35,9 @@ export function pushCommand(queue: Command[], command: Command): void {
 export function applyCommands(world: World): void {
   for (const c of world.commands) {
     if (c.type === 'place') placeBuilding(world, c.building, c.x, c.y, c.rotated);
+    if (c.type === 'paintFloor') placeFloor(world, c.x, c.y, c.kind);
+    if (c.type === 'buildEdge') placeEdge(world, c.x, c.y, c.side, c.kind, c.level);
+    if (c.type === 'removeHouseItem') removeHouseItem(world, c.item, c.id);
     if (c.type === 'setWorkers') {
       const b = world.buildings.find((b) => b.id === c.id);
       if (b) b.workers = Math.max(0, Math.min(BUILDINGS[b.type].workers, c.count));
