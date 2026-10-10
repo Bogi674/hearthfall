@@ -29,7 +29,7 @@ const ITEM_POIS: [ItemId, PoiType][] = [
 type Target = BuildingType | 'hearth' | 'lookout' | ComponentId;
 const TARGETS: Target[] = [
   'woodcutterCamp', 'tent', 'quarry', 'charcoalKiln', 'foragerHut', 'kitchen', 'tent', 'sawmill', 'watchtower', 'watchtower',
-  'huntingLodge', 'woodcutterCamp', 'gate', 'lookoutPost', 'hearth', 'salvageYard', 'storageShed', 'lookout', 'smelter', 'hearth', 'watchtower', 'watchtower',
+  'salvageYard', 'huntingLodge', 'woodcutterCamp', 'gate', 'lookoutPost', 'hearth', 'storageShed', 'lookout', 'smelter', 'hearth', 'watchtower', 'watchtower',
   'lookout', 'storageShed',
   'workshop', 'sawmill', 'woodcutterCamp', 'storageShed', 'charcoalKiln',
   'airshipDock', ...COMPONENT_IDS,
