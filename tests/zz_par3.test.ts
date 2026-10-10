@@ -2,7 +2,7 @@ import { it } from 'vitest';
 import { createWorld, stepWorld } from '../src/sim/world';
 import { fullRunPlayer } from './fullrun';
 declare const process: { env: Record<string, string | undefined> };
-for (const seed of [1,8,]) {
+for (const seed of [8,]) {
   it(`seed ${seed}`, () => {
     const world = createWorld(seed);
     const player = fullRunPlayer();

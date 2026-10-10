@@ -212,6 +212,11 @@ export function fullRunPlayer() {
         if (spot) w.commands.push({ type: 'place', building: type, x: spot.x, y: spot.y, rotated: false });
       }
     }
+    // Late in the run the launch needs a lot of fuel. More kilns make more of it, since each takes one worker.
+    if (w.airship.built.length >= 2 && count(w, 'charcoalKiln') < 4 && s.fuel < launchFuelNeeded(w) && s.wood >= 60 && s.stone >= 10 && !w.buildings.some((b) => b.type === 'charcoalKiln' && b.construct > 0)) {
+      const spot = findSpot(w, 'charcoalKiln', OUTSIDE);
+      if (spot) w.commands.push({ type: 'place', building: 'charcoalKiln', x: spot.x, y: spot.y, rotated: false });
+    }
     if (stockTotal(w) > capacity(w) - 40 && s.wood >= 20) {
       const spot = findSpot(w, 'storageShed', OUTSIDE);
       if (spot) w.commands.push({ type: 'place', building: 'storageShed', x: spot.x, y: spot.y, rotated: false });
@@ -263,7 +268,7 @@ export function fullRunPlayer() {
       ['woodcutterCamp', s.wood < 250 ? 3 : 1],
       ['draftingTable', w.airship.building ? 4 : 0],
       ['airshipDock', w.airship.building && count(w, 'draftingTable') === 0 ? 4 : 0],
-      ['quarry', s.stone < (cost.stone ?? 0) ? 3 : 0],
+      ['quarry', s.stone < Math.max(cost.stone ?? 0, w.airship.built.length >= 2 && count(w, 'charcoalKiln') < 4 ? 12 : 0) ? 3 : 0],
       ['workshop', partsShort > 0 && s.planks >= 1 && s.metal >= 1 ? 2 : 0],
       ['smelter', s.metal < metalNeed && s.scrap >= 2 && s.fuel > 30 ? 2 : 0],
       ['salvageYard', s.scrap < 2 * Math.max(0, metalNeed - s.metal) || s.scrap < (cost.scrap ?? 0) ? 3 : 0],
