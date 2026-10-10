@@ -151,6 +151,9 @@ function padClearing(w: World): void {
   w.commands.push({ type: 'mendArea', ...r });
 }
 
+/** What the player is working toward, for debugging a run. */
+export const trace = { target: '', crew: '' };
+
 export function fullRunPlayer() {
   /** Targets the town has no room for, such as a quarry with no stone nearby. A player would give up on them and move on. */
   const skip = new Set<number>();
@@ -158,6 +161,7 @@ export function fullRunPlayer() {
     const phase = currentPhase(w);
     const s = w.stock;
     const next = nextTarget(w, skip);
+    trace.target = next ? String(next.target) : 'none';
     houseWork(w, count(w, 'woodcutterCamp') > 0 && count(w, 'charcoalKiln') > 0);
     scavengeNearby(w);
 
@@ -262,7 +266,7 @@ export function fullRunPlayer() {
       ['quarry', s.stone < (cost.stone ?? 0) ? 3 : 0],
       ['workshop', partsShort > 0 && s.planks >= 1 && s.metal >= 1 ? 2 : 0],
       ['smelter', s.metal < metalNeed && s.scrap >= 2 && s.fuel > 30 ? 2 : 0],
-      ['salvageYard', s.scrap < 2 * Math.max(0, metalNeed - s.metal) ? 3 : 0],
+      ['salvageYard', s.scrap < 2 * Math.max(0, metalNeed - s.metal) || s.scrap < (cost.scrap ?? 0) ? 3 : 0],
       ['sawmill', s.planks < planksNeed && s.wood > 30 ? 4 : 0],
       ['woodcutterCamp', s.wood < 600 ? 99 : 0],
     ];
@@ -276,6 +280,7 @@ export function fullRunPlayer() {
         free -= k;
       }
     }
+    trace.crew = [...crew.entries()].map(([id, n]) => `${w.buildings.find((b) => b.id === id)?.type.slice(0, 4)}${n}`).join(' ') + ` free ${free}`;
     for (const b of w.buildings) {
       // One defender per tower, so most colonists still sleep at night.
       if (b.type === 'watchtower' && b.workers !== 1) w.commands.push({ type: 'setWorkers', id: b.id, count: 1 });
