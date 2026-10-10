@@ -9,6 +9,9 @@ Newest entries first. Each entry names the milestone it belongs to.
 - **Food.** A Hunting Lodge sends hunters after deer and wild pigs that wander the forest and flee. A Hydroponic Farm in a closed room turns fuel into raw food. Ruined houses can be scavenged once for food, scrap, and finds, and far houses pay more. Foragers find less as the winter deepens.
 - **Building management.** Cancel a site that is going up, move a finished building, deconstruct any finished building (the Supply Cart too), a short description and facts for every building in the build menu and selection panel, and health bars only on hurt things.
 - **Look and interface.** The hearth throws real shadows, the grade is cold in the shadows and warm in the lights, sparks rise from the fire, and pale eyes watch from the dark at night. The interface is walnut and amber with a frosted blue forecast. The design document no longer calls the visuals preview quality.
+- **Hearth glow.** The hearth inside the home was too bright. The flame, its point light, and the bloom were toned down so the room glows warm and cozy. Lamps in rooms use a small pool of real lights so interiors are not dim.
+- **Balance.** The scripted player now places production buildings on warm tiles, runs four people on the kilns, and heats the quarry, since workers refuse to work on freezing tiles. The 8 seed sweep launches 8 of 8 (days 9 to 14). A new test builds every one of the 44 buildings and checks that each one works.
+- **Screenshots.** `docs/screenshots/m13-*.jpg` show the ruin, a half built house, a finished house, monsters, characters, and the airship by day and night.
 - Save version is 9. The scripted player hunts and scavenges.
 
 ## 2026-10-10 (M12: The Ruin Is the House)

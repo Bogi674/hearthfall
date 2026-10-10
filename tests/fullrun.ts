@@ -34,7 +34,9 @@ const TARGETS: Target[] = [
   'workshop', 'sawmill', 'woodcutterCamp', 'storageShed', 'charcoalKiln',
   'airshipDock', ...COMPONENT_IDS,
 ];
-const INSIDE: BuildingType[] = ['tent', 'watchtower', 'lookoutPost'];
+/** Things that need no ground of their own go where the tile is warm, since a worker will not stand on freezing ground. */
+const INSIDE: BuildingType[] = ['tent', 'watchtower', 'lookoutPost', 'charcoalKiln', 'sawmill', 'kitchen', 'smelter', 'workshop'];
+const warmAt = (w: World) => (x: number, y: number) => bandAt(w, x, y) === 'warm';
 
 const count = (w: World, t: BuildingType) => w.buildings.filter((b) => b.type === t).length;
 const ring = (w: World, r: number) => {
@@ -178,7 +180,8 @@ export function fullRunPlayer() {
       } else {
         const inside = INSIDE.includes(t);
         // Walls stop heat, so the buildings people live and stand guard in go where the tile is warm.
-        const spot = findSpot(w, t, inside ? 0 : OUTSIDE, t === 'woodcutterCamp' ? 30 : t === 'quarry' ? 4 : 10, inside ? (x, y) => bandAt(w, x, y) === 'warm' : undefined);
+        const nodes = t === 'woodcutterCamp' ? 30 : t === 'quarry' ? 4 : 10;
+        const spot = (inside ? findSpot(w, t, 0, nodes, warmAt(w)) : null) ?? findSpot(w, t, inside ? 0 : OUTSIDE, nodes);
         if (spot) w.commands.push({ type: 'place', building: t, x: spot.x, y: spot.y, rotated: false });
         else if (!missing(w, BUILDINGS[t].cost)) skip.add(next.index);
       }
@@ -214,7 +217,7 @@ export function fullRunPlayer() {
     }
     // Late in the run the launch needs a lot of fuel. More kilns make more of it, since each takes one worker.
     if (w.airship.built.length >= 2 && count(w, 'charcoalKiln') < 4 && s.fuel < launchFuelNeeded(w) && s.wood >= 60 && s.stone >= 10 && !w.buildings.some((b) => b.type === 'charcoalKiln' && b.construct > 0)) {
-      const spot = findSpot(w, 'charcoalKiln', OUTSIDE);
+      const spot = findSpot(w, 'charcoalKiln', 0, 10, warmAt(w)) ?? findSpot(w, 'charcoalKiln', OUTSIDE);
       if (spot) w.commands.push({ type: 'place', building: 'charcoalKiln', x: spot.x, y: spot.y, rotated: false });
     }
     if (stockTotal(w) > capacity(w) - 40 && s.wood >= 20) {
@@ -224,7 +227,7 @@ export function fullRunPlayer() {
 
     // Heaters keep the gatherers working as outside tiles start to freeze.
     if (w.day >= 6) {
-      for (const b of w.buildings.filter((b) => ['woodcutterCamp', 'salvageYard'].includes(b.type) && b.status !== 'noResource')) {
+      for (const b of w.buildings.filter((b) => ['woodcutterCamp', 'salvageYard', 'quarry'].includes(b.type) && b.status !== 'noResource')) {
         const at = center(b);
         const warm = w.buildings.some((h) => h.type === 'heater' && Math.hypot(h.x - at.x, h.y - at.y) < 3);
         if (warm || bandAt(w, at.x, at.y) === 'warm') continue;
@@ -264,7 +267,7 @@ export function fullRunPlayer() {
       ['kitchen', s.meals < 30 ? 2 : s.meals < 60 ? 1 : 0],
       ['foragerHut', s.rawFood < 40 ? 2 : 0],
       ['huntingLodge', s.rawFood < 60 ? 2 : 0],
-      ['charcoalKiln', s.fuel < fuelTarget && s.wood >= 2 ? 2 : 0],
+      ['charcoalKiln', s.fuel < fuelTarget && s.wood >= 2 ? 4 : 0],
       ['woodcutterCamp', s.wood < 250 ? 3 : 1],
       ['draftingTable', w.airship.building ? 4 : 0],
       ['airshipDock', w.airship.building && count(w, 'draftingTable') === 0 ? 4 : 0],

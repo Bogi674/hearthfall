@@ -90,3 +90,7 @@ Bugs, shortcuts, and loose ends that are known but not fixed yet.
 - Trees near a work spot can hide the worker chopping them from the default camera angle.
 - Characters have walk and work animations, but no attack or death animations yet.
 - The intro story opens on every new run. There is no setting to skip it, only the button to close it.
+- The full run test takes several minutes per seed. It has a 10 minute limit per seed so it still passes when the whole suite runs in parallel.
+- Screenshot scripts use `?lowfx` in software rendering. That turns off the hearth shadow, so shots from a GPU look slightly richer.
+- Hunters and scavengers can cross open ground at night. Nothing stops the player from sending them out in a Blood Moon.
+
