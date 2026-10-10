@@ -205,7 +205,7 @@ export function fullRunPlayer() {
       if (spot) w.commands.push({ type: 'place', building: 'draftingTable', x: spot.x, y: spot.y, rotated: false });
     }
     // Replace gatherers that ran out of nodes.
-    for (const [type, keep] of [['woodcutterCamp', 2], ['salvageYard', 1]] as [BuildingType, number][]) {
+    for (const [type, keep] of [['woodcutterCamp', 2], ['salvageYard', 1], ['quarry', 1]] as [BuildingType, number][]) {
       const working = w.buildings.filter((b) => b.type === type && b.status !== 'noResource').length;
       if (count(w, type) && working < keep && !missing(w, BUILDINGS[type].cost)) {
         const spot = findSpot(w, type, OUTSIDE, type === 'woodcutterCamp' ? 30 : 10);
