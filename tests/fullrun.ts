@@ -178,7 +178,7 @@ export function fullRunPlayer() {
       } else {
         const inside = INSIDE.includes(t);
         // Walls stop heat, so the buildings people live and stand guard in go where the tile is warm.
-        const spot = findSpot(w, t, inside ? 0 : OUTSIDE, t === 'woodcutterCamp' ? 30 : 10, inside ? (x, y) => bandAt(w, x, y) === 'warm' : undefined);
+        const spot = findSpot(w, t, inside ? 0 : OUTSIDE, t === 'woodcutterCamp' ? 30 : t === 'quarry' ? 4 : 10, inside ? (x, y) => bandAt(w, x, y) === 'warm' : undefined);
         if (spot) w.commands.push({ type: 'place', building: t, x: spot.x, y: spot.y, rotated: false });
         else if (!missing(w, BUILDINGS[t].cost)) skip.add(next.index);
       }
@@ -208,7 +208,7 @@ export function fullRunPlayer() {
     for (const [type, keep] of [['woodcutterCamp', 2], ['salvageYard', 1], ['quarry', 1]] as [BuildingType, number][]) {
       const working = w.buildings.filter((b) => b.type === type && b.status !== 'noResource').length;
       if (count(w, type) && working < keep && !missing(w, BUILDINGS[type].cost)) {
-        const spot = findSpot(w, type, OUTSIDE, type === 'woodcutterCamp' ? 30 : 10);
+        const spot = findSpot(w, type, OUTSIDE, type === 'woodcutterCamp' ? 30 : type === 'quarry' ? 3 : 10);
         if (spot) w.commands.push({ type: 'place', building: type, x: spot.x, y: spot.y, rotated: false });
       }
     }
