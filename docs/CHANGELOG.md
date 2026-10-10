@@ -2,6 +2,15 @@
 
 Newest entries first. Each entry names the milestone it belongs to.
 
+## 2026-10-11 (M13: A Bigger, Fuller World)
+
+- **Bigger map, varied ruins.** The map is 240 by 240. Houses come as neighbors near the fire, hamlets far apart, and lone houses out in the dark. Places sit 42 to 92 tiles out and squads walk faster. Monsters spawn 56 tiles out. Lookout sight is 66, 88, and 108.
+- **Regrowth.** Used up trees, stone heaps, and rubble grow back at dawn after 4 to 9 days, smaller than before, never near the hearth and never on a building.
+- **Food.** A Hunting Lodge sends hunters after deer and wild pigs that wander the forest and flee. A Hydroponic Farm in a closed room turns fuel into raw food. Ruined houses can be scavenged once for food, scrap, and finds, and far houses pay more. Foragers find less as the winter deepens.
+- **Building management.** Cancel a site that is going up, move a finished building, deconstruct any finished building (the Supply Cart too), a short description and facts for every building in the build menu and selection panel, and health bars only on hurt things.
+- **Look and interface.** The hearth throws real shadows, the grade is cold in the shadows and warm in the lights, sparks rise from the fire, and pale eyes watch from the dark at night. The interface is walnut and amber with a frosted blue forecast. The design document no longer calls the visuals preview quality.
+- Save version is 9. The scripted player hunts and scavenges.
+
 ## 2026-10-10 (M12: The Ruin Is the House)
 
 - **The starting house is a ruin of real pieces.** A hall, a bedroom, a kitchen, a storeroom, and an attic are made of floors, wall edges, doors, windows, and furniture, all worn: low wall hit points, missing walls, lost floors and rubble, open roofs, and broken furniture. One room is kept in better shape. About 70 town houses are made of the same pieces, and each has a way in. Save version is now 8.
