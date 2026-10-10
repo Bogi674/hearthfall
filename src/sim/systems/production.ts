@@ -43,7 +43,7 @@ export function productionSystem(world: World, dt: number): void {
 }
 
 /** Winter thins the brush. Foragers find a little less each day, down to half (M13). */
-const forageFactor = (world: World, b: Building): number => (b.type === 'foragerHut' ? Math.max(0.5, 1 - 0.04 * (world.day - 1)) : 1);
+const forageFactor = (world: World, b: Building): number => (b.type === 'foragerHut' ? Math.max(0.55, 1 - 0.035 * (world.day - 1)) : 1);
 
 /** The recipe a building runs. An armory crafts whichever weapon it is set to (section 9.6). */
 function recipeFor(b: Building): Recipe | undefined {

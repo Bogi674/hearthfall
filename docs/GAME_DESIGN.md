@@ -238,7 +238,7 @@ A colony wide value from 0 to 100, starting at 60.
 
 ### 7.1a Food (M13)
 Five sources of food, each with its own trade of risk and reward.
-- **Forager Hut.** Cheap and always there. Two workers find 2 raw food every 8 seconds, and they find less each day as the cold deepens, down to half.
+- **Forager Hut.** Cheap and always there. Two workers find 2 raw food every 7 seconds, and they find less each day as the cold deepens, down to 55 percent.
 - **Hunting Lodge.** Hunters walk out to deer and wild pigs within 60 tiles of the lodge, bring one down in 2.5 seconds beside it, and carry the meat back. A deer gives 14 raw food and runs fast. A pig gives 22 and is slow. Animals live 24 or more tiles from the hearth, 14 at most on the map, and 2 wander in each dawn. Hunters work by day only and feel the cold on the way, so a lodge pays well but needs a living forest.
 - **Hydroponic Farm.** A 2 by 2 rack of trays in a closed room with a whole roof. It costs planks, metal, and parts. Two workers turn 1 fuel into 7 raw food every 10 seconds, all year, so it is the steady answer to a long winter and it is paid for with the fuel economy.
 - **Scavenging.** Select a floor of a ruined house the colony has seen and press Scavenge. Two colonists search it for 24 seconds and bring back raw food, scrap, and some wood. Sometimes they find meals, fuel, or even parts and metal. Houses far from the hearth hold up to three times more, and they are colder and farther from help. Each house can be searched once.

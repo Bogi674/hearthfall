@@ -256,7 +256,7 @@ export function fullRunPlayer() {
       ['foragerHut', s.rawFood < 40 ? 2 : 0],
       ['huntingLodge', s.rawFood < 60 ? 2 : 0],
       ['charcoalKiln', s.fuel < fuelTarget && s.wood >= 2 ? 2 : 0],
-      ['woodcutterCamp', 3],
+      ['woodcutterCamp', s.wood < 250 ? 3 : 1],
       ['draftingTable', w.airship.building ? 4 : 0],
       ['airshipDock', w.airship.building && count(w, 'draftingTable') === 0 ? 4 : 0],
       ['quarry', s.stone < (cost.stone ?? 0) ? 3 : 0],
@@ -264,7 +264,7 @@ export function fullRunPlayer() {
       ['smelter', s.metal < metalNeed && s.scrap >= 2 && s.fuel > 30 ? 2 : 0],
       ['salvageYard', s.scrap < 2 * Math.max(0, metalNeed - s.metal) ? 3 : 0],
       ['sawmill', s.planks < planksNeed && s.wood > 30 ? 4 : 0],
-      ['woodcutterCamp', 99],
+      ['woodcutterCamp', s.wood < 600 ? 99 : 0],
     ];
     const crew = new Map<number, number>();
     for (const [type, total] of want) {
