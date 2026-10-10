@@ -250,7 +250,7 @@ export function fullRunPlayer() {
     const metalNeed = (cost.metal ?? 0) + partsShort;
     const planksNeed = (cost.planks ?? 0) + partsShort;
     const ready = COMPONENT_IDS.every((id) => w.airship.built.includes(id));
-    const fuelTarget = w.airship.built.length >= 3 ? launchFuelNeeded(w) + 40 : 80;
+    const fuelTarget = w.airship.built.length >= 3 ? launchFuelNeeded(w) + 40 : 160;
     if (ready) placeRing('spikeTrap', RING + 2, 60);
     // Sites without a crew of their own need colonists without a job to build them.
     const sites = w.buildings.filter((b) => b.construct > 0).length;
