@@ -45,21 +45,22 @@ const ring = (w: World, r: number) => {
 const isComponent = (t: Target): t is ComponentId => t in COMPONENTS;
 
 /** The first target not done yet, and what it costs. */
-function nextTarget(w: World): { target: Target; cost: Amounts } | null {
+function nextTarget(w: World, skip: Set<number>): { target: Target; cost: Amounts; index: number } | null {
   const seen = new Map<Target, number>();
-  for (const t of TARGETS) {
+  for (const [index, t] of TARGETS.entries()) {
     seen.set(t, (seen.get(t) ?? 0) + 1);
+    if (skip.has(index)) continue;
     if (t === 'hearth') {
-      if (w.hearth.level <= seen.get(t)!) return { target: t, cost: BALANCE.hearth.levels[w.hearth.level].cost };
+      if (w.hearth.level <= seen.get(t)!) return { target: t, cost: BALANCE.hearth.levels[w.hearth.level].cost, index };
     } else if (t === 'lookout') {
       // Upgrade the lookout only while a place with a rare item is still unknown.
       const post = w.buildings.find((b) => b.type === 'lookoutPost');
       const hidden = ITEM_POIS.some(([, type]) => w.pois.find((p) => p.type === type)!.seen === 'hidden');
-      if (post && hidden && post.level <= seen.get(t)!) return { target: t, cost: BUILDINGS.lookoutPost.upgrades![post.level - 1] };
+      if (post && hidden && post.level <= seen.get(t)!) return { target: t, cost: BUILDINGS.lookoutPost.upgrades![post.level - 1], index };
     } else if (isComponent(t)) {
-      if (!w.airship.built.includes(t) && w.airship.building !== t) return { target: t, cost: COMPONENTS[t].cost };
+      if (!w.airship.built.includes(t) && w.airship.building !== t) return { target: t, cost: COMPONENTS[t].cost, index };
     } else if (count(w, t) < seen.get(t)!) {
-      return { target: t, cost: BUILDINGS[t].cost };
+      return { target: t, cost: BUILDINGS[t].cost, index };
     }
   }
   return null;
@@ -141,10 +142,12 @@ function padClearing(w: World): void {
 }
 
 export function fullRunPlayer() {
+  /** Targets the town has no room for, such as a quarry with no stone nearby. A player would give up on them and move on. */
+  const skip = new Set<number>();
   return (w: World) => {
     const phase = currentPhase(w);
     const s = w.stock;
-    const next = nextTarget(w);
+    const next = nextTarget(w, skip);
     houseWork(w, count(w, 'woodcutterCamp') > 0 && count(w, 'charcoalKiln') > 0);
 
     // Work toward the next target.
@@ -162,6 +165,7 @@ export function fullRunPlayer() {
         // Walls stop heat, so the buildings people live and stand guard in go where the tile is warm.
         const spot = findSpot(w, t, inside ? 0 : OUTSIDE, t === 'woodcutterCamp' ? 30 : 10, inside ? (x, y) => bandAt(w, x, y) === 'warm' : undefined);
         if (spot) w.commands.push({ type: 'place', building: t, x: spot.x, y: spot.y, rotated: false });
+        else if (!missing(w, BUILDINGS[t].cost)) skip.add(next.index);
       }
     }
     // Colonists without a bed sleep on mats and cost hope. Extra people get beds on floors in the warm house.

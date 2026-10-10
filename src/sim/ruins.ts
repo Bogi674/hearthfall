@@ -241,14 +241,15 @@ export function townRuin(rng: RngState, map: MapState, x0: number, y0: number, w
   out.floors.push(...made.floors);
   out.edges.push(...made.edges);
   out.furniture.push(...made.furniture);
-  // Masonry heaps beside the house, where fallen walls lie. Quarries work them for stone.
-  for (let blob = 0; blob < 2; blob++) {
-    const cx = nextInt(rng, x0 - 2, x0 + w + 1);
+  // Masonry heaps and rubble beside the house, where fallen walls and roofs lie. Quarries work the masonry for stone and salvage yards work the rubble.
+  for (let blob = 0; blob < 5; blob++) {
+    const cx = nextInt(rng, x0 - 3, x0 + w + 2);
     const cy = chance(rng, 0.5) ? y0 - 3 : y0 + d + 2;
-    for (let i = 0; i < 6; i++) {
+    const tile = blob < 3 ? Tile.RuinWall : Tile.Rubble;
+    for (let i = 0; i < 7; i++) {
       const x = cx + nextInt(rng, -1, 1);
       const y = cy + nextInt(rng, -1, 1);
-      if (inBounds(map, x, y) && getTile(map, x, y) === Tile.Ground) setTile(map, x, y, Tile.RuinWall);
+      if (inBounds(map, x, y) && getTile(map, x, y) === Tile.Ground) setTile(map, x, y, tile);
     }
   }
 }
