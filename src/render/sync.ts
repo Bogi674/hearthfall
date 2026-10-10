@@ -23,6 +23,7 @@ import { createHearthSiteMesh, createStashMesh } from './meshes/markers';
 import { createHouseView, type HouseLook } from './houseView';
 import { buildProps, colorPropsByWarmth } from './meshes/props';
 import { createPoiMesh } from './meshes/pois';
+import { PALETTE } from './materials';
 import { createAmbience } from './meshes/ambience';
 import { createAnimalView } from './meshes/animals';
 import { createMist } from './meshes/mist';
@@ -119,6 +120,12 @@ export function createWorldView(world: World, view: Pick<View, 'scene' | 'fog' |
   scene.add(stash.group);
   const hearthSite = createHearthSiteMesh();
   scene.add(hearthSite.group);
+  // Lamps, heaters, and stoves near the camera light the rooms they stand in with real warm light. The hearth has its own.
+  const lampPool = Array.from({ length: 5 }, () => {
+    const l = new THREE.PointLight(PALETTE.lantern, 0, 12, 1.7);
+    scene.add(l);
+    return l;
+  });
   const hearthLight = createHearthLight();
   hearthLight.position.add(hearth.group.position);
   scene.add(hearthLight);
@@ -167,6 +174,28 @@ export function createWorldView(world: World, view: Pick<View, 'scene' | 'fog' |
       });
       groundMat.uniforms.uFrost.value = atmosphere.update(w, time);
       const lights = lightSources(w);
+      {
+        // The ground point the camera looks at, then the nearest lights to it.
+        camera.getWorldDirection(viewDir);
+        const t = viewDir.y !== 0 ? -camera.position.y / viewDir.y : 0;
+        const [cx, cz] = [camera.position.x + viewDir.x * t, camera.position.z + viewDir.z * t];
+        const near = lights
+          .filter((l) => Math.hypot(l.x - w.hearth.x, l.y - w.hearth.y) > 0.8)
+          .map((l) => ({ l, d: Math.hypot(l.x - width / 2 - cx, l.y - height / 2 - cz) }))
+          .sort((a, b) => a.d - b.d)
+          .slice(0, lampPool.length);
+        lampPool.forEach((lamp, i) => {
+          const e = near[i];
+          // Lights stay in the scene at zero strength when unused, so the shader is not rebuilt as lamps come and go.
+          if (!e || e.d > 40) {
+            lamp.intensity = 0;
+            return;
+          }
+          lamp.position.set(e.l.x - width / 2, 1.5, e.l.y - height / 2);
+          lamp.intensity = (2.2 + e.l.r * 1.1) * (1 + Math.sin(time * 6 + i * 2.1) * 0.04);
+          lamp.distance = e.l.r * 2.2 + 3;
+        });
+      }
       const key = lights.map((l) => `${l.x},${l.y},${l.r}`).join(';');
       if (key !== lightKey) {
         lightKey = key;
