@@ -5,8 +5,8 @@ import { Tile } from '../src/sim/grid';
 import { placeBuilding, placementError } from '../src/sim/placement';
 import { capacity, currentPhase } from '../src/sim/query';
 import { combatSystem } from '../src/sim/systems/combat';
-import { createWorld, stepWorld, TICKS_PER_SECOND, type Enemy, type World } from '../src/sim/world';
-import { build, closedRoom, findSpot, finish } from './helpers';
+import { stepWorld, TICKS_PER_SECOND, type Enemy, type World } from '../src/sim/world';
+import { bareWorld, build, closedRoom, findSpot, finish } from './helpers';
 
 const seconds = (w: World, s: number) => {
   for (let i = 0; i < s * TICKS_PER_SECOND && !w.lost; i++) stepWorld(w);
@@ -24,7 +24,7 @@ const place = (w: World, type: keyof typeof BUILDINGS, minDist = 0) => {
 
 describe('construction (section 8.2)', () => {
   it('a placed building is a site until colonists build it', () => {
-    const w = createWorld(1);
+    const w = bareWorld(1);
     const camp = place(w, 'woodcutterCamp', 8);
     expect(camp.construct).toBe(BUILDINGS.woodcutterCamp.build);
     seconds(w, 3);
@@ -37,7 +37,7 @@ describe('construction (section 8.2)', () => {
   });
 
   it('idle colonists build walls that have no crew of their own', () => {
-    const w = createWorld(1);
+    const w = bareWorld(1);
     const wall = place(w, 'woodenBarricade', 6);
     seconds(w, 10);
     expect(wall.construct).toBe(0);
@@ -46,7 +46,7 @@ describe('construction (section 8.2)', () => {
 
 describe('work spots (section 12.4)', () => {
   it('woodcutters stand next to the tree they are cutting', () => {
-    const w = createWorld(1);
+    const w = bareWorld(1);
     build(w, 'woodcutterCamp', 8);
     seconds(w, 20);
     const camp = w.buildings.find((b) => b.type === 'woodcutterCamp')!;
@@ -61,23 +61,23 @@ describe('work spots (section 12.4)', () => {
 
 describe('the house and the supply cart (section 5.6)', () => {
   it('starts with a supply cart that holds the first storage', () => {
-    const w = createWorld(1);
+    const w = bareWorld(1);
     expect(w.buildings.map((b) => b.type)).toEqual(['supplyCart']);
     expect(capacity(w)).toBe(300);
   });
 
-  it('keeps the lot around the house free for the house', () => {
-    const w = createWorld(1);
+  it('keeps the hearth tile free and has no build limit', () => {
+    const w = bareWorld(1);
     Object.assign(w.stock, { wood: 100, planks: 100 });
     const { x, y } = w.hearth;
-    expect(placementError(w, 'tent', x + 2, y - 1, false)).toBe('Kept free for the house');
+    expect(placementError(w, 'tent', x, y, false)).toBe('Blocked by the hearth');
+    expect(placementError(w, 'tent', x + 2, y - 1, false)).toBeNull();
     expect(placementError(w, 'bed', x + 2, y - 1, false)).toBe('Furniture needs a floor');
-    expect(placementError(w, 'tent', x + 4, y, false)).not.toBe('Kept free for the house');
   });
 
   it('a bed in a closed room lets sleepers rest faster than a tent', () => {
     const rest = (type: 'tent' | 'bed') => {
-      const w = createWorld(1);
+      const w = bareWorld(1);
       Object.assign(w.stock, { wood: 100, planks: 100 });
       if (type === 'bed') {
         closedRoom(w);
@@ -97,7 +97,7 @@ describe('the house and the supply cart (section 5.6)', () => {
 describe('shelter and monsters (sections 9.4 and 9.7)', () => {
   it('monsters that cannot break buildings leave walls alone, breakers smash them', () => {
     for (const breaker of [false, true]) {
-      const w = createWorld(1);
+      const w = bareWorld(1);
       const wall = place(w, 'woodenBarricade', 6);
       finish(w);
       stepWorld(w);
@@ -113,7 +113,7 @@ describe('shelter and monsters (sections 9.4 and 9.7)', () => {
   });
 
   it('the alarm sends workers inside, where monsters cannot reach them', () => {
-    const w = createWorld(1);
+    const w = bareWorld(1);
     const camp = place(w, 'woodcutterCamp', 8);
     finish(w);
     seconds(w, 20);
@@ -129,7 +129,7 @@ describe('shelter and monsters (sections 9.4 and 9.7)', () => {
   });
 
   it('a small raid prowls in by day from day 3', () => {
-    const w = createWorld(2);
+    const w = bareWorld(2);
     w.stock.fuel = 1000;
     w.stock.meals = 1000;
     while (w.day < BALANCE.waves.raidFromDay) stepWorld(w);
@@ -142,7 +142,7 @@ describe('shelter and monsters (sections 9.4 and 9.7)', () => {
 
 describe('weapons (section 9.6)', () => {
   it('a workbench crafts spears and colonists pick them up', () => {
-    const w = createWorld(1);
+    const w = bareWorld(1);
     Object.assign(w.stock, { planks: 200, metal: 50, scrap: 50, wood: 50 });
     closedRoom(w);
     expect(placeBuilding(w, 'workbench', w.hearth.x + 2, w.hearth.y, true)).toBe(true);
@@ -152,7 +152,7 @@ describe('weapons (section 9.6)', () => {
   });
 
   it('a colonist fights back and kills a weak monster', () => {
-    const w = createWorld(1);
+    const w = bareWorld(1);
     const c = w.colonists[0];
     [c.x, c.y] = [w.hearth.x + 20, w.hearth.y];
     const e = monster(w, c.x + 0.5, c.y, false, 20);
@@ -161,7 +161,7 @@ describe('weapons (section 9.6)', () => {
   });
 
   it('a watchtower has two makeshift guns and upgrades to a heavy gun', () => {
-    const w = createWorld(1);
+    const w = bareWorld(1);
     Object.assign(w.stock, { wood: 100, scrap: 100, metal: 100, parts: 20, fuel: 1000 });
     build(w, 'watchtower');
     const tower = w.buildings.find((b) => b.type === 'watchtower')!;

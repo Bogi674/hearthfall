@@ -1,5 +1,8 @@
 // Balance numbers and content tuning. Values follow docs/GAME_DESIGN.md and are expected to change.
 
+/** Where a hearth stage may stand: anywhere on the ground, on a house floor, or on a floor in a closed room with its roof on. */
+export type Stands = 'anywhere' | 'floor' | 'room';
+
 export const BALANCE = {
   /** Section 18. */
   start: {
@@ -8,7 +11,7 @@ export const BALANCE = {
     /** Storage without any building. The Supply Cart holds the rest. */
     storage: 0,
     /** Where the Supply Cart stands, relative to the hearth. */
-    cart: { x: -1, y: 4 },
+    cart: { x: 2, y: 8 },
     weapon: 'pipe',
   },
   /** Section 3.2. Phases run in this order and repeat every day. */
@@ -19,34 +22,50 @@ export const BALANCE = {
     { name: 'Dawn', seconds: 30, work: true },
   ],
   map: {
-    width: 160,
-    height: 160,
+    width: 240,
+    height: 240,
     /** Tiles around the hearth that are always clear ground. */
     clearingRadius: 8,
-    /** Ruined town extends this far from the hearth. Trees thicken beyond it. */
-    townRadius: 50,
-    houseAttempts: 560,
-    houseCountMax: 70,
+    /** The ruined town reaches this far from the hearth. Trees thicken beyond it. */
+    townRadius: 84,
     houseWidth: [4, 7],
     houseDepth: [4, 6],
-    /** Chance that a wall tile of a ruined house has collapsed. */
-    wallGapChance: 0.3,
-    houseRubbleChance: 0.25,
-    streetRubbleChance: 0.04,
-    ponds: 4,
+    streetRubbleChance: 0.03,
+    ponds: 8,
     /** Side streets run parallel to the main roads at these offsets from the hearth. */
-    sideStreets: [-32, -17, 16, 31],
+    sideStreets: [-52, -30, -17, 16, 31, 50],
     pondRadius: [3, 5],
-    forestNoiseScale: 9,
-    /** Trees start to thicken this far from the hearth and reach full density this many tiles later. */
+    forestNoiseScale: 11,
+    /**
+     * Houses come in three kinds so that distances vary. A few neighbors stand close to the hearth, hamlets of two to six houses
+     * stand far apart, and lone houses stand by themselves out in the dark.
+     */
+    neighbors: { count: 4, between: [15, 27] },
+    hamlets: { count: [10, 13], from: 30, spacing: 28, size: [2, 6], spread: 9, houseGap: 3 },
+    lone: { count: 14, from: 34, spacing: 20 },
     /** The paddock beside the house that is always open ground (section 4). Size is in tiles, distance from the hearth. */
     yard: { size: 12, distance: 13 },
+    /** Trees start to thicken this far from the hearth and reach full density this many tiles later. */
     forestStart: 19,
-    forestRamp: 44,
+    forestRamp: 62,
   },
   temperature: {
     day1: -2,
     dropPerDay: 1,
+  },
+  /**
+   * Harvested ground grows back (M13). A tree, a stone heap, or a rubble pile that ran out comes back after some days as a smaller
+   * one. Growth happens at dawn, never near the hearth, and only on bare ground. It is slower than harvesting, so a crew that
+   * strips an area still finds it empty for days.
+   */
+  regrow: {
+    tree: { days: [4, 7], share: 0.5 },
+    ruinWall: { days: [5, 9], share: 0.35 },
+    rubble: { days: [4, 7], share: 0.4 },
+    /** Nothing grows back this close to the hearth, so the camp stays open. */
+    keepClear: 12,
+    /** A blocked spot is tried again on the next dawns this many times. */
+    retries: 3,
   },
   /** Weather (M10.2). A seeded chain picks each day's weather. Offsets add to the day's base temperature. */
   weather: {
@@ -81,28 +100,49 @@ export const BALANCE = {
     freezingThreshold: 20,
     /** Past its radius a heat source fades from the warm threshold to 0 over this fraction of its radius. */
     edgeFalloff: 0.6,
+    /** A closed room with a whole roof holds heat, so its tiles are this much warmer. */
+    indoorBonus: 10,
+    /** Heat that passes through a wall or window travels this many tiles farther. Doors cost nothing. */
+    wallCost: 3,
   },
   hearth: {
     /** Radius in tiles per hearth level, from section 5.2. */
     /** The Hearth House stages from section 5.2. Cost is what it takes to reach that stage. */
     levels: [
-      { name: 'Ruined House', radius: 8, fuelPerMinute: 3, hp: 4000, cost: {} },
-      { name: 'Patched Roof', radius: 10, fuelPerMinute: 4, hp: 4500, cost: { wood: 20, planks: 10 } },
-      { name: 'Rebuilt Walls', radius: 12, fuelPerMinute: 5, hp: 5000, cost: { planks: 40, stone: 10 } },
-      { name: 'Glazed and Stoved', radius: 14, fuelPerMinute: 6, hp: 5500, cost: { planks: 40, metal: 20 } },
-      { name: 'Restored Lodge', radius: 16, fuelPerMinute: 8, hp: 6000, cost: { planks: 80, metal: 60, parts: 10 } },
+      { name: 'Fire Pit', radius: 8, fuelPerMinute: 3, hp: 4000, cost: {}, stands: 'anywhere' as Stands },
+      { name: 'Stone Hearth', radius: 10, fuelPerMinute: 4, hp: 4500, cost: { wood: 20, planks: 10 }, stands: 'anywhere' as Stands },
+      { name: 'Iron Stove', radius: 12, fuelPerMinute: 5, hp: 5000, cost: { planks: 40, stone: 10 }, stands: 'floor' as Stands },
+      { name: 'Brick Fireplace', radius: 14, fuelPerMinute: 6, hp: 5500, cost: { planks: 40, metal: 20 }, stands: 'room' as Stands },
+      { name: 'Great Hearth', radius: 16, fuelPerMinute: 8, hp: 6000, cost: { planks: 80, metal: 60, parts: 10 }, stands: 'room' as Stands },
     ],
-    /** The run is lost after the hearth is out this long. */
+    /** The run is lost after a lit hearth is out this long. */
     outLossSeconds: 60,
-    /** Tiles kept for house rooms in every direction from the hearth (section 5.5). */
-    lot: 3,
+    /** Fuel it takes to light a smoldering hearth, and the builder seconds of kindling. */
+    lightFuel: 5,
+    lightSeconds: 6,
+    /** Moving the hearth costs this much wood plus half of its stage cost, and takes this many builder seconds. */
+    moveWood: 10,
+    moveSeconds: 12,
+  },
+  /** How worn ruined houses start (M12). Shares are chances per piece, and hit points are shares of the full amount. */
+  ruin: {
+    wallHp: [0.2, 0.8],
+    wallMissing: 0.15,
+    doorSurvives: 0.6,
+    windowChance: 0.12,
+    floorMissing: 0.12,
+    rubbleOnLostFloor: 0.5,
+    roofBroken: 0.4,
+    furnitureBroken: 0.55,
+    townExtraRoofBroken: 0.35,
+    townFurniture: 0.12,
   },
   colonist: {
     /** Tiles per second. */
     speed: 3,
     arriveDistance: 0.6,
-    /** Idle colonists wait in a ring this far from the hearth, outside the house lot. */
-    idleRadius: 4.6,
+    /** Idle colonists wait in a ring this far from the hearth. */
+    idleRadius: 2.2,
     /** Builders per construction site. */
     buildersPerSite: 3,
   },
@@ -136,7 +176,7 @@ export const BALANCE = {
     /** Spawn edges grow by one every this many nights, up to 4. */
     nightsPerEdge: 4,
     /** Monsters spawn on the sides of a square this many tiles out from the hearth. */
-    spawnDistance: 42,
+    spawnDistance: 56,
     /** From this day a small raid prowls in at this many seconds into the day (section 9.5). */
     raidFromDay: 3,
     raidAt: 120,
@@ -191,7 +231,7 @@ export const BALANCE = {
   expeditions: {
     maxSquad: 4,
     /** Squads walk slower than colonists in camp. Tiles per second. */
-    speed: 1.6,
+    speed: 2.4,
     searchSeconds: 60,
     rollSeconds: 6,
     /** Chance of a danger event per roll is danger times this, divided by the square root of squad size. */
@@ -210,7 +250,7 @@ export const BALANCE = {
     /** The most colonists the colony can hold. It matches the most seats on the airship. */
     maxColonists: 20,
     /** Tiles from the hearth where they appear, and how fast they walk toward the light. */
-    distance: 34,
+    distance: 46,
     speed: 1.2,
     joinDistance: 3,
   },

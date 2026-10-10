@@ -1,3 +1,4 @@
+import { bareWorld } from './helpers';
 import { describe, expect, it } from 'vitest';
 import { BALANCE } from '../src/data/balance';
 import { fuelFactor } from '../src/sim/query';
@@ -5,7 +6,7 @@ import { fuelFactor } from '../src/sim/query';
 import { nextWeather, temperatureFor, WEATHER_KINDS, type WeatherKind } from '../src/sim/weather';
 import { warmthSystem } from '../src/sim/systems/warmth';
 import { expeditionRisk } from '../src/sim/systems/expeditions';
-import { createWorld, stepWorld } from '../src/sim/world';
+import { stepWorld } from '../src/sim/world';
 
 function chainOf(seed: number, days: number): WeatherKind[] {
   const out: WeatherKind[] = [BALANCE.weather.firstDay];
@@ -15,7 +16,7 @@ function chainOf(seed: number, days: number): WeatherKind[] {
 
 describe('weather', () => {
   it('starts clear and forecasts tomorrow', () => {
-    const w = createWorld(3);
+    const w = bareWorld(3);
     expect(w.weather).toBe('clear');
     expect(WEATHER_KINDS).toContain(w.weatherNext);
   });
@@ -34,7 +35,7 @@ describe('weather', () => {
   });
 
   it('moves the forecast into today at dawn of the next day', () => {
-    const w = createWorld(4);
+    const w = bareWorld(4);
     const tomorrow = w.weatherNext;
     for (let i = 0; i < 10 * 575; i++) stepWorld(w);
     expect(w.day).toBe(2);
@@ -48,8 +49,8 @@ describe('weather', () => {
   });
 
   it('burns more fuel when it is colder', () => {
-    const warm = createWorld(1);
-    const cold = createWorld(1);
+    const warm = bareWorld(1);
+    const cold = bareWorld(1);
     warm.stock.fuel = cold.stock.fuel = 100;
     warm.temperature = 0;
     cold.temperature = -20;
@@ -60,8 +61,8 @@ describe('weather', () => {
   });
 
   it('a blizzard pulls the heat in outdoors', () => {
-    const calm = createWorld(1);
-    const storm = createWorld(1);
+    const calm = bareWorld(1);
+    const storm = bareWorld(1);
     storm.weather = 'blizzard';
     warthTick(calm);
     warthTick(storm);
@@ -70,14 +71,14 @@ describe('weather', () => {
   });
 
   it('a blizzard raises expedition risk', () => {
-    const w = createWorld(1);
+    const w = bareWorld(1);
     const clear = expeditionRisk(w, 2, 3);
     w.weather = 'blizzard';
     expect(expeditionRisk(w, 2, 3)).toBeGreaterThan(clear);
   });
 });
 
-function warthTick(w: ReturnType<typeof createWorld>) {
+function warthTick(w: ReturnType<typeof bareWorld>) {
   w.warmthKey = '';
   warmthSystem(w, 1);
 }

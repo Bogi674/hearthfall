@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { BALANCE } from '../src/data/balance';
 import { placeBuilding } from '../src/sim/placement';
 import { currentPhase } from '../src/sim/query';
-import { createWorld, stepWorld, TICKS_PER_SECOND, type World } from '../src/sim/world';
-import { finish } from './helpers';
+import { stepWorld, TICKS_PER_SECOND, type World } from '../src/sim/world';
+import { bareWorld, finish } from './helpers';
 
 const seconds = (w: World, s: number) => {
   for (let i = 0; i < s * TICKS_PER_SECOND && !w.lost; i++) stepWorld(w);
@@ -13,7 +13,7 @@ const at = (w: World, t: number) => {
 };
 
 /**
- * A 3 by 3 hall east of the house at stage 5, closed by walls with a door into the house.
+ * A 3 by 3 hall east of the hearth at stage 5, closed by walls with a door on the west.
  * Floors cover x from hearth.x + 2 to + 4 and y from hearth.y - 1 to + 1.
  */
 function hall(w: World) {
@@ -29,6 +29,7 @@ function hall(w: World) {
     cmd({ type: 'buildEdge', x: x + dx, y: y + 2, side: 'n', kind: 'wall', level: 1 });
   }
   for (let dy = -1; dy <= 1; dy++) cmd({ type: 'buildEdge', x: x + 5, y: y + dy, side: 'w', kind: 'wall', level: 1 });
+  for (const dy of [-1, 1]) cmd({ type: 'buildEdge', x: x + 2, y: y + dy, side: 'w', kind: 'wall', level: 1 });
   stepWorld(w);
   finish(w);
   return { x, y };
@@ -36,7 +37,7 @@ function hall(w: World) {
 
 describe('living in the house (section 5.7)', () => {
   it('colonists with no bed sleep on mats by the hearth, resting at half speed', () => {
-    const w = createWorld(1);
+    const w = bareWorld(1);
     for (const c of w.colonists) c.rest = 0.2;
     at(w, 360);
     seconds(w, 40);
@@ -50,7 +51,7 @@ describe('living in the house (section 5.7)', () => {
   });
 
   it('mat sleepers cost hope at dawn, up to a limit', () => {
-    const w = createWorld(1);
+    const w = bareWorld(1);
     w.hope = 50;
     at(w, 360);
     seconds(w, 20);
@@ -63,7 +64,7 @@ describe('living in the house (section 5.7)', () => {
   });
 
   it('at dusk colonists walk into the house, sit at tables and sofas, and sitting lifts hope at dawn', () => {
-    const w = createWorld(1);
+    const w = bareWorld(1);
     const { x, y } = hall(w);
     expect(placeBuilding(w, 'table', x + 3, y - 1, false)).toBe(true);
     expect(placeBuilding(w, 'sofa', x + 3, y, false)).toBe(true);
@@ -86,7 +87,7 @@ describe('living in the house (section 5.7)', () => {
 
   it('the evening bonus has a cap that lamps and plants lift', () => {
     const run = (decor: number) => {
-      const w = createWorld(1);
+      const w = bareWorld(1);
       const { x, y } = hall(w);
       const spots: [string, number, number][] = [['lamp', x + 2, y - 1], ['plant', x + 3, y - 1], ['plant', x + 4, y - 1], ['lamp', x + 2, y + 1]];
       for (const [type, sx, sy] of spots.slice(0, decor)) expect(placeBuilding(w, type as 'lamp' | 'plant', sx, sy, false)).toBe(true);
@@ -104,7 +105,7 @@ describe('living in the house (section 5.7)', () => {
     // Four decor pieces reach the limit.
     expect(run(4) - plain).toBeCloseTo(BALANCE.hope.decorMax, 5);
     // Without decor the evening gives mingleMax.
-    const bare = createWorld(1);
+    const bare = bareWorld(1);
     bare.hope = 20;
     for (const c of bare.colonists) c.hunger = 1;
     at(bare, 539.95);
@@ -115,7 +116,7 @@ describe('living in the house (section 5.7)', () => {
   });
 
   it('with a table in the house, colonists eat at it in the evening and not before they are very hungry', () => {
-    const w = createWorld(1);
+    const w = bareWorld(1);
     const { x, y } = hall(w);
     placeBuilding(w, 'table', x + 3, y - 1, false);
     finish(w);
@@ -146,7 +147,7 @@ describe('crew size and drifters (section 6.6)', () => {
   };
 
   it('the colony starts small and a drifter walks in on the dusk of day 3 when there is a bed and hope', () => {
-    const w = createWorld(1);
+    const w = bareWorld(1);
     expect(w.colonists.length).toBe(BALANCE.start.colonists);
     expect(BALANCE.start.colonists).toBe(7);
     tents(w, 2);
@@ -160,20 +161,20 @@ describe('crew size and drifters (section 6.6)', () => {
   });
 
   it('no drifter comes without a free bed, with low hope, or at the crew limit', () => {
-    const noBed = createWorld(1);
+    const noBed = bareWorld(1);
     dusk(noBed);
     expect(noBed.drifter).toBeNull();
-    const sad = createWorld(1);
+    const sad = bareWorld(1);
     tents(sad, 2);
     sad.hope = 40;
     dusk(sad);
     expect(sad.drifter).toBeNull();
-    const full = createWorld(1);
+    const full = bareWorld(1);
     tents(full, 6);
     while (full.colonists.length < 20) full.colonists.push({ ...full.colonists[0], id: full.nextId++, name: `Extra ${full.colonists.length}` });
     dusk(full);
     expect(full.drifter).toBeNull();
-    const day4 = createWorld(1);
+    const day4 = bareWorld(1);
     tents(day4, 2);
     day4.dayTime = 299.95;
     day4.day = 4;

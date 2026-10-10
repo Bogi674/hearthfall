@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { LookColor } from '../data/looks';
+import { injectSurface, type Surface } from './surfaces';
 
 // Palette from section 12.3 of docs/GAME_DESIGN.md. Every render color starts here.
 export const PALETTE = {
@@ -74,7 +75,7 @@ export function installHearthFog(): void {
  * visibility: 1 when revealed, lower in the fog, where the prop turns to a grey silhouette, and hidden near 0.
  * Cold props shift to the cold tint and gather snow on upward faces.
  */
-export function createPropMaterial(warm: THREE.Color, cold: THREE.Color, snow: boolean): THREE.MeshStandardMaterial {
+export function createPropMaterial(warm: THREE.Color, cold: THREE.Color, snow: boolean, surface?: Surface): THREE.MeshStandardMaterial {
   const material = new THREE.MeshStandardMaterial({ roughness: 0.95, metalness: 0, flatShading: true });
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uWarmTint = { value: warm };
@@ -98,6 +99,8 @@ export function createPropMaterial(warm: THREE.Color, cold: THREE.Color, snow: b
   if (vColor.b < 0.99) diffuseColor.rgb = vec3(dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11))) * (0.15 + 0.45 * vColor.b);
 `,
       );
+    // The painted surface of the house, so trees, rubble, and ruins share its look.
+    if (surface) injectSurface(shader, surface);
   };
   return material;
 }

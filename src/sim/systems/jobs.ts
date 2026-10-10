@@ -3,14 +3,17 @@
 // Workers stand where the work is: next to the tree being cut, at the stove, or inside a building.
 import { BALANCE } from '../../data/balance';
 import { BUILDINGS } from '../../data/buildings';
-import { HOUSE } from '../../data/house';
-import { LAST_NIGHT } from '../../data/vehicle';
-import { covered, houseExtent, walkable } from '../house';
-import { bandAt, center, currentPhase, isBuilt } from '../query';
+import { HOUSE, LIGHT_SITE, MOVE_SITE } from '../../data/house';
+import { LAST_NIGHT, STASH_SITE } from '../../data/vehicle';
+import { ANIMALS, SCAVENGE, SCAVENGE_SITE, WILD } from '../../data/wild';
+import { covered, walkable } from '../house';
+import { atHome, bandAt, capacity, center, currentPhase, hopeSpeed, isBuilt, isUsable, stockTotal } from '../query';
 import { routeFor } from '../route';
-import type { Building, Colonist, HouseEdge, Task, World } from '../world';
+import { addLog, type Building, type Colonist, type HouseEdge, type Task, type World } from '../world';
 
 const C = BALANCE.colonist;
+/** Site ids for rubble clearing are this minus the tile index, so each tile has its own. */
+export const CLEAR_SITE = -1000;
 /** Where workers stand inside indoor buildings, relative to the center. */
 const INDOOR_SPOTS = [[-0.35, 0.25], [0.35, 0.25], [0, -0.3]];
 
@@ -40,20 +43,22 @@ export function jobsSystem(world: World, dt: number): void {
   for (const c of world.colonists) {
     if (c.job !== null && !byId.has(c.job)) c.job = null;
     if (c.duty !== null && !byId.has(c.duty) && !ports.has(c.duty)) c.duty = null;
-    if (c.bed !== null && (!byId.has(c.bed) || !isBuilt(byId.get(c.bed)!))) c.bed = null;
+    if (c.bed !== null && (!byId.has(c.bed) || !isUsable(byId.get(c.bed)!) || !atHome(world, byId.get(c.bed)!))) c.bed = null;
   }
 
   for (const b of world.buildings) {
     // Night duty posts take defenders, who keep their day job.
     const slot = BUILDINGS[b.type].nightDuty ? 'duty' : 'job';
+    // Broken furniture has no work to give until it is mended.
+    const slots = b.broken ? 0 : b.workers;
     const assigned = world.colonists.filter((c) => c[slot] === b.id);
-    for (const c of assigned.slice(b.workers)) c[slot] = null;
-    for (let n = assigned.length; n < b.workers; n++) {
+    for (const c of assigned.slice(slots)) c[slot] = null;
+    for (let n = assigned.length; n < slots; n++) {
       const idle = world.colonists.find((c) => c[slot] === null && c.expedition === null);
       if (!idle) break;
       idle[slot] = b.id;
     }
-    const beds = isBuilt(b) ? (BUILDINGS[b.type].beds ?? 0) : 0;
+    const beds = isUsable(b) && atHome(world, b) ? (BUILDINGS[b.type].beds ?? 0) : 0;
     let used = world.colonists.filter((c) => c.bed === b.id).length;
     for (const c of world.colonists) {
       if (used >= beds) break;
@@ -118,6 +123,8 @@ export function jobsSystem(world: World, dt: number): void {
     c.task = arrived ? plan.task : 'walk';
     c.asleep = c.task === 'sleep';
     if (c.task === 'eat' || c.task === 'mingle') world.socialSeconds += dt;
+    if (c.hunt) huntStep(world, c, dt);
+    else if (!c.hunt && c.task === 'hunt') c.task = 'walk';
   }
   world.matSleepers = Math.max(world.matSleepers, world.colonists.filter((c) => c.asleep && c.bed === null).length);
 }
@@ -134,7 +141,7 @@ function seatPlan(world: World, byId: Map<number, Building>): Map<number, Seat> 
   const seats: Seat[] = [];
   for (const kind of ['eat', 'mingle'] as const) {
     for (const b of world.buildings) {
-      if (BUILDINGS[b.type].social !== kind || !isBuilt(b) || b.hp <= 0) continue;
+      if (BUILDINGS[b.type].social !== kind || !isUsable(b) || b.hp <= 0 || !atHome(world, b)) continue;
       for (let y = b.y; y < b.y + b.h; y++) for (let x = b.x; x < b.x + b.w; x++) seats.push({ x, y, storey: b.storey, kind });
     }
   }
@@ -146,6 +153,62 @@ function seatPlan(world: World, byId: Map<number, Building>): Map<number, Seat> 
   return plan;
 }
 
+/** Where a hunter goes next: after a marked animal, or back to the lodge with meat. Null when there is nothing to hunt. */
+function huntTarget(world: World, c: Colonist, lodge: Building): Plan | null {
+  const home = center(lodge);
+  if (c.hunt && c.hunt.carry > 0) return { x: home.x, y: home.y, task: 'work' };
+  let animal = c.hunt ? world.animals.find((a) => a.id === c.hunt!.animal) : undefined;
+  if (!animal) {
+    // Mark the nearest animal in range that nobody else is after.
+    const range = WILD.huntRange;
+    animal = world.animals
+      .filter((a) => (a.hunter === null || a.hunter === c.id) && Math.hypot(a.x - home.x, a.y - home.y) <= range)
+      .sort((a, b) => Math.hypot(a.x - c.x, a.y - c.y) - Math.hypot(b.x - c.x, b.y - c.y))[0];
+    if (!animal) {
+      c.hunt = null;
+      return null;
+    }
+    animal.hunter = c.id;
+    c.hunt = { animal: animal.id, carry: 0 };
+  }
+  return { x: animal.x, y: animal.y, task: 'hunt' };
+}
+
+/** Finishes a hunt beside the animal, or hands the meat in at the lodge. Runs after the colonist has moved. */
+function huntStep(world: World, c: Colonist, dt: number): void {
+  const lodge = c.job === null ? undefined : world.buildings.find((b) => b.id === c.job);
+  if (!c.hunt) return;
+  if (!lodge || !BUILDINGS[lodge.type].hunt) {
+    for (const a of world.animals) if (a.hunter === c.id) [a.hunter, a.caught] = [null, 0];
+    c.hunt = null;
+    return;
+  }
+  const home = center(lodge);
+  if (c.hunt.carry > 0) {
+    if (Math.hypot(home.x - c.x, home.y - c.y) > 1.8) return;
+    const meat = Math.min(c.hunt.carry, Math.max(0, capacity(world) - stockTotal(world)));
+    world.stock.rawFood += meat;
+    addLog(world, `${c.name} brought back ${Math.round(c.hunt.carry)} raw food from the hunt.`, home);
+    c.hunt = null;
+    return;
+  }
+  const animal = world.animals.find((a) => a.id === c.hunt!.animal);
+  if (!animal) {
+    c.hunt = null;
+    return;
+  }
+  if (Math.hypot(animal.x - c.x, animal.y - c.y) > 1.2) {
+    animal.caught = 0;
+    return;
+  }
+  c.task = 'hunt';
+  animal.caught += dt * hopeSpeed(world);
+  if (animal.caught < WILD.killSeconds) return;
+  world.animals = world.animals.filter((a) => a !== animal);
+  c.hunt = { animal: -1, carry: ANIMALS[animal.kind].meat };
+  addLog(world, `${c.name} brought down a ${ANIMALS[animal.kind].name.toLowerCase()}.`, animal);
+}
+
 /** Colonists with no finished bed sleep on mats on the floor of the house, around the hearth. */
 function matPlan(world: World, byId: Map<number, Building>): Map<number, { x: number; y: number }> {
   const plan = new Map<number, { x: number; y: number }>();
@@ -153,7 +216,7 @@ function matPlan(world: World, byId: Map<number, Building>): Map<number, { x: nu
   for (const c of world.colonists) {
     if (c.expedition !== null || c.duty !== null) continue;
     const bed = c.bed === null ? undefined : byId.get(c.bed);
-    if (bed && isBuilt(bed)) continue;
+    if (bed && isUsable(bed)) continue;
     plan.set(c.id, { x: world.hearth.x - 1 + (k % 3), y: world.hearth.y - 1 + (Math.floor(k / 3) % 3) });
     k++;
   }
@@ -187,6 +250,11 @@ function planFor(world: World, c: Colonist, byId: Map<number, Building>, ports: 
   }
 
   if (job && !isBuilt(job)) return { ...buildSpot(job, siteLoad.get(job.id) ?? 0), storey: job.storey, task: 'build', site: job.id };
+  // Hunters walk out after animals and carry the meat back (M13).
+  if (job && BUILDINGS[job.type].hunt && !job.broken) {
+    const target = huntTarget(world, c, job);
+    if (target) return target;
+  }
   // Nobody stands at a job that is too cold to work. They wait by the hearth.
   if (job && bandAt(world, center(job).x, center(job).y) !== 'freezing') return { ...workSpot(world, job, index), task: 'work' };
   if (!job) {
@@ -203,8 +271,8 @@ const dist = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.
 
 function idleSpot(world: World, c: Colonist): Plan {
   const a = c.id * 2.4;
-  // The ring stays outside the house as it grows.
-  const r = Math.max(C.idleRadius, houseExtent(world) + 1.6);
+  // People with nothing to do gather around the fire.
+  const r = 1.5 + (c.id % 3) * 0.5;
   return { x: world.hearth.x + Math.cos(a) * r, y: world.hearth.y + Math.sin(a) * r, task: 'idle' };
 }
 
@@ -229,20 +297,36 @@ function standStorey(world: World, x: number, y: number, storey: number): number
 function sitesOf(world: World): Site[] {
   const out: Site[] = [];
   for (const b of world.buildings) {
-    if (!isBuilt(b) || b.salvage !== null) out.push({ id: b.id, ...center(b), cap: C.buildersPerSite, spot: (n) => ({ ...buildSpot(b, n), storey: b.storey }) });
+    if (!isBuilt(b) || b.salvage !== null || b.repair !== null) out.push({ id: b.id, ...center(b), cap: C.buildersPerSite, spot: (n) => ({ ...buildSpot(b, n), storey: b.storey }) });
   }
   const around = (x: number, y: number) => (n: number) => ({ x: x + Math.cos(n * 2.1) * 0.25, y: y + Math.sin(n * 2.1) * 0.25 });
   for (const f of world.house.floors) {
-    if (f.construct > 0) out.push({ id: f.id, x: f.x, y: f.y, cap: HOUSE.buildersPerPiece, spot: (n) => ({ ...around(f.x, f.y)(n), storey: standStorey(world, f.x, f.y, f.storey) }) });
+    if (f.construct > 0 || f.roofWork !== null) out.push({ id: f.id, x: f.x, y: f.y, cap: HOUSE.buildersPerPiece, spot: (n) => ({ ...around(f.x, f.y)(n), storey: standStorey(world, f.x, f.y, f.storey) }) });
   }
   for (const e of world.house.edges) {
-    if (e.construct <= 0 && !e.pending) continue;
+    if (e.construct <= 0 && !e.pending && e.repair === null) continue;
     // Builders stand on the open side of the wall, away from the floor if there is one.
     const [a, b] = e.side === 'n' ? [[e.x, e.y], [e.x, e.y - 1]] : [[e.x, e.y], [e.x - 1, e.y]];
     const floored = (p: number[]) => covered(world, p[0], p[1], e.storey);
     const at = floored(a) && !floored(b) ? b : a;
     out.push({ id: e.id, x: (a[0] + b[0]) / 2, y: (a[1] + b[1]) / 2, cap: HOUSE.buildersPerPiece, spot: (n) => ({ ...around(at[0], at[1])(n), storey: standStorey(world, at[0], at[1], e.storey) }) });
   }
+  // Rubble the colony was told to clear, lighting the hearth, moving it, and opening the stash.
+  const w = world.map.width;
+  for (const c of world.clearing) {
+    const [x, y] = [c.tile % w, Math.floor(c.tile / w)];
+    out.push({ id: CLEAR_SITE - c.tile, x, y, cap: HOUSE.buildersPerPiece, spot: around(x, y) });
+  }
+  // Ruined houses the colony was sent to search (M13).
+  for (const house of world.houses) {
+    if (house.state !== 'working') continue;
+    const [hx, hy] = [house.x + house.w / 2, house.y + house.d / 2];
+    out.push({ id: SCAVENGE_SITE - house.id, x: hx, y: hy, cap: SCAVENGE.crew, spot: around(hx, hy) });
+  }
+  const h = world.hearth;
+  if (h.lighting !== null) out.push({ id: LIGHT_SITE, x: h.x, y: h.y, cap: 1, spot: around(h.x, h.y) });
+  if (world.hearthSite) out.push({ id: MOVE_SITE, x: world.hearthSite.x, y: world.hearthSite.y, cap: 3, spot: around(world.hearthSite.x, world.hearthSite.y) });
+  if (world.stash?.state === 'found') out.push({ id: STASH_SITE, x: world.stash.x, y: world.stash.y, cap: 2, spot: around(world.stash.x, world.stash.y) });
   return out;
 }
 

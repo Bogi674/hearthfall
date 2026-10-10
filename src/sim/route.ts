@@ -1,7 +1,7 @@
 // Colonist routes around the house (M10.1, storeys in M11). Outside the house colonists still walk straight lines.
 // Near it they walk tile to tile, so finished walls stop them and doors let them through.
 // Stairs join one storey to the next, and upper storeys can only be walked where there is a floor.
-import { hasStairs, houseExtent, isLanding, stepBlocked, walkable } from './house';
+import { hasStairs, nearPieces, stepBlocked, walkable } from './house';
 import type { World } from './world';
 
 export interface Point {
@@ -16,14 +16,11 @@ export interface Waypoint extends Point {
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
-/** True when the straight walk between two points passes through the house area. */
+/** True when the straight walk between two points passes by a wall or a floor of any house, ruin or new. */
 function crossesHouse(world: World, a: Point, b: Point): boolean {
-  const half = houseExtent(world) + 0.6;
   const n = Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) * 4) + 1;
   for (let i = 0; i <= n; i++) {
-    const x = a.x + ((b.x - a.x) * i) / n;
-    const y = a.y + ((b.y - a.y) * i) / n;
-    if (Math.abs(x - world.hearth.x) <= half && Math.abs(y - world.hearth.y) <= half) return true;
+    if (nearPieces(world, a.x + ((b.x - a.x) * i) / n, a.y + ((b.y - a.y) * i) / n)) return true;
   }
   return false;
 }
@@ -42,18 +39,21 @@ export function routeFor(world: World, from: Point & { storey?: number }, to: Po
   const fromStorey = from.storey ?? 0;
   const toStorey = to.storey ?? 0;
   if (fromStorey === 0 && toStorey === 0 && !crossesHouse(world, from, to)) return [];
-  const R = houseExtent(world) + 2;
-  const lo = { x: world.hearth.x - R, y: world.hearth.y - R };
-  const S = 2 * R + 1;
+  // The search runs in a box around the walk, so a ruin anywhere on the map costs the same as one beside the hearth.
+  const margin = 6;
+  const lo = { x: Math.max(0, Math.floor(Math.min(from.x, to.x)) - margin), y: Math.max(0, Math.floor(Math.min(from.y, to.y)) - margin) };
+  const hi = { x: Math.min(world.map.width - 1, Math.ceil(Math.max(from.x, to.x)) + margin), y: Math.min(world.map.height - 1, Math.ceil(Math.max(from.y, to.y)) + margin) };
+  const SX = hi.x - lo.x + 1;
+  const SY = hi.y - lo.y + 1;
   const layers = Math.max(fromStorey, toStorey, world.house.floors.reduce((m, f) => Math.max(m, f.storey), 0)) + 1;
-  const tile = (p: Point) => ({ x: clamp(Math.round(p.x), lo.x, lo.x + S - 1), y: clamp(Math.round(p.y), lo.y, lo.y + S - 1) });
+  const tile = (p: Point) => ({ x: clamp(Math.round(p.x), lo.x, hi.x), y: clamp(Math.round(p.y), lo.y, hi.y) });
   const start = tile(from);
   const goal = tile(to);
-  const id = (s: number, x: number, y: number) => s * S * S + (y - lo.y) * S + (x - lo.x);
+  const id = (s: number, x: number, y: number) => s * SX * SY + (y - lo.y) * SX + (x - lo.x);
 
   // A star over the tiles of the house area on every storey. Steps cost 1, diagonals 1.41.
-  const cost = new Float64Array(S * S * layers).fill(Infinity);
-  const prev = new Int32Array(S * S * layers).fill(-1);
+  const cost = new Float64Array(SX * SY * layers).fill(Infinity);
+  const prev = new Int32Array(SX * SY * layers).fill(-1);
   type Node = { i: number; s: number; x: number; y: number; f: number };
   const open: Node[] = [{ i: id(fromStorey, start.x, start.y), s: fromStorey, x: start.x, y: start.y, f: 0 }];
   cost[open[0].i] = 0;
@@ -62,7 +62,7 @@ export function routeFor(world: World, from: Point & { storey?: number }, to: Po
     const dy = Math.abs(y - goal.y);
     return dx + dy - 0.59 * Math.min(dx, dy) + Math.abs(s - toStorey) * STAIR_COST;
   };
-  const closed = new Uint8Array(S * S * layers);
+  const closed = new Uint8Array(SX * SY * layers);
   let found = false;
   const relax = (cur: Node, ns: number, nx: number, ny: number, step: number) => {
     const ni = id(ns, nx, ny);
@@ -86,7 +86,7 @@ export function routeFor(world: World, from: Point & { storey?: number }, to: Po
     for (const [dx, dy] of STEPS) {
       const nx = cur.x + dx;
       const ny = cur.y + dy;
-      if (nx < lo.x || ny < lo.y || nx >= lo.x + S || ny >= lo.y + S) continue;
+      if (nx < lo.x || ny < lo.y || nx > hi.x || ny > hi.y) continue;
       if (!walkable(world, nx, ny, s)) continue;
       if (dx !== 0 && dy !== 0) {
         // No cutting corners through a wall or a gap in the floor.
@@ -97,15 +97,15 @@ export function routeFor(world: World, from: Point & { storey?: number }, to: Po
       relax(cur, s, nx, ny, dx !== 0 && dy !== 0 ? 1.41 : 1);
     }
     if (hasStairs(world, cur.x, cur.y, s) && s + 1 < layers) relax(cur, s + 1, cur.x, cur.y, STAIR_COST);
-    if (isLanding(world, cur.x, cur.y, s)) relax(cur, s - 1, cur.x, cur.y, STAIR_COST);
+    if (s > 0 && hasStairs(world, cur.x, cur.y, s - 1)) relax(cur, s - 1, cur.x, cur.y, STAIR_COST);
   }
   if (!found) return null;
 
   const nodes: { x: number; y: number; s: number }[] = [];
   for (let i = id(toStorey, goal.x, goal.y); i !== -1; i = prev[i]) {
-    const s = Math.floor(i / (S * S));
-    const r = i - s * S * S;
-    nodes.push({ x: lo.x + (r % S), y: lo.y + Math.floor(r / S), s });
+    const s = Math.floor(i / (SX * SY));
+    const r = i - s * SX * SY;
+    nodes.push({ x: lo.x + (r % SX), y: lo.y + Math.floor(r / SX), s });
   }
   nodes.reverse();
   nodes.shift();

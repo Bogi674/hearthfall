@@ -7,15 +7,19 @@ import { BUILDINGS, type BuildingType } from '../src/data/buildings';
 import { POIS, type ItemId, type PoiType } from '../src/data/pois';
 import type { Amounts } from '../src/data/resources';
 import { COMPONENT_IDS, COMPONENTS, type ComponentId } from '../src/data/vehicle';
-import { buildingUpgradeError, componentError, hearthUpgradeError, launchError } from '../src/sim/commands';
-import { floorAt } from '../src/sim/house';
-import { floorPlacementError, padError, placementError, siteError } from '../src/sim/placement';
+import { buildingUpgradeError, componentError, launchError } from '../src/sim/commands';
+import { hearthUpgradeError, lightError } from '../src/sim/hearth';
+import { isIndoors } from '../src/sim/house';
+import { scavengeError } from '../src/sim/manage';
+import { mendArea, mendCount, planMend } from '../src/sim/mend';
+import { padError, placementError, siteError } from '../src/sim/placement';
 import { bandAt, capacity, center, currentPhase, launchFuelNeeded, missing, stockTotal } from '../src/sim/query';
 import type { World } from '../src/sim/world';
-import { findSpot } from './helpers';
+import { findSpot, partitionRuin, sealGaps } from './helpers';
 
-const RING = 5;
-const OUTSIDE = 8;
+/** The ring of barricades stands outside the old house, which reaches 7 tiles from the hearth. */
+const RING = 9;
+const OUTSIDE = 12;
 const ITEM_POIS: [ItemId, PoiType][] = [
   ['pressureValve', 'gasStation'],
   ['silkCanopy', 'farmhouse'],
@@ -25,12 +29,14 @@ const ITEM_POIS: [ItemId, PoiType][] = [
 type Target = BuildingType | 'hearth' | 'lookout' | ComponentId;
 const TARGETS: Target[] = [
   'woodcutterCamp', 'tent', 'quarry', 'charcoalKiln', 'foragerHut', 'kitchen', 'tent', 'sawmill', 'watchtower', 'watchtower',
-  'woodcutterCamp', 'gate', 'lookoutPost', 'hearth', 'salvageYard', 'storageShed', 'lookout', 'smelter', 'hearth', 'watchtower', 'watchtower',
+  'salvageYard', 'huntingLodge', 'woodcutterCamp', 'gate', 'lookoutPost', 'hearth', 'storageShed', 'lookout', 'smelter', 'hearth', 'watchtower', 'watchtower',
   'lookout', 'storageShed',
   'workshop', 'sawmill', 'woodcutterCamp', 'storageShed', 'charcoalKiln',
   'airshipDock', ...COMPONENT_IDS,
 ];
-const INSIDE: BuildingType[] = ['tent', 'watchtower', 'lookoutPost'];
+/** Things that need no ground of their own go where the tile is warm, since a worker will not stand on freezing ground. */
+const INSIDE: BuildingType[] = ['tent', 'watchtower', 'lookoutPost', 'charcoalKiln', 'sawmill', 'kitchen', 'smelter', 'workshop'];
+const warmAt = (w: World) => (x: number, y: number) => bandAt(w, x, y) === 'warm';
 
 const count = (w: World, t: BuildingType) => w.buildings.filter((b) => b.type === t).length;
 const ring = (w: World, r: number) => {
@@ -42,54 +48,124 @@ const ring = (w: World, r: number) => {
 const isComponent = (t: Target): t is ComponentId => t in COMPONENTS;
 
 /** The first target not done yet, and what it costs. */
-function nextTarget(w: World): { target: Target; cost: Amounts } | null {
+function nextTarget(w: World, skip: Set<number>): { target: Target; cost: Amounts; index: number } | null {
   const seen = new Map<Target, number>();
-  for (const t of TARGETS) {
+  for (const [index, t] of TARGETS.entries()) {
     seen.set(t, (seen.get(t) ?? 0) + 1);
+    if (skip.has(index)) continue;
     if (t === 'hearth') {
-      if (w.hearth.level <= seen.get(t)!) return { target: t, cost: BALANCE.hearth.levels[w.hearth.level].cost };
+      if (w.hearth.level <= seen.get(t)!) return { target: t, cost: BALANCE.hearth.levels[w.hearth.level].cost, index };
     } else if (t === 'lookout') {
       // Upgrade the lookout only while a place with a rare item is still unknown.
       const post = w.buildings.find((b) => b.type === 'lookoutPost');
       const hidden = ITEM_POIS.some(([, type]) => w.pois.find((p) => p.type === type)!.seen === 'hidden');
-      if (post && hidden && post.level <= seen.get(t)!) return { target: t, cost: BUILDINGS.lookoutPost.upgrades![post.level - 1] };
+      if (post && hidden && post.level <= seen.get(t)!) return { target: t, cost: BUILDINGS.lookoutPost.upgrades![post.level - 1], index };
     } else if (isComponent(t)) {
-      if (!w.airship.built.includes(t) && w.airship.building !== t) return { target: t, cost: COMPONENTS[t].cost };
+      if (!w.airship.built.includes(t) && w.airship.building !== t) return { target: t, cost: COMPONENTS[t].cost, index };
     } else if (count(w, t) < seen.get(t)!) {
-      return { target: t, cost: BUILDINGS[t].cost };
+      return { target: t, cost: BUILDINGS[t].cost, index };
     }
   }
   return null;
 }
 
+/** The nearest spot on a house floor in a closed room with a whole roof where the piece of furniture can stand. */
+function furnishSpot(w: World, type: BuildingType): { x: number; y: number } | null {
+  const [fw, fh] = BUILDINGS[type].size;
+  const floors = w.house.floors
+    .filter((f) => f.storey === 0 && Math.hypot(f.x - w.hearth.x, f.y - w.hearth.y) < 14)
+    .sort((a, b) => Math.hypot(a.x - w.hearth.x, a.y - w.hearth.y) - Math.hypot(b.x - w.hearth.x, b.y - w.hearth.y));
+  for (const f of floors) {
+    if (placementError(w, type, f.x, f.y, false)) continue;
+    let indoors = true;
+    for (let dy = 0; dy < fh; dy++) for (let dx = 0; dx < fw; dx++) indoors &&= isIndoors(w, f.x + dx, f.y + dy, 0);
+    if (indoors) return { x: f.x, y: f.y };
+  }
+  return null;
+}
+
+/** The area of the starting ruin, and the rooms of it that are mended one after the other. */
+const ruinArea = (w: World) => ({ x: w.hearth.x - 9, y: w.hearth.y - 4, w: 19, h: 13 });
+
 /**
- * Puts one more bed in the house: floors on the east side of the house, two tiles for each bed, kept inside the
- * ring of walls. Rows and columns are tried nearest first, and the drafting table has its own row.
+ * Plays the old house like a person would: light the hearth, close the gaps, wall off the rooms, mend what is worn,
+ * and later clear the ruins the launch pad needs. Orders are small so a thin stockpile still makes progress.
  */
-function houseBed(w: World): void {
+function houseWork(w: World, started: boolean): void {
+  if (!w.hearth.ignited && !lightError(w)) w.commands.push({ type: 'lightHearth' });
+  // The first goal is wood for the colony. The house waits for a woodcutter.
+  if (!started || w.stock.wood < 40) return;
+  const area = ruinArea(w);
+  const reserve = 25;
+  const sites = w.house.edges.filter((e) => e.construct > 0).length;
+  if (sites < 12) {
+    if (w.stock.wood > reserve + 20) sealGaps(w, area);
+    if (w.stock.wood > reserve + 20) partitionRuin(w);
+  }
+  // Mend room by room, nearest the hearth first, as long as the stockpile can pay.
   const { x, y } = w.hearth;
-  for (const dx of [2, 3, 4]) {
-    for (const dy of [0, 2, -3, 4]) {
-      const tiles: [number, number][] = [[x + dx, y + dy], [x + dx, y + dy + 1]];
-      if (tiles.some(([tx, ty]) => Math.max(Math.abs(tx - x), Math.abs(ty - y)) > 4)) continue;
-      if (!placementError(w, 'bed', tiles[0][0], tiles[0][1], false)) {
-        w.commands.push({ type: 'place', building: 'bed', x: tiles[0][0], y: tiles[0][1], rotated: false });
-        return;
-      }
-      const missingFloor = tiles.find(([tx, ty]) => !floorAt(w, tx, ty));
-      if (missingFloor && !floorPlacementError(w, missingFloor[0], missingFloor[1], 'boards')) {
-        w.commands.push({ type: 'paintFloor', x: missingFloor[0], y: missingFloor[1], kind: 'boards' });
-        return;
-      }
-    }
+  const rooms = [
+    { x: x - 3, y: y - 2, w: 7, h: 5 },
+    { x: x - 7, y: y - 2, w: 4, h: 5 },
+    { x: x + 4, y: y - 2, w: 4, h: 5 },
+    { x: x - 3, y: y + 3, w: 7, h: 3 },
+    { x: x - 7, y: y - 2, w: 4, h: 5, storey: 1 },
+  ];
+  for (const r of rooms) {
+    const storey = r.storey ?? 0;
+    const plan = planMend(w, r, storey);
+    if (mendCount(plan) === 0 || w.stock.wood < reserve + (plan.cost.wood ?? 0)) continue;
+    mendArea(w, r, storey);
+    return;
   }
 }
 
+/** Sends two colonists to search the nearest unsearched house the colony has seen, one house at a time and only with daylight to spare. */
+function scavengeNearby(w: World): void {
+  if (currentPhase(w).name !== 'Day' || currentPhase(w).left < 150 || w.houses.some((h) => h.state === 'working')) return;
+  const open = w.houses
+    .filter((h) => h.state === 'fresh' && !scavengeError(w, h.id) && Math.hypot(h.x - w.hearth.x, h.y - w.hearth.y) < 55)
+    .sort((a, b) => Math.hypot(a.x - w.hearth.x, a.y - w.hearth.y) - Math.hypot(b.x - w.hearth.x, b.y - w.hearth.y));
+  if (open[0]) w.commands.push({ type: 'scavenge', house: open[0].id });
+}
+
+/** Puts one more bed in a closed room of the house. */
+function houseBed(w: World): void {
+  const spot = furnishSpot(w, 'bed');
+  if (spot) w.commands.push({ type: 'place', building: 'bed', x: spot.x, y: spot.y, rotated: false });
+}
+
+/** Ruins crowd the ground. The crew takes the ones on the nearest site apart, and clears its rubble, so the pad can go down. */
+function padClearing(w: World): void {
+  let best: { x: number; y: number; n: number } | null = null;
+  for (let y = w.hearth.y - 24; y <= w.hearth.y + 24; y++) {
+    for (let x = w.hearth.x - 24; x <= w.hearth.x + 24; x++) {
+      const d = Math.hypot(x + 2.5 - w.hearth.x, y + 2.5 - w.hearth.y);
+      if (d < OUTSIDE + 4 || d > 28) continue;
+      const [x0, y0, x1, y1] = [x - 1, y - 1, x + 7, y + 7];
+      const n = w.house.floors.filter((f) => f.x >= x0 && f.x < x1 && f.y >= y0 && f.y < y1).length + w.house.edges.filter((e) => e.x >= x0 && e.x <= x1 && e.y >= y0 && e.y <= y1).length;
+      if (!best || n < best.n) best = { x, y, n };
+    }
+  }
+  if (!best) return;
+  const r = { x: best.x - 1, y: best.y - 1, w: 8, h: 8 };
+  w.commands.push({ type: 'demolishArea', ...r });
+  w.commands.push({ type: 'mendArea', ...r });
+}
+
+/** What the player is working toward, for debugging a run. */
+export const trace = { target: '', crew: '' };
+
 export function fullRunPlayer() {
+  /** Targets the town has no room for, such as a quarry with no stone nearby. A player would give up on them and move on. */
+  const skip = new Set<number>();
   return (w: World) => {
     const phase = currentPhase(w);
     const s = w.stock;
-    const next = nextTarget(w);
+    const next = nextTarget(w, skip);
+    trace.target = next ? String(next.target) : 'none';
+    houseWork(w, count(w, 'woodcutterCamp') > 0 && count(w, 'charcoalKiln') > 0);
+    scavengeNearby(w);
 
     // Work toward the next target.
     if (next) {
@@ -102,8 +178,12 @@ export function fullRunPlayer() {
       } else if (isComponent(t)) {
         if (!componentError(w, t)) w.commands.push({ type: 'buildComponent', component: t });
       } else {
-        const spot = findSpot(w, t, INSIDE.includes(t) ? 0 : OUTSIDE, t === 'woodcutterCamp' ? 30 : 10);
+        const inside = INSIDE.includes(t);
+        // Walls stop heat, so the buildings people live and stand guard in go where the tile is warm.
+        const nodes = t === 'woodcutterCamp' ? 30 : t === 'quarry' ? 4 : 10;
+        const spot = (inside ? findSpot(w, t, 0, nodes, warmAt(w)) : null) ?? findSpot(w, t, inside ? 0 : OUTSIDE, nodes);
         if (spot) w.commands.push({ type: 'place', building: t, x: spot.x, y: spot.y, rotated: false });
+        else if (!missing(w, BUILDINGS[t].cost)) skip.add(next.index);
       }
     }
     // Colonists without a bed sleep on mats and cost hope. Extra people get beds on floors in the warm house.
@@ -120,20 +200,25 @@ export function fullRunPlayer() {
         }
       }
       if (best) w.commands.push({ type: 'chooseSite', x: best.x, y: best.y });
+      else padClearing(w);
     }
     // Once the blueprint turns up, a Drafting Table on a house floor lets the crew build components in the warm house.
     if (w.airship.blueprint && count(w, 'draftingTable') === 0) {
-      const { x, y } = w.hearth;
-      for (const dx of [2, 3]) w.commands.push({ type: 'paintFloor', x: x + dx, y: y - 1, kind: 'boards' });
-      w.commands.push({ type: 'place', building: 'draftingTable', x: x + 2, y: y - 1, rotated: false });
+      const spot = furnishSpot(w, 'draftingTable');
+      if (spot) w.commands.push({ type: 'place', building: 'draftingTable', x: spot.x, y: spot.y, rotated: false });
     }
     // Replace gatherers that ran out of nodes.
-    for (const [type, keep] of [['woodcutterCamp', 2], ['salvageYard', 1]] as [BuildingType, number][]) {
+    for (const [type, keep] of [['woodcutterCamp', 2], ['salvageYard', 1], ['quarry', 1]] as [BuildingType, number][]) {
       const working = w.buildings.filter((b) => b.type === type && b.status !== 'noResource').length;
       if (count(w, type) && working < keep && !missing(w, BUILDINGS[type].cost)) {
-        const spot = findSpot(w, type, OUTSIDE, type === 'woodcutterCamp' ? 30 : 10);
+        const spot = findSpot(w, type, OUTSIDE, type === 'woodcutterCamp' ? 30 : type === 'quarry' ? 3 : 10);
         if (spot) w.commands.push({ type: 'place', building: type, x: spot.x, y: spot.y, rotated: false });
       }
+    }
+    // Late in the run the launch needs a lot of fuel. More kilns make more of it, since each takes one worker.
+    if (w.airship.built.length >= 2 && count(w, 'charcoalKiln') < 4 && s.fuel < launchFuelNeeded(w) && s.wood >= 60 && s.stone >= 10 && !w.buildings.some((b) => b.type === 'charcoalKiln' && b.construct > 0)) {
+      const spot = findSpot(w, 'charcoalKiln', 0, 10, warmAt(w)) ?? findSpot(w, 'charcoalKiln', OUTSIDE);
+      if (spot) w.commands.push({ type: 'place', building: 'charcoalKiln', x: spot.x, y: spot.y, rotated: false });
     }
     if (stockTotal(w) > capacity(w) - 40 && s.wood >= 20) {
       const spot = findSpot(w, 'storageShed', OUTSIDE);
@@ -142,7 +227,7 @@ export function fullRunPlayer() {
 
     // Heaters keep the gatherers working as outside tiles start to freeze.
     if (w.day >= 6) {
-      for (const b of w.buildings.filter((b) => ['woodcutterCamp', 'salvageYard'].includes(b.type) && b.status !== 'noResource')) {
+      for (const b of w.buildings.filter((b) => ['woodcutterCamp', 'salvageYard', 'quarry'].includes(b.type) && b.status !== 'noResource')) {
         const at = center(b);
         const warm = w.buildings.some((h) => h.type === 'heater' && Math.hypot(h.x - at.x, h.y - at.y) < 3);
         if (warm || bandAt(w, at.x, at.y) === 'warm') continue;
@@ -173,7 +258,7 @@ export function fullRunPlayer() {
     const metalNeed = (cost.metal ?? 0) + partsShort;
     const planksNeed = (cost.planks ?? 0) + partsShort;
     const ready = COMPONENT_IDS.every((id) => w.airship.built.includes(id));
-    const fuelTarget = w.airship.built.length >= 3 ? launchFuelNeeded(w) + 40 : 80;
+    const fuelTarget = w.airship.built.length >= 3 ? launchFuelNeeded(w) + 40 : 160;
     if (ready) placeRing('spikeTrap', RING + 2, 60);
     // Sites without a crew of their own need colonists without a job to build them.
     const sites = w.buildings.filter((b) => b.construct > 0).length;
@@ -181,16 +266,17 @@ export function fullRunPlayer() {
     const want: [BuildingType, number][] = [
       ['kitchen', s.meals < 30 ? 2 : s.meals < 60 ? 1 : 0],
       ['foragerHut', s.rawFood < 40 ? 2 : 0],
-      ['charcoalKiln', s.fuel < fuelTarget && s.wood >= 2 ? 2 : 0],
-      ['woodcutterCamp', 3],
+      ['huntingLodge', s.rawFood < 60 ? 2 : 0],
+      ['charcoalKiln', s.fuel < fuelTarget && s.wood >= 2 ? 4 : 0],
+      ['woodcutterCamp', s.wood < 250 ? 3 : 1],
       ['draftingTable', w.airship.building ? 4 : 0],
       ['airshipDock', w.airship.building && count(w, 'draftingTable') === 0 ? 4 : 0],
-      ['quarry', s.stone < (cost.stone ?? 0) ? 3 : 0],
+      ['quarry', s.stone < Math.max(cost.stone ?? 0, w.airship.built.length >= 2 && count(w, 'charcoalKiln') < 4 ? 12 : 0) ? 3 : 0],
       ['workshop', partsShort > 0 && s.planks >= 1 && s.metal >= 1 ? 2 : 0],
       ['smelter', s.metal < metalNeed && s.scrap >= 2 && s.fuel > 30 ? 2 : 0],
-      ['salvageYard', s.scrap < 2 * Math.max(0, metalNeed - s.metal) ? 3 : 0],
+      ['salvageYard', s.scrap < 2 * Math.max(0, metalNeed - s.metal) || s.scrap < (cost.scrap ?? 0) ? 3 : 0],
       ['sawmill', s.planks < planksNeed && s.wood > 30 ? 4 : 0],
-      ['woodcutterCamp', 99],
+      ['woodcutterCamp', s.wood < 600 ? 99 : 0],
     ];
     const crew = new Map<number, number>();
     for (const [type, total] of want) {
@@ -202,6 +288,7 @@ export function fullRunPlayer() {
         free -= k;
       }
     }
+    trace.crew = [...crew.entries()].map(([id, n]) => `${w.buildings.find((b) => b.id === id)?.type.slice(0, 4)}${n}`).join(' ') + ` free ${free}`;
     for (const b of w.buildings) {
       // One defender per tower, so most colonists still sleep at night.
       if (b.type === 'watchtower' && b.workers !== 1) w.commands.push({ type: 'setWorkers', id: b.id, count: 1 });

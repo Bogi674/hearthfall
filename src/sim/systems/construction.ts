@@ -2,8 +2,14 @@
 // Every builder standing at the site adds work. Tired builders work slower, like any worker.
 import { BALANCE } from '../../data/balance';
 import { BUILDINGS } from '../../data/buildings';
-import { EDGES } from '../../data/house';
+import { EDGES, HOUSE, LIGHT_SITE, MOVE_SITE } from '../../data/house';
 import type { Resource } from '../../data/resources';
+import { getTile, setTile, Tile } from '../grid';
+import { CLEAR_SITE } from './jobs';
+import { finishMove } from '../manage';
+import { SCAVENGE, SCAVENGE_SITE } from '../../data/wild';
+import { capacity, stockTotal } from '../query';
+import { chance, nextInt } from '../rng';
 import { center, hopeSpeed } from '../query';
 import { addLog, type World } from '../world';
 
@@ -16,6 +22,13 @@ export function constructionSystem(world: World, dt: number): void {
     if (b.salvage === null) continue;
     b.salvage = Math.max(0, b.salvage - dt * crew(world, b.id) * hopeSpeed(world));
     if (b.salvage > 0) continue;
+    if (b.move) {
+      // A move: the same building goes up again at the new place, with nothing lost.
+      world.buildings = world.buildings.filter((o) => o !== b);
+      finishMove(world, b);
+      world.buildRev++;
+      continue;
+    }
     for (const [r, n] of Object.entries(BUILDINGS[b.type].cost) as [Resource, number][]) world.stock[r] += Math.floor(n * SALVAGE_REFUND);
     world.buildings = world.buildings.filter((o) => o !== b);
     world.buildRev++;
@@ -31,6 +44,67 @@ export function constructionSystem(world: World, dt: number): void {
     b.status = 'ok';
     world.buildRev++;
     if (BUILDINGS[b.type].build >= 10) addLog(world, `The ${BUILDINGS[b.type].name} is built.`, center(b));
+  }
+  // Mending: worn furniture, walls, and roofs, and rubble to clear.
+  for (const b of world.buildings) {
+    if (b.repair === null || b.construct > 0) continue;
+    b.repair = Math.max(0, b.repair - dt * crew(world, b.id) * hopeSpeed(world));
+    if (b.repair > 0) continue;
+    [b.repair, b.broken, b.hp] = [null, false, BUILDINGS[b.type].hp];
+    world.buildRev++;
+    addLog(world, `The ${BUILDINGS[b.type].name.toLowerCase()} is mended.`, center(b));
+  }
+  for (const e of world.house.edges) {
+    if (e.repair === null || e.construct > 0) continue;
+    e.repair = Math.max(0, e.repair - dt * crew(world, e.id) * hopeSpeed(world));
+    if (e.repair > 0) continue;
+    [e.repair, e.hp] = [null, EDGES[e.kind].levels[e.level - 1].hp];
+    world.buildRev++;
+  }
+  for (const f of world.house.floors) {
+    if (f.roofWork === null) continue;
+    f.roofWork = Math.max(0, f.roofWork - dt * crew(world, f.id) * hopeSpeed(world));
+    if (f.roofWork > 0) continue;
+    [f.roofWork, f.roofBroken] = [null, false];
+    world.buildRev++;
+  }
+  for (const c of [...world.clearing]) {
+    c.left = Math.max(0, c.left - dt * crew(world, CLEAR_SITE - c.tile) * hopeSpeed(world));
+    if (c.left > 0) continue;
+    const [x, y] = [c.tile % world.map.width, Math.floor(c.tile / world.map.width)];
+    if (getTile(world.map, x, y) === Tile.Rubble) setTile(world.map, x, y, Tile.Ground);
+    world.nodes[c.tile] = 0;
+    world.stock.scrap += HOUSE.clearRubble.scrap;
+    world.clearing = world.clearing.filter((o) => o !== c);
+    world.mapRev++;
+    world.buildRev++;
+  }
+  // Ruined houses being searched (M13).
+  for (const house of world.houses) {
+    if (house.state !== 'working') continue;
+    house.left = Math.max(0, house.left - dt * crew(world, SCAVENGE_SITE - house.id) * hopeSpeed(world));
+    if (house.left > 0) continue;
+    house.state = 'looted';
+    lootHouse(world, house);
+  }
+  // The hearth: lighting it, and building its new place.
+  const h = world.hearth;
+  if (h.lighting !== null) {
+    h.lighting = Math.max(0, h.lighting - dt * crew(world, LIGHT_SITE) * hopeSpeed(world));
+    if (h.lighting <= 0) {
+      [h.lighting, h.ignited, h.lit] = [null, true, true];
+      addLog(world, 'The hearth catches. Warmth spreads through the ruin.', h);
+    }
+  }
+  const site = world.hearthSite;
+  if (site) {
+    site.construct = Math.max(0, site.construct - dt * crew(world, MOVE_SITE) * hopeSpeed(world));
+    if (site.construct <= 0) {
+      [h.x, h.y] = [site.x, site.y];
+      world.hearthSite = null;
+      world.buildRev++;
+      addLog(world, 'The hearth is lit in its new place.', h);
+    }
   }
   // House floors and walls are built the same way.
   for (const f of world.house.floors) {
@@ -58,4 +132,24 @@ export function constructionSystem(world: World, dt: number): void {
 /** Work per second from the builders standing at a site. Tired builders work slower. */
 function crew(world: World, site: number): number {
   return world.colonists.filter((c) => c.site === site && c.task === 'build').reduce((s, c) => s + (c.rest > 0 ? 1 : BALANCE.needs.tiredWorkSpeed), 0);
+}
+
+/** Rolls what the crew finds. Houses far from the camp hold more, so a long walk can pay. */
+function lootHouse(world: World, house: World['houses'][number]): void {
+  const [cx, cy] = [house.x + house.w / 2, house.y + house.d / 2];
+  const mult = 1 + Math.hypot(cx - world.hearth.x, cy - world.hearth.y) / SCAVENGE.perTiles;
+  const found: string[] = [];
+  const give = (r: string, n: number) => {
+    const room = Math.max(0, capacity(world) - stockTotal(world));
+    const got = Math.min(n, room);
+    if (got <= 0) return;
+    world.stock[r as Resource] += got;
+    found.push(`${got} ${r.replace(/([A-Z])/g, ' $1').toLowerCase()}`);
+  };
+  for (const [r, [lo, hi]] of Object.entries(SCAVENGE.loot)) give(r, Math.round(nextInt(world.rng, lo, hi) * mult));
+  for (const e of SCAVENGE.extras) {
+    if (!chance(world.rng, e.chance)) continue;
+    for (const [r, [lo, hi]] of Object.entries(e.loot)) give(r, r === 'parts' || r === 'metal' ? nextInt(world.rng, lo, hi) : Math.round(nextInt(world.rng, lo, hi) * mult));
+  }
+  addLog(world, found.length ? `The crew searched a ruined house and found ${found.join(', ')}.` : 'The crew searched a ruined house and found nothing.', { x: cx, y: cy });
 }

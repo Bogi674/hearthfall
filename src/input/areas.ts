@@ -4,8 +4,9 @@ import { EDGES, FLOORS } from '../data/house';
 import type { Amounts, Resource } from '../data/resources';
 import { perimeter, tilesOf, type Rect } from '../sim/build';
 import type { Command } from '../sim/commands';
-import { edgeInfo, floorAt, storedEdgeAt, type Side } from '../sim/house';
+import { floorAt, storedEdgeAt, type Side } from '../sim/house';
 import { edgePlacementError, floorPlacementError } from '../sim/placement';
+import { mendCount, planMend } from '../sim/mend';
 import { missing } from '../sim/query';
 import type { World } from '../sim/world';
 import { BUILDINGS } from '../data/buildings';
@@ -71,7 +72,7 @@ export function planArea(world: World, tool: HouseTool, a: Anchor, b: Anchor, st
     let walls = 0;
     if (tool.kind === 'room') {
       for (const p of perimeter(r)) {
-        if (storedEdgeAt(world, p.x, p.y, p.side, storey) || edgeInfo(world, p.x, p.y, p.side, storey)?.virtual) continue;
+        if (storedEdgeAt(world, p.x, p.y, p.side, storey)) continue;
         const e = edgePlacementError(world, p.x, p.y, p.side, 'wall', tool.level, storey);
         const ok = e === null || SOFT.test(e);
         items.push({ kind: 'edge', x: p.x, y: p.y, side: p.side, state: ok ? 'ok' : 'bad' });
@@ -105,6 +106,22 @@ export function planArea(world: World, tool: HouseTool, a: Anchor, b: Anchor, st
       items,
       command: { type: 'buildLine', x: line.x, y: line.y, side: line.side, length: line.length, edge: tool.edge, level: tool.level, storey },
       text: n === 0 ? 'Nothing can be built along this line' : `${n} ${level.name.toLowerCase()} pieces. ${text}${short ? '. Not enough in the stockpile' : ''}`,
+      blocked: n === 0 || short,
+    };
+  }
+  if (tool.kind === 'mend') {
+    const r = rectOf(a, b);
+    const plan = planMend(world, r, storey);
+    for (const e of plan.edges) items.push({ kind: 'edge', x: e.x, y: e.y, side: e.side, state: 'ok' });
+    for (const f of plan.furniture) items.push({ kind: 'tile', x: f.x, y: f.y, state: 'ok' });
+    for (const f of plan.roofs) items.push({ kind: 'tile', x: f.x, y: f.y, state: 'ok' });
+    for (const t of plan.rubble) items.push({ kind: 'tile', x: t % world.map.width, y: Math.floor(t / world.map.width), state: 'ok' });
+    const n = mendCount(plan);
+    const short = missing(world, plan.cost) !== null && missing(world, plan.cost) !== undefined;
+    return {
+      items,
+      command: { type: 'mendArea', ...r, storey },
+      text: n === 0 ? 'Nothing to mend here' : `Mend ${n} pieces. ${amounts(plan.cost) || 'No cost'}${short ? '. Not enough in the stockpile' : ''}`,
       blocked: n === 0 || short,
     };
   }

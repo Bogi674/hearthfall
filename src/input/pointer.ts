@@ -4,8 +4,10 @@ import { pushCommand } from '../sim/commands';
 import { BUILDINGS } from '../data/buildings';
 import { STOREY_HEIGHT } from '../data/house';
 import { PAD } from '../data/vehicle';
+import { moveError } from '../sim/manage';
 import { edgePlacementError, floorPlacementError, footprint, placementError, removeError, siteError } from '../sim/placement';
 import { floorAt, maxStorey, storedEdgeAt, type Side } from '../sim/house';
+import { hearthMoveError } from '../sim/hearth';
 import type { World } from '../sim/world';
 import { createBuildingGhost } from '../render/ghost';
 import { createGhost, GHOST_BAD, GHOST_OK } from '../render/meshes/buildings';
@@ -38,18 +40,25 @@ export function bindPointer(canvas: HTMLCanvasElement, camera: THREE.Camera, sce
   const mouse = { x: 0, y: 0, ndc: new THREE.Vector2(), inside: false };
 
   /** House pieces and furniture go on the storey being built. Everything else goes on the ground. */
-  const storeyOfWork = () => (state.tool && state.tool.kind !== 'site') || (state.placing && BUILDINGS[state.placing].furniture) || (!state.tool && !state.placing) ? state.storey : 0;
+  const storeyOfWork = () => (state.tool && state.tool.kind !== 'site' && state.tool.kind !== 'move' && state.tool.kind !== 'hearth') || (state.placing && BUILDINGS[state.placing].furniture) || (!state.tool && !state.placing) ? state.storey : 0;
   const aimAt = (storey: number) => {
     ground.constant = -storey * STOREY_HEIGHT;
     ray.setFromCamera(mouse.ndc, camera);
     return ray.ray.intersectPlane(ground, hit);
   };
 
+  /** The building being picked up by the move tool. */
+  const movingBuilding = () => {
+    const tool = state.tool;
+    return tool?.kind === 'move' ? world().buildings.find((o) => o.id === tool.id) : undefined;
+  };
+
   /** Tile under the cursor, or the top left tile of the footprint centered on it while placing. */
   const tileAt = () => {
     const w = world();
     if (!aimAt(storeyOfWork())) return null;
-    const [fw, fh] = state.placing ? footprint(state.placing, state.rotated) : state.tool?.kind === 'site' ? [PAD.size, PAD.size] : [1, 1];
+    const moving = state.tool?.kind === 'move' ? movingBuilding() : undefined;
+    const [fw, fh] = state.placing ? footprint(state.placing, state.rotated) : moving ? footprint(moving.type, state.rotated) : state.tool?.kind === 'site' ? [PAD.size, PAD.size] : [1, 1];
     return { x: Math.round(hit.x + w.map.width / 2 - (fw - 1) / 2), y: Math.round(hit.z + w.map.height / 2 - (fh - 1) / 2) };
   };
 
@@ -94,6 +103,19 @@ export function bindPointer(canvas: HTMLCanvasElement, camera: THREE.Camera, sce
       if (!t || !fresh) return;
       pushCommand(w.commands, { type: 'chooseSite', x: t.x, y: t.y });
       state.tool = null;
+    } else if (tool.kind === 'move') {
+      const t = tileAt();
+      const b = movingBuilding();
+      if (!t || !b || !fresh || moveError(w, b, t.x, t.y, state.rotated)) return;
+      pushCommand(w.commands, { type: 'moveBuilding', id: b.id, x: t.x, y: t.y, rotated: state.rotated });
+      state.tool = null;
+    } else if (tool.kind === 'hearth') {
+      const t = tileAt();
+      if (!t || !fresh || hearthMoveError(w, t.x, t.y)) return;
+      pushCommand(w.commands, { type: 'moveHearth', x: t.x, y: t.y });
+      state.tool = null;
+    } else if (tool.kind === 'mend') {
+      return;
     } else if (fresh) {
       const target = eraseTarget(w);
       if (target) pushCommand(w.commands, { type: 'removeHouseItem', item: target.item, id: target.id });
@@ -115,7 +137,7 @@ export function bindPointer(canvas: HTMLCanvasElement, camera: THREE.Camera, sce
   };
 
   /** True when the tool in hand draws a shape: always for a room, and for floors, walls, and clearing while the shape toggle is on. */
-  const shaped = () => state.tool !== null && state.tool.kind !== 'site' && (state.tool.kind === 'room' || (state.fill && drawsShapes(state.tool)));
+  const shaped = () => state.tool !== null && state.tool.kind !== 'site' && state.tool.kind !== 'hearth' && (state.tool.kind === 'room' || state.tool.kind === 'mend' || (state.fill && drawsShapes(state.tool)));
   const anchorAt = (): Anchor | null => (state.tool?.kind === 'edge' ? edgeAt() : tileAt());
   const dragPlan = (w: World): AreaPlan | null => (drag && state.tool ? planArea(w, state.tool, drag.a, drag.b, state.storey) : null);
 
@@ -179,9 +201,9 @@ export function bindPointer(canvas: HTMLCanvasElement, camera: THREE.Camera, sce
     if (e.code === 'KeyB') state.buildOpen = !state.buildOpen;
     if (e.code === 'KeyR') state.rotated = !state.rotated;
     if (e.code === 'KeyZ') state.fill = !state.fill;
-    // Tool hotkeys avoid the camera keys: F floor, T wall, Y room, X take apart.
+    // Tool hotkeys avoid the camera keys: F floor, T wall, Y room, X take apart, M mend.
     const toolKeys: Record<string, HouseTool> = {
-      KeyF: { kind: 'floor', floor: 'boards' }, KeyT: { kind: 'edge', edge: 'wall', level: 1 }, KeyY: { kind: 'room', floor: 'boards', level: 1 }, KeyX: { kind: 'erase' },
+      KeyF: { kind: 'floor', floor: 'boards' }, KeyT: { kind: 'edge', edge: 'wall', level: 1 }, KeyY: { kind: 'room', floor: 'boards', level: 1 }, KeyX: { kind: 'erase' }, KeyM: { kind: 'mend' },
     };
     if (toolKeys[e.code]) [state.tool, state.placing, state.buildCat] = [toolKeys[e.code], null, 'Structure'];
     if (e.code === 'KeyH') state.rooms = !state.rooms;
@@ -208,6 +230,17 @@ export function bindPointer(canvas: HTMLCanvasElement, camera: THREE.Camera, sce
       pointer.tip = { text: plan.text, x: mouse.x, y: mouse.y };
       return;
     }
+    if (tool.kind === 'move') {
+      const t = tileAt();
+      const b = movingBuilding();
+      ghost.visible = false;
+      if (!t || !b) return buildingGhost.hide();
+      const [fw, fh] = footprint(b.type, state.rotated);
+      const err = moveError(w, b, t.x, t.y, state.rotated);
+      buildingGhost.show(b.type, fw, fh, t.x + (fw - 1) / 2 - w.map.width / 2, t.y + (fh - 1) / 2 - w.map.height / 2, !err, performance.now() / 1000, 0);
+      if (err) pointer.tip = { text: err, x: mouse.x, y: mouse.y };
+      return;
+    }
     if (tool.kind === 'site') {
       const t = tileAt();
       ghost.visible = t !== null;
@@ -215,6 +248,19 @@ export function bindPointer(canvas: HTMLCanvasElement, camera: THREE.Camera, sce
       error = siteError(w, t.x, t.y);
       ghost.position.set(t.x + (PAD.size - 1) / 2 - w.map.width / 2, 0, t.y + (PAD.size - 1) / 2 - w.map.height / 2);
       ghost.scale.set(PAD.size, 0.15, PAD.size);
+    } else if (tool.kind === 'hearth') {
+      const t = tileAt();
+      ghost.visible = t !== null;
+      if (!t) return;
+      error = hearthMoveError(w, t.x, t.y);
+      ghost.position.set(t.x - w.map.width / 2, state.storey * STOREY_HEIGHT, t.y - w.map.height / 2);
+      ghost.scale.set(1, 0.3, 1);
+    } else if (tool.kind === 'mend') {
+      const t = tileAt();
+      ghost.visible = t !== null;
+      if (!t) return;
+      ghost.position.set(t.x - w.map.width / 2, state.storey * STOREY_HEIGHT, t.y - w.map.height / 2);
+      ghost.scale.set(1, 0.1, 1);
     } else if (tool.kind === 'edge') {
       const e = edgeAt();
       ghost.visible = e !== null;
@@ -248,7 +294,7 @@ export function bindPointer(canvas: HTMLCanvasElement, camera: THREE.Camera, sce
     hover: null,
     update(w) {
       pointer.tip = null;
-      if (state.tool || !state.placing) buildingGhost.hide();
+      if ((state.tool && state.tool.kind !== 'move') || (!state.tool && !state.placing)) buildingGhost.hide();
       if (!drag) preview.hide();
       const free = mouse.inside && !state.tool && !state.placing;
       const uv = free ? cursorUV() : null;

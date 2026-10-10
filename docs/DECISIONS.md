@@ -225,3 +225,33 @@ Design and architecture decisions that are not already in `docs/GAME_DESIGN.md`.
 - **Loading fuel keeps a hearth reserve.** A loss because the airship drank the fuel the hearth needed felt unfair. The launch now waits for more fuel instead.
 - **Skipping turns does not stress the scripted player.** The player is paced by the economy, not by how often it acts, so a test that skips turns says little. Wave strength and delays do.
 
+
+## M12: The ruin is the house
+
+- **The ruin is data, not a model.** The starting house is generated as floors, wall edges, doors, windows, and furniture with a `ruin` flag and low hit points. Every query that worked on player pieces now works on the ruin, so there is no second code path to keep in step. The cost is one more flag on each piece.
+- **Rooms are found per cluster.** About 70 town ruins would have made a whole map flood fill on every change. Pieces that touch are grouped, and only the group a change touches is analysed again. A ruin anywhere costs the same as one beside the hearth.
+- **Routes run in a box around the walk.** The old route search covered the lot. The new one covers the walk with a margin, so a colonist crossing a ruin far from the hearth still gets a route.
+- **The hearth is an object with a stage.** The old Hearth House was a model with a lot. Now the hearth is one tile, and the house around it is made of ordinary pieces. Stage 3 needs a floor and stages 4 and 5 need a closed room with a whole roof, which gives a reason to repair the roof and a reason to move the hearth into a good room.
+- **Lighting costs fuel and a few seconds of work.** The run begins with a smoldering hearth, so there is a first action and a first small decision. An unlit hearth cannot lose the run, so the tutorial cannot punish a slow start.
+- **Moving the hearth is a crew job.** The new place is built while the old one burns, so there is never a gap with no fire. The price is wood plus half of the stage cost, so a late move hurts but is possible.
+- **Walls shade heat and do not stop it.** A first version stopped heat at every wall, and colonists in tents beside the house froze on day one. Each wall now adds 3 tiles to the way heat travels. A closed room still holds heat and gets a bonus of 10, and the ground behind a wall is cooler.
+- **Ruined furniture counts only near the hearth.** With 70 houses, hundreds of beds and crates stood on the map, and colonists walked to a far bed and froze. A ruined piece counts as home inside the hearth radius or on a warm tile. Pieces the player built count anywhere.
+- **A mend order pays when it is given.** Repairs need wood, planks, or stone like any other work. Paying at once makes the cost visible in the preview and stops a half finished job from stalling on an empty stockpile. The order is all or nothing so the preview is the exact cost.
+- **The blueprint is a stash.** Tying it to a hearth stage made the story depend on a number. Now someone finds a tin box once three rooms are mended and hope is up. The player has to make real rooms, and the story reads as a find.
+- **Every ruin has a way in.** Town houses can touch each other, and a room can end up shut in. After the map is built, a fallen wall opens each such room, so the no sealed rooms rule holds for ruins as well.
+- **One painted look.** Buildings, props, ground, and people share the house textures. They are mapped from world position, except people, whose textures are mapped to the limb so they do not slide when someone walks.
+
+## M13: A bigger, fuller world
+
+- **Full fidelity is the target, so the hearth casts real shadows.** Walls, beds, and people throw warm shadows across a room, and that is a large part of the cozy look. Software rendering pays for it in shader compile time, so `?lowfx` in the address turns that one light's shadow off. Real graphics cards are not affected.
+- **Houses come as neighbors, hamlets, and lone houses.** An even scatter made every walk the same length. Three kinds with their own spacing make some walks long and empty and some short and rich, which is what makes finding a house feel like a reward. A few neighbors stay close so the first days are not empty.
+- **The map is 240 by 240, and expeditions walk faster.** Places sit 42 to 92 tiles out. Squad speed went from 1.6 to 2.4, so a trip takes about as long as before and the extra distance is felt as space, not as waiting. Lookout sight grew to match.
+- **Regrowth is slower than harvest and comes back smaller.** Trees, stone heaps, and rubble return after 4 to 9 days at half to a third of their old amount. A crew that strips an area meets empty ground for days, and one that rotates between areas does not. Growth is checked at dawn so the map is rebuilt once a day.
+- **Five food sources, each with a cost.** Foraging is free but thins out. Hunting needs a lodge and a living forest and the hunters walk into the cold. Hydroponics needs planks, metal, parts, a closed room, and fuel. Scavenging pays more the farther the house is. Expeditions are for the great places. A colony that leans on one source feels the others.
+- **Hunters really walk.** Abstract hunting would have been simpler, but then there would be nothing to see and nothing to lose. Animals flee, hunters chase, and meat is carried home. A hunter who dies drops the hunt, and the animal is free again.
+- **A move is a deconstruction and a new site.** The builders take the building down and put it up at the new place. It costs no materials, only time. A house piece or furniture cannot be moved, since removing them is already cheap.
+- **Cancelling a site refunds by progress.** Nothing built means a full refund and any work means half, like house pieces, so the rule is the same everywhere.
+- **Health bars show only on hurt things.** Worn ruins would have put a bar on every wall in town, so a ruin piece shows its bar only while a monster is near it.
+- **The interface is warm and the forecast is cold.** What the player builds and touches is walnut and amber. What comes from outside, the forecast and the log, is frosted blue. The world's contrast is repeated on the screen.
+- **The hearth glow is warm and moderate.** The fire is the brightest thing in the room, but its light and bloom stay low enough that the walls, the floor, and the faces of the people stay readable. Rooms also get lamp lights from a small fixed pool, with unused lights set to zero so shaders do not recompile.
+- **Workers refuse freezing tiles, so the scripted player builds in the warm.** A building outside the heat of the hearth or a heater stands idle. The balance run therefore places production inside the warm area and puts heaters at outlying quarries and camps, as a player would.

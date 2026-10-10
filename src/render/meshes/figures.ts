@@ -4,6 +4,7 @@ import type { WorkAnim } from '../../data/buildings';
 import type { EnemyType } from '../../data/enemies';
 import type { Look, LookColor } from '../../data/looks';
 import { LOOK_COLORS, mixPalette, PALETTE } from '../materials';
+import { injectLocalSurface } from '../surfaces';
 
 // Procedural characters in the chunky low poly style (section 12.4). Each part is one InstancedMesh,
 // so a crowd stays cheap. Limbs hang from a pivot and swing while the figure walks. A part with an
@@ -85,6 +86,12 @@ export const disc = new THREE.CylinderGeometry(0.5, 0.5, 1, 14);
 export const std = (color: THREE.Color) => new THREE.MeshStandardMaterial({ color, roughness: 0.85, flatShading: true });
 /** White base for parts colored per figure through instance colors. */
 export const cloth = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, flatShading: true });
+/** Woven cloth for clothes, so people share the painted look of the house. Colored per figure like `cloth`. */
+export const weave = (() => {
+  const m = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95, flatShading: true });
+  m.onBeforeCompile = (shader) => injectLocalSurface(shader, 'cloth');
+  return m;
+})();
 // Monster eyes glow and ignore fog so they read in the dark (sections 12.3 and 12.5).
 const blight = new THREE.MeshBasicMaterial({ color: PALETTE.blight.clone().multiplyScalar(3), fog: false });
 // Wounds and sacs glow less than eyes, so bloom does not swallow the body.

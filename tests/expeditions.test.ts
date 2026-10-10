@@ -2,13 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { POIS } from '../src/data/pois';
 import { expeditionError } from '../src/sim/commands';
 import { expeditionRisk } from '../src/sim/systems/expeditions';
-import { createWorld, stepWorld, type World } from '../src/sim/world';
-import { build } from './helpers';
+import { stepWorld, type World } from '../src/sim/world';
+import { bareWorld, build } from './helpers';
 
 const poiIndex = (w: World, type: keyof typeof POIS) => w.pois.findIndex((p) => p.type === type);
 
 function camp(seed: number): World {
-  const world = createWorld(seed);
+  const world = bareWorld(seed);
   // Stay under the 300 storage cap so returning loot has room.
   Object.assign(world.stock, { planks: 20, fuel: 60, meals: 40 });
   expect(build(world, 'gate')).toBe(true);
@@ -35,16 +35,18 @@ function send(world: World, type: keyof typeof POIS, size: number): number[] {
 
 describe('expeditions (M4)', () => {
   it('generates one POI of each type at its design distance', () => {
-    const world = createWorld(1);
+    const world = bareWorld(1);
     expect(world.pois.length).toBe(6);
     for (const p of world.pois) {
       const d = Math.hypot(p.x - world.hearth.x, p.y - world.hearth.y);
-      expect(d).toBeGreaterThan(POIS[p.type].distance - 6);
+      // Each place sits within a tenth of its design distance, a little nearer or farther by the map.
+      expect(d).toBeGreaterThan(POIS[p.type].distance * 0.86);
+      expect(d).toBeLessThan(POIS[p.type].distance * 1.14);
     }
   });
 
   it('needs a gate and a squad of 1 to 4', () => {
-    const world = createWorld(1);
+    const world = bareWorld(1);
     const ids = world.colonists.map((c) => c.id);
     expect(expeditionError(world, 0, ids.slice(0, 2))).toBe('Build a Gate first');
     Object.assign(world.stock, { planks: 100 });
@@ -81,7 +83,7 @@ describe('expeditions (M4)', () => {
   });
 
   it('larger squads and daylight lower the risk', () => {
-    const world = createWorld(1);
+    const world = bareWorld(1);
     expect(expeditionRisk(world, 5, 4)).toBeLessThan(expeditionRisk(world, 5, 1));
     const day = expeditionRisk(world, 3, 2);
     world.dayTime = 400;

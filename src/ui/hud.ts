@@ -23,6 +23,8 @@ import type { Settings } from './settings';
 
 export interface UiState {
   placing: BuildingType | null;
+  /** The building the cursor is over in the build menu, for the facts card (M13). */
+  info: BuildingType | null;
   /** The house tool in hand: a floor, a wall, a door, a window, or remove. */
   tool: HouseTool | null;
   rotated: boolean;
@@ -38,7 +40,7 @@ export interface UiState {
   fill: boolean;
   /** Names and warnings are drawn over the rooms of the house. Toggled with H. */
   rooms: boolean;
-  selected: number | 'hearth' | null;
+  selected: number | 'hearth' | 'stash' | null;
   speed: number;
   paused: boolean;
   buildOpen: boolean;
@@ -95,6 +97,13 @@ export function createHud(root: HTMLElement, state: UiState, world: () => World,
     el(id).innerHTML = html;
     el(id).style.display = html ? '' : 'none';
   };
+
+  // The facts card follows the cursor over the build menu.
+  root.addEventListener('mouseover', (e) => {
+    const t = (e.target as HTMLElement).closest<HTMLElement>('[data-act^="build:"]');
+    const type = t ? (t.dataset.act!.split(':')[1] as BuildingType) : null;
+    if (state.info !== type) [state.info] = [type];
+  });
 
   // Act on press, not on click. Panels re-render several times a second, and a button swapped
   // between press and release would lose its click.
@@ -166,12 +175,19 @@ export function createHud(root: HTMLElement, state: UiState, world: () => World,
     if (act === 'component') pushCommand(world().commands, { type: 'buildComponent', component: arg as ComponentId });
     if (act === 'berth') pushCommand(world().commands, { type: 'buildBerth' });
     if (act === 'salvage') pushCommand(world().commands, { type: 'salvage', id: Number(arg) });
+    if (act === 'cancelbuild') pushCommand(world().commands, { type: 'cancelBuild', id: Number(arg) });
+    if (act === 'movebuilding') [state.tool, state.placing, state.rotated] = [{ kind: 'move', id: Number(arg) }, null, false];
+    if (act === 'scavenge') pushCommand(world().commands, { type: 'scavenge', house: Number(arg) });
     if (act === 'clearpad' && world().airship.site) {
       const { x, y } = world().airship.site!;
       pushCommand(world().commands, { type: 'clearArea', x: x - PAD.apron, y: y - PAD.apron, w: PAD.size + 2 * PAD.apron, h: PAD.size + 2 * PAD.apron });
     }
     if (act === 'launch') pushCommand(world().commands, { type: 'launch' });
     if (act === 'upgrade') pushCommand(world().commands, { type: 'upgradeHearth' });
+    if (act === 'light') pushCommand(world().commands, { type: 'lightHearth' });
+    if (act === 'move') [state.tool, state.placing] = [{ kind: 'hearth' }, null];
+    if (act === 'cancelmove') pushCommand(world().commands, { type: 'cancelMove' });
+    if (act === 'mend') pushCommand(world().commands, { type: 'mendItem', item: arg as 'edge' | 'furniture' | 'roof', id: Number(arg2) });
     if (act === 'stage') pushCommand(world().commands, { type: 'upgradeBuilding', id: Number(arg) });
     api.update();
   });
@@ -189,7 +205,9 @@ export function createHud(root: HTMLElement, state: UiState, world: () => World,
       const burn = (BALANCE.hearth.levels[w.hearth.level - 1].fuelPerMinute / 60) * fuelFactor(w);
       const hearth = w.hearth.lit
         ? `<span>Hearth fuel ${clock(w.stock.fuel / burn)}</span>`
-        : `<span class="alert">Hearth out. Lost in ${Math.ceil(BALANCE.hearth.outLossSeconds - w.hearth.outSeconds)}s</span>`;
+        : !w.hearth.ignited
+          ? '<span class="alert">Hearth smoldering. Light it</span>'
+          : `<span class="alert">Hearth out. Lost in ${Math.ceil(BALANCE.hearth.outLossSeconds - w.hearth.outSeconds)}s</span>`;
       const speeds = [0, 1, 2, 3]
         .map((s) => `<button data-act="speed:${s}" class="${(s === 0 ? state.paused : !state.paused && state.speed === s) ? 'on' : ''}">${s === 0 ? 'Pause' : `${s}x`}</button>`)
         .join('');
@@ -204,7 +222,7 @@ export function createHud(root: HTMLElement, state: UiState, world: () => World,
       const wallsButton = `<button data-act="walls" title="Walls up, back walls only, or all walls cut low (V)">${WALL_NAMES[state.walls]}</button>`;
       const floorBox = `<span class="floors"><button data-act="storey:-1" title="Down one floor (Page Down)">v</button><button data-act="levels" title="Show all floors or only up to this one (L)">Floor ${state.storey + 1}${state.levels === 'all' ? '' : ' only'}</button><button data-act="storey:1" title="Up one floor (Page Up)">^</button></span>`;
       set('controls', `${alarm}${speeds}${floorBox}${wallsButton}<button data-act="menu">Menu</button>`);
-      set('build', state.buildOpen ? buildMenuHtml(w, state.buildCat, state.placing, state.tool, state.rotated, state.fill) : '');
+      set('build', state.buildOpen ? buildMenuHtml(w, state.buildCat, state.placing, state.tool, state.rotated, state.fill, state.info) : '');
 
       set('forecast', forecastHtml(w));
       const hint = actions.settings.hints && !w.lost && !w.won ? currentHint(w) : null;

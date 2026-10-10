@@ -2,7 +2,7 @@
 // Each one is a loop over the single piece rules in placement.ts, so every rule still holds for every piece.
 import { BUILDINGS } from '../data/buildings';
 import type { EdgeKind, FloorId } from '../data/house';
-import { covered, edgeInfo, flanks, floorAt, storedEdgeAt, type Side } from './house';
+import { covered, flanks, floorAt, storedEdgeAt, type Side } from './house';
 import { floorPlacementError, placeEdge, placeFloor, removeError, removeHouseItem } from './placement';
 import type { World } from './world';
 
@@ -78,7 +78,6 @@ export function buildRoom(world: World, r: Rect, floor: FloorId, level: number, 
   if (placeEdge(world, door.x, door.y, door.side, 'door', 1, storey)) placed++;
   for (const b of perimeter(r)) {
     if (storedEdgeAt(world, b.x, b.y, b.side, storey)) continue;
-    if (edgeInfo(world, b.x, b.y, b.side, storey)?.virtual) continue;
     if (placeEdge(world, b.x, b.y, b.side, 'wall', level, storey)) placed++;
   }
   return placed;

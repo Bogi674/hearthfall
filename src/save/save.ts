@@ -3,7 +3,7 @@
 // at every dawn and three manual slots. A save can also be exported to a file and imported again.
 import type { World } from '../sim/world';
 
-export const SAVE_VERSION = 7;
+export const SAVE_VERSION = 9;
 
 export type SlotId = 'auto' | '1' | '2' | '3';
 export const SLOTS: SlotId[] = ['auto', '1', '2', '3'];

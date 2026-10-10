@@ -27,14 +27,14 @@ interface Look {
 }
 
 const LOOKS: Record<WeatherKind, Look> = {
-  clear: { fogColor: mixPalette(PALETTE.deepCold, PALETTE.nightBlue, 0.45), fogNear: 24, fogFar: 100, hemi: 0.85, moon: 1.8, exposure: 1.12, snowDensity: 0, snowSpeed: 1, wind: 0.1, frost: 0.85, mist: 0.1 },
-  overcast: { fogColor: mixPalette(PALETTE.nightBlue, PALETTE.frost, 0.32), fogNear: 12, fogFar: 62, hemi: 1.15, moon: 0.45, exposure: 1.1, snowDensity: 0, snowSpeed: 1, wind: 0.3, frost: 1, mist: 0.28 },
-  snow: { fogColor: PALETTE.deepCold, fogNear: 14, fogFar: 78, hemi: 0.9, moon: 1.3, exposure: 1.1, snowDensity: 1, snowSpeed: 1, wind: 0.25, frost: 1.1, mist: 0.2 },
-  blizzard: { fogColor: mixPalette(PALETTE.nightBlue, PALETTE.frost, 0.38), fogNear: 6, fogFar: 36, hemi: 1.0, moon: 0.4, exposure: 1.05, snowDensity: 2.2, snowSpeed: 3.2, wind: 5, frost: 1.4, mist: 0.4 },
+  clear: { fogColor: mixPalette(PALETTE.deepCold, PALETTE.nightBlue, 0.45), fogNear: 24, fogFar: 100, hemi: 0.62, moon: 1.5, exposure: 1.08, snowDensity: 0, snowSpeed: 1, wind: 0.1, frost: 0.85, mist: 0.1 },
+  overcast: { fogColor: mixPalette(PALETTE.nightBlue, PALETTE.frost, 0.32), fogNear: 12, fogFar: 62, hemi: 0.85, moon: 0.4, exposure: 1.06, snowDensity: 0, snowSpeed: 1, wind: 0.3, frost: 1, mist: 0.28 },
+  snow: { fogColor: PALETTE.deepCold, fogNear: 14, fogFar: 78, hemi: 0.64, moon: 1.1, exposure: 1.06, snowDensity: 1, snowSpeed: 1, wind: 0.25, frost: 1.1, mist: 0.2 },
+  blizzard: { fogColor: mixPalette(PALETTE.nightBlue, PALETTE.frost, 0.38), fogNear: 6, fogFar: 36, hemi: 0.78, moon: 0.35, exposure: 1.02, snowDensity: 2.2, snowSpeed: 3.2, wind: 5, frost: 1.4, mist: 0.4 },
 };
 
 /** Light level through the day. Night is darkest. */
-const PHASE_LIGHT: Record<string, number> = { Dawn: 1.05, Day: 1.14, Dusk: 0.96, Night: 0.84 };
+const PHASE_LIGHT: Record<string, number> = { Dawn: 1.0, Day: 1.12, Dusk: 0.78, Night: 0.58 };
 
 export interface Atmosphere {
   /** Returns the frost coverage the ground should show. */

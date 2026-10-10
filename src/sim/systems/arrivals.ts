@@ -2,14 +2,14 @@
 // joins the colony. They come only when hope is up and a bed is free, and never past the crew limit.
 import { BALANCE } from '../../data/balance';
 import { BUILDINGS } from '../../data/buildings';
-import { isBuilt, phaseStarted } from '../query';
+import { atHome, isUsable, phaseStarted } from '../query';
 import { nextFloat } from '../rng';
 import { addColonist, addLog, type World } from '../world';
 
 const A = BALANCE.arrivals;
 
 export function arrivalsSystem(world: World, dt: number): void {
-  const beds = world.buildings.reduce((n, b) => n + (isBuilt(b) ? (BUILDINGS[b.type].beds ?? 0) : 0), 0);
+  const beds = world.buildings.reduce((n, b) => n + (isUsable(b) && atHome(world, b) ? (BUILDINGS[b.type].beds ?? 0) : 0), 0);
   if (!world.drifter && phaseStarted(world, 'Dusk', dt) && (A.days as readonly number[]).includes(world.day)) {
     if (world.hope >= A.minHope && world.colonists.length < A.maxColonists && beds > world.colonists.length) {
       const a = nextFloat(world.rng) * Math.PI * 2;

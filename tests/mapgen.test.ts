@@ -13,19 +13,19 @@ describe('mapgen', () => {
     expect(generateMap(createRng(1)).map.tiles).not.toEqual(generateMap(createRng(2)).map.tiles);
   });
 
-  it('builds a 160 by 160 map with the hearth in the center', () => {
+  it('builds a 240 by 240 map with the hearth in the center', () => {
     const { map, hearth } = generateMap(createRng(3));
-    expect(map.tiles.length).toBe(160 * 160);
-    expect(hearth).toEqual({ x: 80, y: 80 });
+    expect(map.tiles.length).toBe(240 * 240);
+    expect(hearth).toEqual({ x: 120, y: 120 });
   });
 
-  it('keeps a clear ground circle around the hearth', () => {
+  it('keeps a clear circle around the hearth, with no trees, walls, or water, only rubble from the old house', () => {
     for (const seed of [1, 2, 3, 4, 5]) {
       const { map, hearth } = generateMap(createRng(seed));
       const r = BALANCE.map.clearingRadius;
       for (let y = hearth.y - r; y <= hearth.y + r; y++) {
         for (let x = hearth.x - r; x <= hearth.x + r; x++) {
-          if (Math.hypot(x - hearth.x, y - hearth.y) <= r) expect(getTile(map, x, y)).toBe(Tile.Ground);
+          if (Math.hypot(x - hearth.x, y - hearth.y) <= r) expect([Tile.Ground, Tile.Rubble, Tile.Road]).toContain(getTile(map, x, y));
         }
       }
     }

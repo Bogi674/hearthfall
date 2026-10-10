@@ -2,6 +2,28 @@
 
 Newest entries first. Each entry names the milestone it belongs to.
 
+## 2026-10-11 (M13: A Bigger, Fuller World)
+
+- **Bigger map, varied ruins.** The map is 240 by 240. Houses come as neighbors near the fire, hamlets far apart, and lone houses out in the dark. Places sit 42 to 92 tiles out and squads walk faster. Monsters spawn 56 tiles out. Lookout sight is 66, 88, and 108.
+- **Regrowth.** Used up trees, stone heaps, and rubble grow back at dawn after 4 to 9 days, smaller than before, never near the hearth and never on a building.
+- **Food.** A Hunting Lodge sends hunters after deer and wild pigs that wander the forest and flee. A Hydroponic Farm in a closed room turns fuel into raw food. Ruined houses can be scavenged once for food, scrap, and finds, and far houses pay more. Foragers find less as the winter deepens.
+- **Building management.** Cancel a site that is going up, move a finished building, deconstruct any finished building (the Supply Cart too), a short description and facts for every building in the build menu and selection panel, and health bars only on hurt things.
+- **Look and interface.** The hearth throws real shadows, the grade is cold in the shadows and warm in the lights, sparks rise from the fire, and pale eyes watch from the dark at night. The interface is walnut and amber with a frosted blue forecast. The design document no longer calls the visuals preview quality.
+- **Hearth glow.** The hearth inside the home was too bright. The flame, its point light, and the bloom were toned down so the room glows warm and cozy. Lamps in rooms use a small pool of real lights so interiors are not dim.
+- **Balance.** The scripted player now places production buildings on warm tiles, runs four people on the kilns, and heats the quarry, since workers refuse to work on freezing tiles. The 8 seed sweep launches 8 of 8 (days 9 to 14). A new test builds every one of the 44 buildings and checks that each one works.
+- **Screenshots.** `docs/screenshots/m13-*.jpg` show the ruin, a half built house, a finished house, monsters, characters, and the airship by day and night.
+- Save version is 9. The scripted player hunts and scavenges.
+
+## 2026-10-10 (M12: The Ruin Is the House)
+
+- **The starting house is a ruin of real pieces.** A hall, a bedroom, a kitchen, a storeroom, and an attic are made of floors, wall edges, doors, windows, and furniture, all worn: low wall hit points, missing walls, lost floors and rubble, open roofs, and broken furniture. One room is kept in better shape. About 70 town houses are made of the same pieces, and each has a way in. Save version is now 8.
+- **Mend.** A Mend tool (M) repairs worn walls, doors, windows, and furniture, patches roofs with planks, and clears rubble. Selected pieces have their own Mend buttons. Broken furniture does nothing until mended. Taking a ruin piece apart returns 75 percent of its cost.
+- **The hearth is an object.** It smolders until someone lights it for 5 fuel. It can be moved to any tile the stage allows and upgraded through five stages. The stove needs a floor, and the fireplaces need a closed room with a whole roof. The lot and the hearth wall are gone, and there is no build limit.
+- **Heat and rooms.** Rooms are found per cluster of pieces anywhere on the map. Each wall adds 3 tiles to the way heat travels, and a closed roofed room is 10 warmer. An open roof lets heat out.
+- **The blueprint is a stash.** With 3 mended rooms and hope at 50, someone finds a loose board and a tin box at dawn, and the crew opens it for the plans.
+- **One painted look.** Buildings, barricades, gates, towers, camps, production buildings, furniture, trees, rubble, ruins, cars, drums, and the ground use the painted textures of the house. People wear woven cloth.
+- **Other.** New hints and intro text, a hearth panel with Light, Move, and Upgrade, a stash marker and panel, and broken furniture that sags. Tests use a bare world helper for the mechanics and new ruin tests for the ruin. The scripted player closes gaps, walls off rooms, mends, furnishes, and clears ruins for the launch pad.
+
 ## 2026-10-10 (M11: The House That Grows)
 
 - **Wall views (M11a).** Walls up, walls cut, and walls down, cycled with V or a button. Tab peeks with every wall down.

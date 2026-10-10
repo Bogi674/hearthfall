@@ -65,6 +65,16 @@ export const BUILDING_ICONS: Record<BuildingType, string> = {
     `<rect x="6" y="16" width="20" height="7" ${ACCENT}/>` +
       `<path d="M6 16V11a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5M4 16h4v8H4zM24 16h4v8h-4zM8 23h16M9 26v2M23 26v2"/>`,
   ),
+  huntingLodge: svg(
+    `<path d="M5 15l11-8 11 8v11H5z" ${ACCENT}/>` +
+      `<path d="M4 15l12-9 12 9"/><rect x="6" y="15" width="20" height="11"/><rect x="13" y="19" width="6" height="7"/>` +
+      `<path d="M13 12l-2-3M19 12l2-3M11 9l-2 0M21 9l2 0"/>`,
+  ),
+  hydroponics: svg(
+    `<rect x="5" y="9" width="22" height="4" ${ACCENT}/>` +
+      `<path d="M5 6h22M5 13h22M5 20h22M5 27h22"/><path d="M8 6v21M24 6v21"/>` +
+      `<path d="M11 13c0-3 2-4 2-4M17 13c0-3 2-4 2-4M11 20c0-3 2-4 2-4M17 20c0-3 2-4 2-4"/>`,
+  ),
   stove: svg(
     `<rect x="9" y="12" width="14" height="13" ${ACCENT}/>` +
       `<rect x="8" y="11" width="16" height="15" rx="1"/><path d="M20 11V4M13 17h6v4h-6zM10 26v2M22 26v2"/>`,

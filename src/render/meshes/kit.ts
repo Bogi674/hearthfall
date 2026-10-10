@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { mixPalette, PALETTE } from '../materials';
+import { createSurfaceMaterial, type Surface } from '../surfaces';
 
 // Shared parts for the stylized low poly look (section 12.4): soft edged blocks, scavenged materials,
 // and placement helpers. Every color is a palette color or a mix of two.
@@ -38,39 +39,46 @@ function grounded<T extends THREE.MeshStandardMaterial>(mat: T): T {
 }
 
 const std = (color: THREE.Color, roughness = 0.85) => grounded(new THREE.MeshStandardMaterial({ color, roughness, flatShading: true }));
-const metal = (color: THREE.Color) => grounded(new THREE.MeshStandardMaterial({ color, roughness: 0.55, metalness: 0.25, flatShading: true }));
+
+/** A material with a painted surface, tinted by the palette color. Every building and prop part uses these, like the house does. */
+const painted = (kind: Surface, color: THREE.Color, roughness = 0.85) => createSurfaceMaterial(kind, { color, roughness, grounded: true, flat: true });
+const paintedMetal = (color: THREE.Color, roughness = 0.55) => {
+  const mat = painted('metal', color, roughness);
+  mat.metalness = 0.25;
+  return mat;
+};
 
 export const MAT = {
-  wood: std(PALETTE.oldWood),
-  darkWood: std(mixPalette(PALETTE.oldWood, PALETTE.warmShadow, 0.55)),
-  plaster: std(mixPalette(mixPalette(PALETTE.lantern, PALETTE.oldWood, 0.5), PALETTE.nightBlue, 0.3), 0.95),
-  roofRed: std(mixPalette(PALETTE.ember, PALETTE.warmShadow, 0.5)),
-  roofSlate: std(mixPalette(PALETTE.nightBlue, PALETTE.frost, 0.3)),
-  thatch: std(mixPalette(PALETTE.lantern, PALETTE.oldWood, 0.55)),
-  canvas: std(mixPalette(PALETTE.lantern, PALETTE.frost, 0.35), 1),
-  stone: std(mixPalette(PALETTE.nightBlue, PALETTE.frost, 0.5)),
-  darkStone: std(mixPalette(PALETTE.nightBlue, PALETTE.frost, 0.25)),
-  iron: std(mixPalette(PALETTE.deepCold, PALETTE.frost, 0.3), 0.6),
+  wood: painted('planks', PALETTE.oldWood),
+  darkWood: painted('siding', mixPalette(PALETTE.oldWood, PALETTE.warmShadow, 0.55)),
+  plaster: painted('rock', mixPalette(mixPalette(PALETTE.lantern, PALETTE.oldWood, 0.5), PALETTE.nightBlue, 0.3), 0.95),
+  roofRed: painted('roof', mixPalette(PALETTE.ember, PALETTE.warmShadow, 0.5)),
+  roofSlate: painted('roof', mixPalette(PALETTE.nightBlue, PALETTE.frost, 0.3)),
+  thatch: painted('needles', mixPalette(PALETTE.lantern, PALETTE.oldWood, 0.55)),
+  canvas: painted('cloth', mixPalette(PALETTE.lantern, PALETTE.frost, 0.35), 1),
+  stone: painted('stone', mixPalette(PALETTE.nightBlue, PALETTE.frost, 0.5)),
+  darkStone: painted('stone', mixPalette(PALETTE.nightBlue, PALETTE.frost, 0.25)),
+  iron: paintedMetal(mixPalette(PALETTE.deepCold, PALETTE.frost, 0.3), 0.6),
   snow: std(PALETTE.frost, 1),
   glow: new THREE.MeshBasicMaterial({ color: PALETTE.lantern.clone().multiplyScalar(1.7) }),
   ember: new THREE.MeshBasicMaterial({ color: PALETTE.ember.clone().multiplyScalar(2.2) }),
   // Scavenged materials for the patched up post collapse look.
-  rust: std(mixPalette(mixPalette(PALETTE.ember, PALETTE.oldWood, 0.6), PALETTE.warmShadow, 0.55), 0.9),
-  rustDark: std(mixPalette(PALETTE.ember, PALETTE.warmShadow, 0.8), 0.9),
-  sheet: metal(mixPalette(PALETTE.frost, PALETTE.nightBlue, 0.5)),
-  sheetWarm: metal(mixPalette(PALETTE.frost, PALETTE.oldWood, 0.45)),
-  paintBlue: std(mixPalette(PALETTE.nightBlue, PALETTE.frost, 0.5)),
-  paintRed: std(mixPalette(PALETTE.ember, PALETTE.warmShadow, 0.3)),
-  paintYellow: std(mixPalette(PALETTE.lantern, PALETTE.oldWood, 0.25)),
-  tarpBlue: std(mixPalette(PALETTE.nightBlue, PALETTE.frost, 0.4), 1),
-  tarpOlive: std(mixPalette(PALETTE.lantern, PALETTE.nightBlue, 0.62), 1),
-  tarpRust: std(mixPalette(PALETTE.ember, PALETTE.oldWood, 0.55), 1),
-  cloth: std(mixPalette(PALETTE.frost, PALETTE.lantern, 0.3), 1),
-  burlap: std(mixPalette(mixPalette(PALETTE.lantern, PALETTE.oldWood, 0.5), PALETTE.frost, 0.12), 1),
+  rust: painted('metal', mixPalette(mixPalette(PALETTE.ember, PALETTE.oldWood, 0.6), PALETTE.warmShadow, 0.55), 0.9),
+  rustDark: painted('metal', mixPalette(PALETTE.ember, PALETTE.warmShadow, 0.8), 0.9),
+  sheet: paintedMetal(mixPalette(PALETTE.frost, PALETTE.nightBlue, 0.5)),
+  sheetWarm: paintedMetal(mixPalette(PALETTE.frost, PALETTE.oldWood, 0.45)),
+  paintBlue: painted('siding', mixPalette(PALETTE.nightBlue, PALETTE.frost, 0.5)),
+  paintRed: painted('siding', mixPalette(PALETTE.ember, PALETTE.warmShadow, 0.3)),
+  paintYellow: painted('siding', mixPalette(PALETTE.lantern, PALETTE.oldWood, 0.25)),
+  tarpBlue: painted('cloth', mixPalette(PALETTE.nightBlue, PALETTE.frost, 0.4), 1),
+  tarpOlive: painted('cloth', mixPalette(PALETTE.lantern, PALETTE.nightBlue, 0.62), 1),
+  tarpRust: painted('cloth', mixPalette(PALETTE.ember, PALETTE.oldWood, 0.55), 1),
+  cloth: painted('cloth', mixPalette(PALETTE.frost, PALETTE.lantern, 0.3), 1),
+  burlap: painted('cloth', mixPalette(mixPalette(PALETTE.lantern, PALETTE.oldWood, 0.5), PALETTE.frost, 0.12), 1),
   rope: std(mixPalette(PALETTE.lantern, PALETTE.oldWood, 0.4), 1),
   rubber: std(mixPalette(PALETTE.warmShadow, PALETTE.deepCold, 0.5), 1),
-  concrete: std(mixPalette(PALETTE.frost, PALETTE.warmShadow, 0.42), 1),
-  brick: std(mixPalette(mixPalette(PALETTE.oldWood, PALETTE.ember, 0.35), PALETTE.warmShadow, 0.3), 0.95),
+  concrete: painted('rock', mixPalette(PALETTE.frost, PALETTE.warmShadow, 0.42), 1),
+  brick: painted('brick', mixPalette(mixPalette(PALETTE.oldWood, PALETTE.ember, 0.35), PALETTE.warmShadow, 0.3), 0.95),
   earth: std(mixPalette(PALETTE.oldWood, PALETTE.nightBlue, 0.25), 1),
   herb: std(mixPalette(PALETTE.lantern, PALETTE.nightBlue, 0.5), 1),
   soot: std(mixPalette(PALETTE.warmShadow, PALETTE.nightBlue, 0.3), 1),

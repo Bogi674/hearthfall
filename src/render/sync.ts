@@ -6,7 +6,7 @@ import { COMPONENT_IDS } from '../data/vehicle';
 import { ENEMIES } from '../data/enemies';
 import { Tile } from '../sim/grid';
 import { floorAt } from '../sim/house';
-import { hearthStage, isBuilt, lightSources } from '../sim/query';
+import { currentPhase, hearthStage, isBuilt, lightSources } from '../sim/query';
 import type { World } from '../sim/world';
 import { FOG_DEPTH_TILES, fogDistance } from './fogOfWar';
 import { paintLight } from './lightMap';
@@ -19,9 +19,13 @@ import { colonistFigures } from './colonists';
 import { createFigureSet } from './meshes/figures';
 import { PERSON_RIG } from './meshes/people';
 import { createHearthMesh } from './meshes/hearth';
+import { createHearthSiteMesh, createStashMesh } from './meshes/markers';
 import { createHouseView, type HouseLook } from './houseView';
 import { buildProps, colorPropsByWarmth } from './meshes/props';
 import { createPoiMesh } from './meshes/pois';
+import { PALETTE } from './materials';
+import { createAmbience } from './meshes/ambience';
+import { createAnimalView } from './meshes/animals';
 import { createMist } from './meshes/mist';
 import { createSnow } from './meshes/snow';
 import { createAtmosphere } from './atmosphere';
@@ -34,6 +38,9 @@ import type { View } from './scene';
 function frostForDay(day: number): number {
   return Math.min(0.8, 0.3 + day * 0.04);
 }
+
+/** True when a monster is near a spot, so a worn ruin piece there is worth a health bar. */
+const underAttack = (w: World, x: number, y: number): boolean => w.enemies.some((e) => Math.hypot(e.x - x, e.y - y) < 6);
 
 export interface WorldView {
   /** The look says how much of the walls and roofs to draw so the people inside the house can be seen. */
@@ -98,12 +105,27 @@ export function createWorldView(world: World, view: Pick<View, 'scene' | 'fog' |
   const houseView = createHouseView(scene);
   const enemies = createEnemyMeshes();
   scene.add(enemies.group);
+  const animalView = createAnimalView();
+  scene.add(animalView.group);
   const bars = createBars();
   scene.add(bars.mesh);
 
+  const ambience = createAmbience(width, world.seed);
+  scene.add(ambience.group);
   const hearth = createHearthMesh();
   hearth.group.position.set(world.hearth.x - width / 2, 0, world.hearth.y - height / 2);
   scene.add(hearth.group);
+  const stash = createStashMesh();
+  if (world.stash) stash.group.position.set(world.stash.x - width / 2, 0, world.stash.y - height / 2);
+  scene.add(stash.group);
+  const hearthSite = createHearthSiteMesh();
+  scene.add(hearthSite.group);
+  // Lamps, heaters, and stoves near the camera light the rooms they stand in with real warm light. The hearth has its own.
+  const lampPool = Array.from({ length: 5 }, () => {
+    const l = new THREE.PointLight(PALETTE.lantern, 0, 12, 1.7);
+    scene.add(l);
+    return l;
+  });
   const hearthLight = createHearthLight();
   hearthLight.position.add(hearth.group.position);
   scene.add(hearthLight);
@@ -118,6 +140,7 @@ export function createWorldView(world: World, view: Pick<View, 'scene' | 'fog' |
   const viewDir = new THREE.Vector3();
   let warmthKey = '';
   let revealRev = -1;
+  let nightEase = 0;
 
   return {
     update(w, time, alpha, pixelsPerUnit, camera, look) {
@@ -151,6 +174,28 @@ export function createWorldView(world: World, view: Pick<View, 'scene' | 'fog' |
       });
       groundMat.uniforms.uFrost.value = atmosphere.update(w, time);
       const lights = lightSources(w);
+      {
+        // The ground point the camera looks at, then the nearest lights to it.
+        camera.getWorldDirection(viewDir);
+        const t = viewDir.y !== 0 ? -camera.position.y / viewDir.y : 0;
+        const [cx, cz] = [camera.position.x + viewDir.x * t, camera.position.z + viewDir.z * t];
+        const near = lights
+          .filter((l) => Math.hypot(l.x - w.hearth.x, l.y - w.hearth.y) > 0.8)
+          .map((l) => ({ l, d: Math.hypot(l.x - width / 2 - cx, l.y - height / 2 - cz) }))
+          .sort((a, b) => a.d - b.d)
+          .slice(0, lampPool.length);
+        lampPool.forEach((lamp, i) => {
+          const e = near[i];
+          // Lights stay in the scene at zero strength when unused, so the shader is not rebuilt as lamps come and go.
+          if (!e || e.d > 40) {
+            lamp.intensity = 0;
+            return;
+          }
+          lamp.position.set(e.l.x - width / 2, 1.5, e.l.y - height / 2);
+          lamp.intensity = (2.2 + e.l.r * 1.1) * (1 + Math.sin(time * 6 + i * 2.1) * 0.04);
+          lamp.distance = e.l.r * 2.2 + 3;
+        });
+      }
       const key = lights.map((l) => `${l.x},${l.y},${l.r}`).join(';');
       if (key !== lightKey) {
         lightKey = key;
@@ -158,7 +203,13 @@ export function createWorldView(world: World, view: Pick<View, 'scene' | 'fog' |
         lightTex.needsUpdate = true;
       }
       groundMat.uniforms.uTime.value = time;
-      hearth.update(time, w.hearth.lit, w.hearth.level);
+      hearth.update(time, { lit: w.hearth.lit, ignited: w.hearth.ignited, stage: w.hearth.level });
+      hearth.group.position.set(w.hearth.x - width / 2, 0, w.hearth.y - height / 2);
+      stash.update(time, w.stash?.state ?? 'hidden');
+      if (w.stash) stash.group.position.set(w.stash.x - width / 2, 0, w.stash.y - height / 2);
+      if (w.hearthSite) hearthSite.group.position.set(w.hearthSite.x - width / 2, 0, w.hearthSite.y - height / 2);
+      hearthSite.update(time, w.hearthSite !== null, w.hearthSite ? 1 - w.hearthSite.construct / BALANCE.hearth.moveSeconds : 0);
+      hearthLight.position.set(hearth.group.position.x, 1.4, hearth.group.position.z + 0.3);
       hearthLight.visible = w.hearth.lit;
       hearthLight.intensity = baseIntensity * (1 + Math.sin(time * 11) * 0.05 + Math.sin(time * 27) * 0.03);
 
@@ -199,6 +250,9 @@ export function createWorldView(world: World, view: Pick<View, 'scene' | 'fog' |
         body.scale.y = isBuilt(b) ? 1 : 0.08 + 0.92 * (1 - b.construct / BUILDINGS[b.type].build);
         if (site && isBuilt(b)) g.remove(site);
         g.visible = b.storey <= look.storey;
+        // Broken furniture sags to one side until it is mended.
+        g.rotation.z = b.broken ? 0.16 : 0;
+        g.rotation.x = b.broken ? -0.1 : 0;
         const light = g.getObjectByName('light');
         if (light) light.visible = b.lit;
         for (let s = 1; s <= 3; s++) {
@@ -213,13 +267,14 @@ export function createWorldView(world: World, view: Pick<View, 'scene' | 'fog' |
           ship.position.y = 3.3 + (launchedAt ? (time - launchedAt) ** 2 * 0.6 : 0);
         }
         const max = BUILDINGS[b.type].hp;
-        if (b.hp < max) barList.push({ x: b.x + (b.w - 1) / 2 - width / 2, z: b.y + (b.h - 1) / 2 - height / 2, y: 2, fraction: b.hp / max, enemy: false });
+        // Bars show only on things that are hurt. A worn ruin shows its bar only while monsters are at it.
+        if (b.hp < max && (!b.ruin || underAttack(w, b.x, b.y))) barList.push({ x: b.x + (b.w - 1) / 2 - width / 2, z: b.y + (b.h - 1) / 2 - height / 2, y: 2, fraction: b.hp / max, enemy: false });
       }
       for (const e of w.house.edges) {
         const max = EDGES[e.kind].levels[e.level - 1].hp;
-        if (e.construct <= 0 && e.hp < max) barList.push({ x: (e.side === 'w' ? e.x - 0.5 : e.x) - width / 2, z: (e.side === 'n' ? e.y - 0.5 : e.y) - height / 2, y: 1.5, fraction: e.hp / max, enemy: false });
+        if (e.construct <= 0 && e.hp < max && (!e.ruin || underAttack(w, e.x, e.y))) barList.push({ x: (e.side === 'w' ? e.x - 0.5 : e.x) - width / 2, z: (e.side === 'n' ? e.y - 0.5 : e.y) - height / 2, y: 1.5, fraction: e.hp / max, enemy: false });
       }
-      if (w.hearth.hp < hearthStage(w).hp) barList.push({ x: 0, z: 0, y: 3.5, fraction: w.hearth.hp / hearthStage(w).hp, enemy: false });
+      if (w.hearth.hp < hearthStage(w).hp) barList.push({ x: w.hearth.x - width / 2, z: w.hearth.y - height / 2, y: 2.6, fraction: w.hearth.hp / hearthStage(w).hp, enemy: false });
       // Monsters under fog of war stay unseen.
       const seen = w.enemies.filter((e) => w.revealed[Math.round(e.y) * width + Math.round(e.x)] === 1);
       for (const e of seen) {
@@ -227,12 +282,16 @@ export function createWorldView(world: World, view: Pick<View, 'scene' | 'fog' |
         if (e.hp < max) barList.push({ x: e.px + (e.x - e.px) * alpha - width / 2, z: e.py + (e.y - e.py) * alpha - height / 2, y: e.type === 'brute' ? 1.8 : 1.2, fraction: e.hp / max, enemy: true });
       }
       enemies.update(seen, alpha, width / 2, height / 2, time);
+      animalView.update(w.animals, w.houses, alpha, w.revealed, width, height, time);
       camera.getWorldDirection(viewDir);
       bars.update(barList, Math.atan2(-viewDir.x, -viewDir.z));
 
       colonists.update(colonistFigures(w, alpha, colonistHeading, colonistRise, Math.min(0.1, Math.max(0, time - lastFrame)), look.storey), time, 9);
       lastFrame = time;
 
+      const phaseName = currentPhase(w).name;
+      nightEase += ((phaseName === 'Night' || phaseName === 'Dusk' ? 1 : 0) - nightEase) * 0.02;
+      ambience.update(time, { hearth: hearth.group.position, burning: w.hearth.lit, night: nightEase, pixelsPerUnit });
       snow.update(time, pixelsPerUnit, camera.getWorldDirection(viewDir));
       mist.update(time);
     },

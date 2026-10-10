@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { BALANCE } from '../src/data/balance';
 import { BUILDINGS } from '../src/data/buildings';
-import { COMPONENT_IDS, LAST_NIGHT } from '../src/data/vehicle';
+import { BLUEPRINT, COMPONENT_IDS, LAST_NIGHT } from '../src/data/vehicle';
 import { berthError, componentError, launchError } from '../src/sim/commands';
 import { padError, placeBuilding, placementError } from '../src/sim/placement';
 import { currentPhase } from '../src/sim/query';
-import { createWorld, stepWorld, type World } from '../src/sim/world';
+import { stepWorld, type World } from '../src/sim/world';
 import { launchFuelNeeded, seatCount } from '../src/sim/query';
-import { build, closedRoom, finish, findSpot } from './helpers';
+import { bareWorld, build, closedRoom, finish, findSpot, mendedHouse } from './helpers';
 
 const seconds = (w: World, s: number, each?: () => void) => {
   for (let i = 0; i < s * 10 && !w.lost && !w.won; i++) {
@@ -16,7 +16,7 @@ const seconds = (w: World, s: number, each?: () => void) => {
   }
 };
 const rich = (seed = 1) => {
-  const w = createWorld(seed);
+  const w = bareWorld(seed);
   Object.assign(w.stock, { wood: 0, scrap: 0, rawFood: 0, planks: 0, fuel: 60, meals: 0, metal: 0, parts: 0 });
   build(w, 'storageShed');
   w.airship.blueprint = true;
@@ -178,25 +178,33 @@ describe('the blueprint, the launch pad, and the crew (section 11.2)', () => {
     seconds(w, 0.3);
   };
 
-  it('the blueprint turns up at dawn once the house is at stage 3 and hope is up', () => {
-    const w = createWorld(1);
+  it('a stash turns up at dawn once enough rooms are mended and hope is up, and the crew opens it for the blueprint', () => {
+    const w = bareWorld(1);
+    w.stash = { x: w.hearth.x + 6, y: w.hearth.y - 3, state: 'hidden', open: BLUEPRINT.openSeconds };
     expect(w.airship.blueprint).toBe(false);
     expect(componentError(w, 'frame')).toBe("Needs the old owner's blueprint");
-    w.hearth.level = 2;
+    // Two rooms are not enough.
+    mendedHouse(w, 2);
     w.hope = 90;
     dawn(w);
-    expect(w.airship.blueprint).toBe(false);
-    const w2 = createWorld(1);
-    w2.hearth.level = 3;
+    expect(w.stash.state).toBe('hidden');
+    // Three rooms with low hope are not enough either.
+    const w2 = bareWorld(1);
+    w2.stash = { x: w2.hearth.x + 6, y: w2.hearth.y - 3, state: 'hidden', open: BLUEPRINT.openSeconds };
+    mendedHouse(w2, 3);
     w2.hope = 40;
     dawn(w2);
+    expect(w2.stash.state).toBe('hidden');
+    // Three rooms and hope: someone finds the box, and the crew opens it.
+    w2.hope = 60;
+    dawn(w2);
+    expect(w2.stash.state).toBe('found');
+    expect(w2.log.some((l) => l.text.includes('tin box'))).toBe(true);
     expect(w2.airship.blueprint).toBe(false);
-    const w3 = createWorld(1);
-    w3.hearth.level = 3;
-    w3.hope = 60;
-    dawn(w3);
-    expect(w3.airship.blueprint).toBe(true);
-    expect(w3.log.some((l) => l.text.includes('blueprints'))).toBe(true);
+    seconds(w2, 90);
+    expect(w2.stash.state).toBe('opened');
+    expect(w2.airship.blueprint).toBe(true);
+    expect(w2.log.some((l) => l.text.includes('blueprints'))).toBe(true);
   });
 
   /** The nearest top left tile where the pad is allowed, found with the blueprint and plenty of stock. */
@@ -219,7 +227,7 @@ describe('the blueprint, the launch pad, and the crew (section 11.2)', () => {
   };
 
   it('the pad needs the blueprint, ground near the house, and a clear ring around it', () => {
-    const w = createWorld(1);
+    const w = bareWorld(1);
     fill(w, { planks: 200, metal: 200, parts: 50, wood: 200 });
     const { x, y } = w.hearth;
     const pad = openSpot(w);
@@ -234,19 +242,19 @@ describe('the blueprint, the launch pad, and the crew (section 11.2)', () => {
     expect(placeBuilding(w, 'storageShed', side.x, side.y, false)).toBe(true);
     expect(placementError(w, 'airshipDock', pad.x, pad.y, false)).toMatch(/Clear the ground around the pad first. 1 building is in the way/);
     // A house floor in the ring also refuses it.
-    const w2 = createWorld(1);
+    const w2 = bareWorld(1);
     fill(w2, { planks: 200, metal: 200, parts: 50, wood: 200 });
     w2.airship.blueprint = true;
     w2.hearth.level = 5;
     const pad2 = openSpot(w2);
     w2.hearth.level = 5;
-    w2.house.floors.push({ id: 900, x: pad2.x - 1, y: pad2.y + 2, storey: 0, kind: 'boards', construct: 0 });
+    w2.house.floors.push({ id: 900, x: pad2.x - 1, y: pad2.y + 2, storey: 0, kind: 'boards', construct: 0, ruin: false, roofBroken: false, roofWork: null });
     w2.buildRev++;
     expect(placementError(w2, 'airshipDock', pad2.x, pad2.y, false)).toMatch(/House floors are in the way/);
   });
 
   it('clearing the area marks buildings, and colonists salvage them for most of their cost', () => {
-    const w = createWorld(1);
+    const w = bareWorld(1);
     fill(w, { wood: 100 });
     const spot = findSpot(w, 'storageShed', 10, 0)!;
     placeBuilding(w, 'storageShed', spot.x, spot.y, false);
@@ -264,7 +272,7 @@ describe('the blueprint, the launch pad, and the crew (section 11.2)', () => {
   });
 
   it('a Drafting Table in the house builds components with no pad yet', () => {
-    const w = createWorld(1);
+    const w = bareWorld(1);
     w.airship.blueprint = true;
     fill(w, { planks: 300, metal: 100, parts: 40, wood: 100, meals: 200 });
     closedRoom(w);

@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { BUILDINGS } from '../data/buildings';
 import { STOREY_HEIGHT } from '../data/house';
-import { covered, flanks, isHearthTile, isLanding, storedEdgeAt } from '../sim/house';
+import { covered, flanks, isLanding, storedEdgeAt } from '../sim/house';
 import type { World } from '../sim/world';
 import { PALETTE } from './materials';
 
@@ -78,7 +78,7 @@ const hash = (a: number, b: number, c2: number): number => {
 };
 
 export interface HouseDecor {
-  update(world: World, shownStorey: number, wallUp: (edgeId: number) => number): void;
+  update(world: World, shownStorey: number, wallUp: (edgeId: number) => number, seen: (x: number, y: number) => boolean): void;
 }
 
 function bank(scene: THREE.Scene, source: Record<string, Piece[]>) {
@@ -127,7 +127,7 @@ export function createHouseDecor(scene: THREE.Scene): HouseDecor {
   };
 
   return {
-    update(w, shownStorey, wallUp) {
+    update(w, shownStorey, wallUp, seen) {
       const ox = w.map.width / 2;
       const oy = w.map.height / 2;
       rails.count = 0;
@@ -145,7 +145,7 @@ export function createHouseDecor(scene: THREE.Scene): HouseDecor {
       }
 
       for (const f of w.house.floors) {
-        if (f.storey > shownStorey || f.construct > 0) continue;
+        if (f.storey > shownStorey || f.construct > 0 || !seen(f.x, f.y)) continue;
         const base = f.storey * STOREY_HEIGHT;
         const x = f.x - ox;
         const z = f.y - oy;
@@ -166,7 +166,7 @@ export function createHouseDecor(scene: THREE.Scene): HouseDecor {
           }
         }
         // Clutter on bare floor.
-        if (isHearthTile(w, f.x, f.y) || isLanding(w, f.x, f.y, f.storey) || furnished.has(f.storey * N + f.y * w.map.width + f.x)) continue;
+        if (isLanding(w, f.x, f.y, f.storey) || furnished.has(f.storey * N + f.y * w.map.width + f.x)) continue;
         const r = hash(f.x, f.y, f.storey);
         if (r > 0.4) continue;
         const kind = CLUTTER_KEYS[Math.floor(hash(f.y, f.x, f.storey + 3) * CLUTTER_KEYS.length)];
@@ -180,7 +180,7 @@ export function createHouseDecor(scene: THREE.Scene): HouseDecor {
 
       // Things on the inner face of walls. A wall only carries them while it stands up.
       for (const e of w.house.edges) {
-        if (e.storey > shownStorey || e.construct > 0 || e.kind !== 'wall') continue;
+        if (e.storey > shownStorey || e.construct > 0 || e.kind !== 'wall' || !seen(e.x, e.y)) continue;
         if (wallUp(e.id) < 0.95) continue;
         const r = hash(e.x, e.y, e.storey * 2 + (e.side === 'n' ? 1 : 0));
         if (r > 0.55) continue;

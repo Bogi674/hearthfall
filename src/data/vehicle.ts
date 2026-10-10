@@ -25,8 +25,11 @@ export type ComponentId = keyof typeof DEFS;
 export const COMPONENTS = DEFS as Record<ComponentId, ComponentDef>;
 export const COMPONENT_IDS = Object.keys(COMPONENTS) as ComponentId[];
 
-/** The old owner's blueprint turns up when the house is repaired and hope is up (section 11.2). */
-export const BLUEPRINT = { hearthLevel: 3, hope: 50 };
+/** The old owner's blueprint lies in a hidden stash. The crew finds it once enough rooms are mended and hope is up (section 11.2). */
+/** The builder site id of the stash, so colonists can be sent to open it. */
+export const STASH_SITE = -1;
+
+export const BLUEPRINT = { rooms: 3, hope: 50, openSeconds: 10 };
 
 /**
  * The launch pad (section 11.2): a square deck for the gondola with a ring of open ground around it. It must be close

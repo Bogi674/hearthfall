@@ -1,11 +1,10 @@
 // Placement rules shared by the place command and the UI preview.
-import { BALANCE } from '../data/balance';
 import { BUILDINGS, type BuildingType } from '../data/buildings';
 import { RESOURCE_NAMES, type Resource } from '../data/resources';
 import { PAD } from '../data/vehicle';
-import { EDGES, FLOORS, type EdgeKind, type FloorId } from '../data/house';
+import { EDGES, FLOORS, HOUSE, type EdgeKind, type FloorId } from '../data/house';
 import { getTile, inBounds, Tile } from './grid';
-import { covered, edgeKey, flanks, floorAt, inLot, isHearthTile, isIndoors, isLanding, maxStorey, sealsRoom, storedEdgeAt, type Side } from './house';
+import { covered, edgeKey, flanks, floorAt, isHearthTile, isIndoors, isLanding, maxStorey, sealsRoom, storedEdgeAt, type Side } from './house';
 import { missing, pay } from './query';
 import type { Amounts } from '../data/resources';
 import type { World } from './world';
@@ -33,8 +32,9 @@ export function placementError(world: World, type: BuildingType, x: number, y: n
     for (let tx = x; tx < x + w; tx++) {
       if (!inBounds(world.map, tx, ty)) return 'Out of bounds';
       const t = getTile(world.map, tx, ty);
+      if (t === Tile.Rubble) return 'Clear the rubble first';
       if (t !== Tile.Ground && t !== Tile.Road) return 'Blocked by terrain';
-      if (storey === 0 && Math.abs(tx - world.hearth.x) <= 1 && Math.abs(ty - world.hearth.y) <= 1) return 'Blocked by the hearth';
+      if (storey === 0 && isHearthTile(world, tx, ty)) return 'Blocked by the hearth';
       if (type !== 'airshipDock' && reservedForPad(world, tx, ty)) return 'Reserved for the launch pad';
       if (BUILDINGS[type].furniture) {
         if (!floorAt(world, tx, ty, storey)) return 'Furniture needs a floor';
@@ -49,8 +49,6 @@ export function placementError(world: World, type: BuildingType, x: number, y: n
         continue;
       }
       if (floorAt(world, tx, ty)) return 'Part of the house';
-      // The ring around the house is kept free so the house can grow (section 5.6).
-      if (onHouseLot(world, tx, ty)) return 'Kept free for the house';
     }
   }
   for (const b of world.buildings) {
@@ -65,11 +63,6 @@ export function placementError(world: World, type: BuildingType, x: number, y: n
   return short ? `Not enough ${RESOURCE_NAMES[short as Resource].toLowerCase()}` : null;
 }
 
-/** True for tiles in the square around the hearth that only house rooms may use. */
-export function onHouseLot(world: World, x: number, y: number): boolean {
-  return Math.max(Math.abs(x - world.hearth.x), Math.abs(y - world.hearth.y)) <= BALANCE.hearth.lot;
-}
-
 /** Places a construction site that builders turn into the building. A prebuilt one is finished at once. */
 export function placeBuilding(world: World, type: BuildingType, x: number, y: number, rotated: boolean, prebuilt = false, storey = 0): boolean {
   if (!prebuilt && placementError(world, type, x, y, rotated, 'place', storey)) return false;
@@ -78,7 +71,7 @@ export function placeBuilding(world: World, type: BuildingType, x: number, y: nu
   if (!prebuilt) pay(world, def.cost);
   world.buildings.push({
     id: world.nextId++, type, x, y, w, h, workers: def.workers, progress: 0, loaded: false, status: prebuilt ? 'ok' : 'building',
-    hp: def.hp, lit: false, level: 1, construct: prebuilt ? 0 : def.build, node: -1, shelter: false, craft: 'spear', salvage: null, storey,
+    hp: def.hp, lit: false, level: 1, construct: prebuilt ? 0 : def.build, node: -1, shelter: false, craft: 'spear', salvage: null, move: null, storey, ruin: false, broken: false, repair: null,
   });
   world.buildRev++;
   return true;
@@ -131,18 +124,15 @@ export function floorPlacementError(world: World, x: number, y: number, kind: Fl
   if (reservedForPad(world, x, y)) return 'Reserved for the launch pad';
   if (!inBounds(world.map, x, y)) return 'Out of bounds';
   const t = getTile(world.map, x, y);
+  if (t === Tile.Rubble) return 'Clear the rubble first';
   if (t !== Tile.Ground && t !== Tile.Road) return 'Blocked by terrain';
-  if (storey > maxStorey(world)) return 'Repair the house more to build higher';
-  if (isHearthTile(world, x, y)) return storey === 0 ? 'The house is already here' : 'The hearth hall has its own roof';
-  if (!inLot(world, x, y)) return 'Outside the house lot. Repair the house to grow it';
+  if (storey > maxStorey(world)) return 'That is as high as a house can go';
+  if (storey > FLOORS[kind].maxStorey) return `${FLOORS[kind].name} cannot hold up that many storeys. Use stone`;
   if (floorAt(world, x, y, storey)) return 'Already has a floor';
-  if (storey === 0 && world.buildings.some((b) => b.storey === 0 && x >= b.x && x < b.x + b.w && y >= b.y && y < b.y + b.h)) return 'Blocked by a building';
+  if (storey === 0 && world.buildings.some((b) => b.storey === 0 && !BUILDINGS[b.type].furniture && x >= b.x && x < b.x + b.w && y >= b.y && y < b.y + b.h)) return 'Blocked by a building';
   if (storey > 0) {
     if (isLanding(world, x, y, storey)) return 'The stairs open here';
     if (!supported(world, x, y, storey)) return 'Upper floors need a floor below, or a floor beside them that has one';
-  } else {
-    const touches = [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]].some(([nx, ny]) => isHearthTile(world, nx, ny) || floorAt(world, nx, ny));
-    if (!touches) return 'Floors must touch the house or another floor';
   }
   if (sealsRoom(world, { addFloor: { x, y }, storey })) return 'A room would have no door';
   return costError(world, FLOORS[kind].cost);
@@ -154,9 +144,7 @@ export function edgePlacementError(world: World, x: number, y: number, side: Sid
   if (!def) return 'Unknown wall';
   const [a, b] = flanks(x, y, side);
   if (!inBounds(world.map, a[0], a[1]) || !inBounds(world.map, b[0], b[1])) return 'Out of bounds';
-  if (storey > maxStorey(world)) return 'Repair the house more to build higher';
-  if (!inLot(world, a[0], a[1]) && !inLot(world, b[0], b[1])) return 'Outside the house lot. Repair the house to grow it';
-  if (storey === 0 && isHearthTile(world, a[0], a[1]) && isHearthTile(world, b[0], b[1])) return 'Inside the house';
+  if (storey > maxStorey(world)) return 'That is as high as a house can go';
   const floored = (p: [number, number]) => covered(world, p[0], p[1], storey);
   if (!floored(a) && !floored(b)) return 'Walls need a floor beside them';
   const old = storedEdgeAt(world, x, y, side, storey);
@@ -168,9 +156,6 @@ export function edgePlacementError(world: World, x: number, y: number, side: Sid
     if (sealsRoom(world, { addEdge: { x, y, side, kind }, storey })) return 'A room would have no door. Add a door first';
     return costError(world, def.cost);
   }
-  const onHouseWall = storey === 0 && isHearthTile(world, a[0], a[1]) !== isHearthTile(world, b[0], b[1]);
-  if (onHouseWall && kind === 'wall') return 'The house wall is already here';
-  if (onHouseWall && kind === 'door' && side === 'n' && x === world.hearth.x && y === world.hearth.y + 2) return 'The front door is already here';
   if (sealsRoom(world, { addEdge: { x, y, side, kind }, storey })) return 'A room would have no door. Add a door first';
   return costError(world, def.cost);
 }
@@ -178,7 +163,7 @@ export function edgePlacementError(world: World, x: number, y: number, side: Sid
 export function placeFloor(world: World, x: number, y: number, kind: FloorId, storey = 0): boolean {
   if (floorPlacementError(world, x, y, kind, storey)) return false;
   pay(world, FLOORS[kind].cost);
-  world.house.floors.push({ id: world.nextId++, x, y, storey, kind, construct: FLOORS[kind].build });
+  world.house.floors.push({ id: world.nextId++, x, y, storey, kind, construct: FLOORS[kind].build, ruin: false, roofBroken: false, roofWork: null });
   world.buildRev++;
   return true;
 }
@@ -189,7 +174,7 @@ export function placeEdge(world: World, x: number, y: number, side: Side, kind: 
   pay(world, def.cost);
   const old = storedEdgeAt(world, x, y, side, storey);
   if (old) old.pending = { kind, level, left: def.build };
-  else world.house.edges.push({ id: world.nextId++, x, y, storey, side, kind, level, hp: def.hp, construct: def.build, pending: null });
+  else world.house.edges.push({ id: world.nextId++, x, y, storey, side, kind, level, hp: def.hp, construct: def.build, pending: null, ruin: false, repair: null });
   world.buildRev++;
   return true;
 }
@@ -217,16 +202,16 @@ export function removeError(world: World, item: HouseItem, id: number): string |
   return needs ? 'Remove the walls on it first' : null;
 }
 
-/** Takes a house piece away. An untouched site refunds all of its cost. Anything else refunds half. */
+/** Takes a house piece away. A ruin gives back most of its cost as salvage. An untouched site refunds all of its cost. Anything else refunds half. */
 export function removeHouseItem(world: World, item: HouseItem, id: number): boolean {
   if (removeError(world, item, id)) return false;
   let cost: Amounts;
-  let untouched: boolean;
+  let refund: number;
   if (item === 'furniture') {
     const i = world.buildings.findIndex((o) => o.id === id);
     const b = world.buildings[i];
     cost = BUILDINGS[b.type].cost;
-    untouched = b.construct >= BUILDINGS[b.type].build;
+    refund = b.ruin ? HOUSE.ruinSalvage : b.construct >= BUILDINGS[b.type].build ? 1 : 0.5;
     world.buildings.splice(i, 1);
   } else if (item === 'edge') {
     const i = world.house.edges.findIndex((o) => o.id === id);
@@ -235,21 +220,21 @@ export function removeHouseItem(world: World, item: HouseItem, id: number): bool
       // Removing a piece that is being upgraded cancels the upgrade and keeps the piece.
       const next = EDGES[e.pending.kind].levels[e.pending.level - 1];
       cost = next.cost;
-      untouched = e.pending.left >= next.build;
+      refund = e.pending.left >= next.build ? 1 : 0.5;
       e.pending = null;
     } else {
       cost = EDGES[e.kind].levels[e.level - 1].cost;
-      untouched = e.construct >= EDGES[e.kind].levels[e.level - 1].build;
+      refund = e.ruin ? HOUSE.ruinSalvage : e.construct >= EDGES[e.kind].levels[e.level - 1].build ? 1 : 0.5;
       world.house.edges.splice(i, 1);
     }
   } else {
     const i = world.house.floors.findIndex((o) => o.id === id);
     const f = world.house.floors[i];
     cost = FLOORS[f.kind].cost;
-    untouched = f.construct >= FLOORS[f.kind].build;
+    refund = f.ruin ? HOUSE.ruinSalvage : f.construct >= FLOORS[f.kind].build ? 1 : 0.5;
     world.house.floors.splice(i, 1);
   }
-  for (const [r, n] of Object.entries(cost) as [Resource, number][]) world.stock[r] += untouched ? n : Math.floor(n / 2);
+  for (const [r, n] of Object.entries(cost) as [Resource, number][]) world.stock[r] += Math.floor(n * refund);
   world.buildRev++;
   return true;
 }

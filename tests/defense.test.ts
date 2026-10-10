@@ -5,8 +5,8 @@ import { placeBuilding, placementError } from '../src/sim/placement';
 import { currentPhase, DAY_SECONDS, nightThreat } from '../src/sim/query';
 import { combatSystem } from '../src/sim/systems/combat';
 import { BLOCKED } from '../src/sim/systems/pathfinding';
-import { createWorld, stepWorld, TICKS_PER_SECOND, type World } from '../src/sim/world';
-import { build, finish, runDays } from './helpers';
+import { stepWorld, TICKS_PER_SECOND, type World } from '../src/sim/world';
+import { bareWorld, build, finish, runDays } from './helpers';
 
 const at = (w: World, x: number, y: number) => y * w.map.width + x;
 const stepSeconds = (w: World, s: number) => {
@@ -42,7 +42,7 @@ describe('waves', () => {
   });
 
   it('spends threat only on enemies unlocked by that night', () => {
-    const world = createWorld(4);
+    const world = bareWorld(4);
     for (let day = 1; day <= 8; day++) {
       const plan = world.wave.plan;
       const spent = plan.reduce((s, t) => s + ENEMIES[t].threat, 0);
@@ -54,7 +54,7 @@ describe('waves', () => {
   });
 
   it('spawns the planned wave at night and clears it at dawn', () => {
-    const world = createWorld(5);
+    const world = bareWorld(5);
     world.stock.fuel = 1000;
     world.hearth.hp = 1e6;
     runDays(world, 1, undefined, false);
@@ -69,14 +69,14 @@ describe('waves', () => {
 
 describe('flow field', () => {
   it('leads every reachable tile downhill to the hearth', () => {
-    const world = createWorld(1);
+    const world = bareWorld(1);
     const f = world.flow.normal;
     expect(f[at(world, world.hearth.x, world.hearth.y)]).toBe(0);
-    expect(f[at(world, world.hearth.x + 5, world.hearth.y)]).toBe(4);
+    expect(f[at(world, world.hearth.x + 5, world.hearth.y)]).toBe(5);
   });
 
   it('prices walls high but keeps a walled base reachable', () => {
-    const world = createWorld(1);
+    const world = bareWorld(1);
     world.stock.wood = 1000;
     placeAll(world, 'woodenBarricade', ring(world, 5));
     stepWorld(world);
@@ -86,7 +86,7 @@ describe('flow field', () => {
   });
 
   it('monsters attack the wall that blocks them', () => {
-    const world = createWorld(1);
+    const world = bareWorld(1);
     world.stock.wood = 1000;
     placeAll(world, 'woodenBarricade', ring(world, 5));
     stepWorld(world);
@@ -99,7 +99,7 @@ describe('flow field', () => {
 
 describe('defender duty', () => {
   it('a watchtower defender skips sleep and shoots monsters in range', () => {
-    const world = createWorld(1);
+    const world = bareWorld(1);
     world.stock.planks = 100;
     world.stock.fuel = 1000;
     expect(build(world, 'watchtower')).toBe(true);
@@ -117,7 +117,7 @@ describe('defender duty', () => {
 
 /** Colony with endless food and fuel, so only the defense decides the outcome. */
 function colony(seed: number): World {
-  const world = createWorld(seed);
+  const world = bareWorld(seed);
   Object.assign(world.stock, { wood: 2000, planks: 2000, fuel: 2000, meals: 2000 });
   build(world, 'tent');
   build(world, 'tent');
@@ -160,7 +160,7 @@ describe('defense (M3 done when)', () => {
 describe('light', () => {
   /** Health a colonist loses in 10 seconds next to a Shambler at a given distance from the hearth. */
   const lossAt = (d: number) => {
-    const w = createWorld(1);
+    const w = bareWorld(1);
     const c = w.colonists[0];
     w.colonists = [c];
     [c.x, c.y] = [w.hearth.x + d, w.hearth.y];
