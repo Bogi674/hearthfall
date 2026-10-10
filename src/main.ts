@@ -112,7 +112,7 @@ if (import.meta.env.DEV) {
     v.set(x - world.map.width / 2, h, y - world.map.height / 2).project(view.rig.camera);
     return { x: ((v.x + 1) / 2) * innerWidth, y: ((1 - v.y) / 2) * innerHeight };
   };
-  Object.assign(window, { world, project, ui: state });
+  Object.assign(window, { world, project, ui: state, rig: view.rig });
 }
 
 let accumulator = 0;

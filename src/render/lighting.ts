@@ -32,7 +32,7 @@ export function followWithShadow(moon: THREE.DirectionalLight, target: THREE.Vec
 }
 
 export function createHearthLight(): THREE.PointLight {
-  const light = new THREE.PointLight(PALETTE.ember, 46, 0, 1.4);
+  const light = new THREE.PointLight(PALETTE.ember, 24, 0, 1.5);
   light.position.set(0, 3.4, 0.8);
   // The fire throws warm shadows of the walls and furniture around it, which is most of what makes a room feel lived in.
   light.castShadow = !new URLSearchParams(location.search).has('lowfx');

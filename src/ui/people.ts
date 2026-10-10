@@ -21,6 +21,7 @@ export function taskText(w: World, c: Colonist): string {
     case 'shelter': return 'Taking shelter';
     case 'eat': return 'Eating at the table';
     case 'mingle': return 'Talking with the others';
+    case 'hunt': return 'Hunting';
     case 'guard': return `On watch at the ${nameOf(w, c.duty)}`;
     case 'build': return `Building the ${nameOf(w, c.site)}`;
     default:

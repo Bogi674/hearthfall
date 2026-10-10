@@ -12,15 +12,15 @@ export interface HearthMesh {
 }
 
 /** The glow of the embers. Dull when the fire is smoldering or out, bright when it burns. */
-const embersMat = new THREE.MeshBasicMaterial({ color: PALETTE.ember.clone().multiplyScalar(2.2) });
-const emberLit = PALETTE.ember.clone().multiplyScalar(2.2);
+const embersMat = new THREE.MeshBasicMaterial({ color: PALETTE.ember.clone().multiplyScalar(1.25) });
+const emberLit = PALETTE.ember.clone().multiplyScalar(1.25);
 const emberDull = PALETTE.warmShadow.clone().lerp(PALETTE.ember, 0.35);
-const doorGlow = new THREE.MeshBasicMaterial({ color: PALETTE.ember.clone().multiplyScalar(2.4) });
+const doorGlow = new THREE.MeshBasicMaterial({ color: PALETTE.ember.clone().multiplyScalar(1.4) });
 
 function flame(color: THREE.Color, strength: number, r: number, h: number): THREE.Mesh {
   return new THREE.Mesh(
     new THREE.ConeGeometry(r, h, 8).translate(0, h / 2, 0),
-    new THREE.MeshBasicMaterial({ color: color.clone().multiplyScalar(strength), transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false }),
+    new THREE.MeshBasicMaterial({ color: color.clone().multiplyScalar(strength), transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false }),
   );
 }
 
@@ -34,7 +34,7 @@ function fireplace(): { group: THREE.Group; flames: THREE.Mesh[]; embers: THREE.
   const embers = part(GEO.cylinder, embersMat, [0, 0, 0], [0.62, 0.08, 0.62]);
   group.add(embers);
   for (let i = 0; i < 4; i++) group.add(part(GEO.log, MAT.darkWood, [0, 0.12, 0], [0.6, 0.09, 0.09], [0, (i * Math.PI) / 4, 0.25]));
-  const flames = [flame(PALETTE.ember, 1.8, 0.28, 0.9), flame(PALETTE.lantern, 2, 0.17, 0.7), flame(PALETTE.lantern, 2.4, 0.13, 0.5)];
+  const flames = [flame(PALETTE.ember, 1.05, 0.28, 0.9), flame(PALETTE.lantern, 1.1, 0.17, 0.7), flame(PALETTE.lantern, 1.25, 0.13, 0.5)];
   flames[1].position.set(0.1, 0.05, 0.06);
   flames[2].position.set(-0.09, 0.05, -0.07);
   for (const f of flames) group.add(f);

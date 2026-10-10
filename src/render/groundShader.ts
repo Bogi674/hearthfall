@@ -102,7 +102,7 @@ void main() {
   vec3 earth = mix(uWarmShadow, uOldWood, 0.3 + 0.5 * grain);
   earth = mix(earth, uWarmShadow * 1.3, road * 0.6);
   earth *= mix(0.78, 1.22, rock) * mix(1.0, 0.7 + 0.6 * flag, road);
-  vec3 warm = earth * (0.3 + 1.05 * light) + uLantern * 0.06 * light + uEmber * 0.22 * heat * heat * heat;
+  vec3 warm = earth * (0.3 + 0.85 * light) + uLantern * 0.05 * light + uEmber * 0.1 * heat * heat * heat;
 
   // Cold side: blue ground under snow that grows with the frost amount.
   vec3 dirt = mix(uDeepCold, uNightBlue, 0.4 + 0.6 * grain);

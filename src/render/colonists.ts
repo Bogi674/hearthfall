@@ -49,6 +49,11 @@ export function colonistFigures(w: World, alpha: number, heading: Map<number, nu
     } else if (c.task === 'build' && c.site !== null && byId.has(c.site)) {
       [pose, tool] = ['hammer', 'hammer'];
       face = center(byId.get(c.site)!);
+    } else if (c.task === 'hunt') {
+      // A hunter beside the animal, spear raised.
+      [pose, tool] = ['guard', 'spear'];
+      const prey = c.hunt ? w.animals.find((a) => a.id === c.hunt!.animal) : undefined;
+      if (prey) face = { x: prey.x, y: prey.y };
     } else if (c.task === 'guard') {
       pose = 'guard';
       const post = c.duty === null ? undefined : byId.get(c.duty);
