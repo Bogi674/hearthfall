@@ -35,7 +35,7 @@ export function createHearthLight(): THREE.PointLight {
   const light = new THREE.PointLight(PALETTE.ember, 46, 0, 1.4);
   light.position.set(0, 3.4, 0.8);
   // The fire throws warm shadows of the walls and furniture around it, which is most of what makes a room feel lived in.
-  light.castShadow = true;
+  light.castShadow = !new URLSearchParams(location.search).has('lowfx');
   light.shadow.mapSize.set(1024, 1024);
   light.shadow.camera.near = 0.4;
   light.shadow.camera.far = 22;
