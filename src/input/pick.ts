@@ -3,9 +3,9 @@ import { edgeAcross, floorAt, storedEdgeAt } from '../sim/house';
 import type { World } from '../sim/world';
 
 export interface Target {
-  kind: 'colonist' | 'building' | 'hearth' | 'edge' | 'floor';
+  kind: 'colonist' | 'building' | 'hearth' | 'stash' | 'edge' | 'floor';
   /** The id the selection panel shows. The hearth has no number. */
-  id: number | 'hearth';
+  id: number | 'hearth' | 'stash';
   /** Center in tile units and the size of the thing, for the glow frame. */
   x: number;
   y: number;
@@ -36,7 +36,8 @@ export function pick(w: World, u: number, v: number, storey = 0): Target | null 
   const [tx, ty] = [Math.round(u), Math.round(v)];
   const b = w.buildings.find((o) => o.storey === storey && tx >= o.x && tx < o.x + o.w && ty >= o.y && ty < o.y + o.h);
   if (b) return { kind: 'building', id: b.id, x: b.x + (b.w - 1) / 2, y: b.y + (b.h - 1) / 2, w: b.w, h: b.h, storey };
-  if (storey === 0 && Math.abs(tx - w.hearth.x) <= 1 && Math.abs(ty - w.hearth.y) <= 1) return { kind: 'hearth', id: 'hearth', x: w.hearth.x, y: w.hearth.y, w: 3, h: 3, storey };
+  if (storey === 0 && tx === w.hearth.x && ty === w.hearth.y) return { kind: 'hearth', id: 'hearth', x: w.hearth.x, y: w.hearth.y, w: 1, h: 1, storey };
+  if (w.stash && w.stash.state === 'found' && storey === 0 && tx === w.stash.x && ty === w.stash.y) return { kind: 'stash', id: 'stash', x: w.stash.x, y: w.stash.y, w: 1, h: 1, storey };
 
   const edge = edgeNear(w, u, v, EDGE_REACH, storey);
   if (edge) return edge;
@@ -59,8 +60,9 @@ const targetOfEdge = (id: number, x: number, y: number, side: 'n' | 'w', storey:
   side === 'n' ? { kind: 'edge', id, x, y: y - 0.5, w: 1.1, h: 0.24, storey } : { kind: 'edge', id, x: x - 0.5, y, w: 0.24, h: 1.1, storey };
 
 /** The target for something already selected, or null once it is gone. */
-export function targetOf(w: World, id: number | 'hearth'): Target | null {
-  if (id === 'hearth') return { kind: 'hearth', id, x: w.hearth.x, y: w.hearth.y, w: 3, h: 3, storey: 0 };
+export function targetOf(w: World, id: number | 'hearth' | 'stash'): Target | null {
+  if (id === 'hearth') return { kind: 'hearth', id, x: w.hearth.x, y: w.hearth.y, w: 1, h: 1, storey: 0 };
+  if (id === 'stash') return w.stash && w.stash.state !== 'hidden' ? { kind: 'stash', id, x: w.stash.x, y: w.stash.y, w: 1, h: 1, storey: 0 } : null;
   const b = w.buildings.find((o) => o.id === id);
   if (b) return { kind: 'building', id, x: b.x + (b.w - 1) / 2, y: b.y + (b.h - 1) / 2, w: b.w, h: b.h, storey: b.storey };
   const c = w.colonists.find((o) => o.id === id);

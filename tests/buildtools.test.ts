@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { buildLine, buildRoom, demolishArea, paintArea } from '../src/sim/build';
 import { houseRooms, isIndoors, storedEdgeAt } from '../src/sim/house';
 import { placeBuilding } from '../src/sim/placement';
-import { createWorld, stepWorld, type World } from '../src/sim/world';
-import { finish } from './helpers';
+import { stepWorld, type World } from '../src/sim/world';
+import { bareWorld, finish } from './helpers';
 
 function rich(level = 5): World {
-  const w = createWorld(1);
+  const w = bareWorld(1);
   w.hearth.level = level;
   Object.assign(w.stock, { wood: 900, planks: 300, stone: 300, scrap: 300, metal: 200, parts: 50 });
   return w;
@@ -22,25 +22,34 @@ describe('area tools for the house builder (M11)', () => {
     expect(w.stock.wood).toBe(900 - 32);
   });
 
-  it('a rectangle that touches nothing places nothing', () => {
+  it('a rectangle goes anywhere on open ground, far from the hearth too', () => {
     const w = rich();
     const { x, y } = w.hearth;
-    expect(paintArea(w, { x: x + 4, y: y + 4, w: 2, h: 2 }, 'boards')).toBe(0);
+    expect(paintArea(w, { x: x + 14, y: y - 12, w: 2, h: 2 }, 'boards')).toBe(4);
   });
 
-  it('raises a room with floors, walls all around, and a door toward the house', () => {
+  it('raises a room with floors, walls all around, and one door on the south side', () => {
     const w = rich();
     const { x, y } = w.hearth;
     const n = buildRoom(w, { x: x + 2, y: y - 1, w: 4, h: 3 }, 'boards', 1);
-    // 12 floors, 14 perimeter borders (one is the door), and the border shared with the hearth wall is left alone.
-    expect(n).toBeGreaterThanOrEqual(12 + 12);
+    // 12 floors and 14 perimeter borders, one of them the door.
+    expect(n).toBe(12 + 14);
     finish(w);
-    expect(houseRooms(w).length).toBe(2);
+    expect(houseRooms(w).length).toBe(1);
     expect(isIndoors(w, x + 3, y, 0)).toBe(true);
     const doors = w.house.edges.filter((e) => e.kind === 'door');
     expect(doors.length).toBe(1);
-    // The door opens onto the house, so the room can be reached.
-    expect(doors[0].x === x + 2 && doors[0].side === 'w').toBe(true);
+    expect(doors[0].side === 'n' && doors[0].y === y + 2).toBe(true);
+  });
+
+  it('puts the door where the room meets an existing floor', () => {
+    const w = rich();
+    const { x, y } = w.hearth;
+    paintArea(w, { x: x + 6, y: y - 1, w: 2, h: 3 }, 'boards');
+    finish(w);
+    buildRoom(w, { x: x + 2, y: y - 1, w: 4, h: 3 }, 'boards', 1);
+    const door = w.house.edges.find((e) => e.kind === 'door')!;
+    expect(door.x === x + 6 && door.side === 'w').toBe(true);
   });
 
   it('puts the door on the south side when the room touches nothing', () => {

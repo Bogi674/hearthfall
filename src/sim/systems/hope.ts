@@ -4,7 +4,7 @@
 import { BALANCE } from '../../data/balance';
 import { BUILDINGS } from '../../data/buildings';
 import { isIndoors } from '../house';
-import { isBuilt, phaseStarted } from '../query';
+import { isUsable, phaseStarted } from '../query';
 import { recordDeath, type World } from '../world';
 
 const H = BALANCE.hope;
@@ -24,7 +24,7 @@ export function hopeSystem(world: World, dt: number): void {
   }
   let change = 0;
   // The evening in the house: sitting together lifts hope. Lamps, rugs, and plants lift the most it can give.
-  const comfort = world.buildings.filter((b) => BUILDINGS[b.type].decor && isBuilt(b) && isIndoors(world, b.x, b.y, b.storey)).length;
+  const comfort = world.buildings.filter((b) => BUILDINGS[b.type].decor && isUsable(b) && isIndoors(world, b.x, b.y, b.storey)).length;
   const mingleMax = H.mingleMax + Math.min(H.decorMax, comfort * H.decorBonus);
   change += Math.min(mingleMax, world.socialSeconds / H.mingleSecondsPerPoint);
   world.socialSeconds = 0;

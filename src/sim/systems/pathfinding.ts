@@ -65,12 +65,8 @@ function field(world: World, runner: boolean): number[] {
   const edges = edgeCosts(world, runner);
   const dist = new Array<number>(width * height).fill(BLOCKED);
   const heap: [number, number][] = [];
-  for (let y = world.hearth.y - 1; y <= world.hearth.y + 1; y++) {
-    for (let x = world.hearth.x - 1; x <= world.hearth.x + 1; x++) {
-      dist[y * width + x] = 0;
-      push(heap, [0, y * width + x]);
-    }
-  }
+  dist[world.hearth.y * width + world.hearth.x] = 0;
+  push(heap, [0, world.hearth.y * width + world.hearth.x]);
   while (heap.length) {
     const [d, i] = pop(heap);
     if (d > dist[i]) continue;

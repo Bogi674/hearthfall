@@ -38,7 +38,7 @@ export interface UiState {
   fill: boolean;
   /** Names and warnings are drawn over the rooms of the house. Toggled with H. */
   rooms: boolean;
-  selected: number | 'hearth' | null;
+  selected: number | 'hearth' | 'stash' | null;
   speed: number;
   paused: boolean;
   buildOpen: boolean;
@@ -172,6 +172,10 @@ export function createHud(root: HTMLElement, state: UiState, world: () => World,
     }
     if (act === 'launch') pushCommand(world().commands, { type: 'launch' });
     if (act === 'upgrade') pushCommand(world().commands, { type: 'upgradeHearth' });
+    if (act === 'light') pushCommand(world().commands, { type: 'lightHearth' });
+    if (act === 'move') [state.tool, state.placing] = [{ kind: 'hearth' }, null];
+    if (act === 'cancelmove') pushCommand(world().commands, { type: 'cancelMove' });
+    if (act === 'mend') pushCommand(world().commands, { type: 'mendItem', item: arg as 'edge' | 'furniture' | 'roof', id: Number(arg2) });
     if (act === 'stage') pushCommand(world().commands, { type: 'upgradeBuilding', id: Number(arg) });
     api.update();
   });
@@ -189,7 +193,9 @@ export function createHud(root: HTMLElement, state: UiState, world: () => World,
       const burn = (BALANCE.hearth.levels[w.hearth.level - 1].fuelPerMinute / 60) * fuelFactor(w);
       const hearth = w.hearth.lit
         ? `<span>Hearth fuel ${clock(w.stock.fuel / burn)}</span>`
-        : `<span class="alert">Hearth out. Lost in ${Math.ceil(BALANCE.hearth.outLossSeconds - w.hearth.outSeconds)}s</span>`;
+        : !w.hearth.ignited
+          ? '<span class="alert">Hearth smoldering. Light it</span>'
+          : `<span class="alert">Hearth out. Lost in ${Math.ceil(BALANCE.hearth.outLossSeconds - w.hearth.outSeconds)}s</span>`;
       const speeds = [0, 1, 2, 3]
         .map((s) => `<button data-act="speed:${s}" class="${(s === 0 ? state.paused : !state.paused && state.speed === s) ? 'on' : ''}">${s === 0 ? 'Pause' : `${s}x`}</button>`)
         .join('');

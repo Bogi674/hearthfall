@@ -7,6 +7,8 @@ import { RESOURCE_NAMES, type Resource } from '../data/resources';
 import { BERTH, COMPONENT_IDS, COMPONENTS, type ComponentId } from '../data/vehicle';
 import type { EdgeKind, FloorId } from '../data/house';
 import type { Side } from './house';
+import { mendArea, mendItem } from './mend';
+import { hearthMoveError, hearthUpgradeError, lightError, moveCost } from './hearth';
 import { buildLine, buildRoom, demolishArea, paintArea } from './build';
 import { placeBuilding, placeEdge, placeFloor, removeHouseItem, siteError, type HouseItem } from './placement';
 import { center, launchFuelNeeded, missing, pay } from './query';
@@ -25,6 +27,9 @@ export type Command =
   | { type: 'clearArea'; x: number; y: number; w: number; h: number }
   | { type: 'launch' }
   | { type: 'upgradeHearth' }
+  | { type: 'lightHearth' }
+  | { type: 'moveHearth'; x: number; y: number }
+  | { type: 'cancelMove' }
   | { type: 'upgradeBuilding'; id: number }
   | { type: 'setShelter'; id: number; on: boolean }
   | { type: 'alarm'; on: boolean }
@@ -35,7 +40,9 @@ export type Command =
   | { type: 'paintArea'; x: number; y: number; w: number; h: number; kind: FloorId; storey?: number }
   | { type: 'buildRoom'; x: number; y: number; w: number; h: number; kind: FloorId; level: number; storey?: number }
   | { type: 'buildLine'; x: number; y: number; side: Side; length: number; edge: EdgeKind; level: number; storey?: number }
-  | { type: 'demolishArea'; x: number; y: number; w: number; h: number; storey?: number };
+  | { type: 'demolishArea'; x: number; y: number; w: number; h: number; storey?: number }
+  | { type: 'mendArea'; x: number; y: number; w: number; h: number; storey?: number }
+  | { type: 'mendItem'; item: 'edge' | 'furniture' | 'roof'; id: number };
 
 export function pushCommand(queue: Command[], command: Command): void {
   queue.push(command);
@@ -51,6 +58,8 @@ export function applyCommands(world: World): void {
     if (c.type === 'buildRoom') buildRoom(world, c, c.kind, c.level, c.storey ?? 0);
     if (c.type === 'buildLine') buildLine(world, c, c.length, c.edge, c.level, c.storey ?? 0);
     if (c.type === 'demolishArea') demolishArea(world, c, c.storey ?? 0);
+    if (c.type === 'mendArea') mendArea(world, c, c.storey ?? 0);
+    if (c.type === 'mendItem') mendItem(world, c.item, c.id);
     if (c.type === 'setWorkers') {
       const b = world.buildings.find((b) => b.id === c.id);
       if (b) b.workers = Math.max(0, Math.min(BUILDINGS[b.type].workers, c.count));
@@ -83,7 +92,21 @@ export function applyCommands(world: World): void {
       pay(world, next.cost);
       world.hearth.hp += next.hp - BALANCE.hearth.levels[world.hearth.level - 1].hp;
       world.hearth.level++;
-      addLog(world, `The house is repaired: ${next.name}.`, world.hearth);
+      world.buildRev++;
+      addLog(world, `The hearth is upgraded: ${next.name}.`, world.hearth);
+    }
+    if (c.type === 'lightHearth' && !lightError(world)) {
+      pay(world, { fuel: BALANCE.hearth.lightFuel });
+      world.hearth.lighting = BALANCE.hearth.lightSeconds;
+    }
+    if (c.type === 'moveHearth' && !hearthMoveError(world, c.x, c.y)) {
+      pay(world, moveCost(world));
+      world.hearthSite = { x: c.x, y: c.y, construct: BALANCE.hearth.moveSeconds };
+      addLog(world, 'The crew starts building a new place for the hearth. The old one keeps burning until it is done.', c);
+    }
+    if (c.type === 'cancelMove' && world.hearthSite) {
+      for (const [r, n] of Object.entries(moveCost(world)) as [Resource, number][]) world.stock[r] += Math.floor(n / 2);
+      world.hearthSite = null;
     }
     if (c.type === 'upgradeBuilding') {
       const b = world.buildings.find((b) => b.id === c.id);
@@ -179,13 +202,6 @@ export function launchError(world: World): string | null {
   if (COMPONENT_IDS.some((id) => !world.airship.built.includes(id))) return 'Build every component first';
   if (world.stock.fuel < launchFuelNeeded(world)) return `Gather fuel first. Loading and the night's burning need ${launchFuelNeeded(world)}`;
   return null;
-}
-
-export function hearthUpgradeError(world: World): string | null {
-  const next = BALANCE.hearth.levels[world.hearth.level];
-  if (!next) return 'Fully upgraded';
-  const short = missing(world, next.cost);
-  return short ? `Not enough ${RESOURCE_NAMES[short as Resource].toLowerCase()}` : null;
 }
 
 export function buildingUpgradeError(world: World, b: Building): string | null {

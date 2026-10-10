@@ -1,9 +1,35 @@
 import { BUILDINGS, type BuildingType } from '../src/data/buildings';
 import { EDGES } from '../src/data/house';
 import { RECIPES } from '../src/data/recipes';
-import { placementError } from '../src/sim/placement';
+import { Tile } from '../src/sim/grid';
+import { edgeAcross, floorAt, storedEdgeAt } from '../src/sim/house';
+import { placeBuilding, placeEdge, placementError } from '../src/sim/placement';
 import { DAY_SECONDS } from '../src/sim/query';
-import { stepWorld, TICKS_PER_SECOND, type World } from '../src/sim/world';
+import { pathfindingSystem } from '../src/sim/systems/pathfinding';
+import { warmthSystem } from '../src/sim/systems/warmth';
+import { createWorld, stepWorld, TICKS_PER_SECOND, type World } from '../src/sim/world';
+
+/**
+ * A world with the old house torn down and the hearth already burning, for tests about what a mechanic does rather than about
+ * the ruin. It has no floors, no walls, and no furniture anywhere, so tests build what they need.
+ */
+export function bareWorld(seed: number): World {
+  const world = createWorld(seed);
+  world.house.floors = [];
+  world.house.edges = [];
+  world.buildings = world.buildings.filter((b) => !b.ruin);
+  world.stash = null;
+  // The rubble of the old house goes too, so the ground around the hearth is open.
+  const { map, hearth } = world;
+  for (let y = hearth.y - 12; y <= hearth.y + 12; y++) for (let x = hearth.x - 12; x <= hearth.x + 12; x++) if (map.tiles[y * map.width + x] === Tile.Rubble) map.tiles[y * map.width + x] = Tile.Ground;
+  world.mapRev++;
+  [world.hearth.ignited, world.hearth.lit] = [true, true];
+  world.buildRev++;
+  world.warmthKey = '';
+  warmthSystem(world, 0);
+  pathfindingSystem(world, 0);
+  return world;
+}
 
 const sortedSpots = new Map<string, { x: number; y: number; d: number }[]>();
 
@@ -23,11 +49,12 @@ function spotsFor(world: World, w: number, h: number): { x: number; y: number; d
 }
 
 /** Nearest valid spot to the hearth. Gatherers also need some nodes in range, like a player would choose. */
-export function findSpot(world: World, type: BuildingType, minDist = 0, minNodes = 10): { x: number; y: number } | null {
+export function findSpot(world: World, type: BuildingType, minDist = 0, minNodes = 10, ok?: (x: number, y: number) => boolean): { x: number; y: number } | null {
   const [w, h] = BUILDINGS[type].size;
   const gather = RECIPES[type]?.gather;
   for (const s of spotsFor(world, w, h)) {
     if (s.d < minDist) continue;
+    if (ok && !ok(s.x + (w - 1) / 2, s.y + (h - 1) / 2)) continue;
     if (placementError(world, type, s.x, s.y, false)) continue;
     if (gather && nodesInRange(world, s.x + (w - 1) / 2, s.y + (h - 1) / 2, gather.tile, gather.radius - 1) < minNodes) continue;
     return s;
@@ -78,21 +105,68 @@ export function finish(world: World): void {
 }
 
 /**
- * A closed two tile room east of the house: floors, walls on the north, south, and east, and a door in
- * the house wall on the west. It holds one 1 by 2 piece of furniture, or a 2 by 1 piece laid on its side.
+ * A closed two tile room east of the hearth: floors, walls on the north, south, east, and west, and a door on the west. It holds one 1 by 2 piece of furniture, or a 2 by 1 piece laid on its side.
  * The hearth tiles are hearth.x and the two floor tiles are hearth.x + 2 on rows hearth.y and hearth.y + 1.
  */
-export function closedRoom(world: World): void {
-  const { x, y } = world.hearth;
+export function closedRoom(world: World, ox = 0, oy = 0): void {
+  const x = world.hearth.x + ox;
+  const y = world.hearth.y + oy;
   const cmd = (c: World['commands'][number]) => world.commands.push(c);
   for (const dy of [0, 1]) cmd({ type: 'paintFloor', x: x + 2, y: y + dy, kind: 'boards' });
   stepWorld(world);
   cmd({ type: 'buildEdge', x: x + 2, y, side: 'w', kind: 'door', level: 1 });
+  cmd({ type: 'buildEdge', x: x + 2, y: y + 1, side: 'w', kind: 'wall', level: 1 });
   cmd({ type: 'buildEdge', x: x + 2, y, side: 'n', kind: 'wall', level: 1 });
   cmd({ type: 'buildEdge', x: x + 2, y: y + 2, side: 'n', kind: 'wall', level: 1 });
   for (const dy of [0, 1]) cmd({ type: 'buildEdge', x: x + 3, y: y + dy, side: 'w', kind: 'wall', level: 1 });
   stepWorld(world);
   finish(world);
+}
+
+/** Three or more closed rooms with a bed each, finished, so the house counts as mended (M12). Rows are spread so the rooms stay apart. */
+export function mendedHouse(world: World, rooms = 3): void {
+  world.stock.wood = Math.max(world.stock.wood, 100 * rooms);
+  for (let i = 0; i < rooms; i++) {
+    closedRoom(world, 0, -4 - i * 4);
+    placeBuilding(world, 'bed', world.hearth.x + 2, world.hearth.y - 4 - i * 4, false, true);
+  }
+  world.buildRev++;
+}
+
+/** Puts a wall on every border of a floor tile in the rectangle that faces open ground with nothing built there, like a player closing the gaps of a ruin. */
+export function sealGaps(world: World, r: { x: number; y: number; w: number; h: number }, storey = 0): number {
+  let placed = 0;
+  for (const f of world.house.floors) {
+    if (f.storey !== storey || f.x < r.x || f.y < r.y || f.x >= r.x + r.w || f.y >= r.y + r.h) continue;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      if (floorAt(world, f.x + dx, f.y + dy, storey)) continue;
+      const e = edgeAcross(f.x, f.y, f.x + dx, f.y + dy);
+      if (storedEdgeAt(world, e.x, e.y, e.side, storey)) continue;
+      // The last gap of a room becomes its door, since a room may not be shut in.
+      if (placeEdge(world, e.x, e.y, e.side, 'wall', 1, storey) || placeEdge(world, e.x, e.y, e.side, 'door', 1, storey)) placed++;
+    }
+  }
+  return placed;
+}
+
+/**
+ * Walls off the rooms of the starting ruin the way a player would with the wall tool: along the borders between the hall and the
+ * bedroom, the storeroom, and the kitchen. A border that already has a wall is left alone. The last gap of a room becomes a door.
+ */
+export function partitionRuin(world: World): void {
+  const { x: hx, y: hy } = world.hearth;
+  const lines: { x: number; y: number; side: 'n' | 'w'; length: number }[] = [
+    { x: hx - 3, y: hy - 2, side: 'w', length: 5 },
+    { x: hx + 4, y: hy - 2, side: 'w', length: 5 },
+    { x: hx - 3, y: hy + 3, side: 'n', length: 7 },
+  ];
+  for (const l of lines) {
+    for (let i = 0; i < l.length; i++) {
+      const [x, y] = l.side === 'n' ? [l.x + i, l.y] : [l.x, l.y + i];
+      if (storedEdgeAt(world, x, y, l.side, 0)) continue;
+      placeEdge(world, x, y, l.side, 'wall', 1, 0) || placeEdge(world, x, y, l.side, 'door', 1, 0);
+    }
+  }
 }
 
 /** Runs the world for whole days, calling the player once per simulated second. */

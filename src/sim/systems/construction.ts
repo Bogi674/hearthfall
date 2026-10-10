@@ -2,8 +2,10 @@
 // Every builder standing at the site adds work. Tired builders work slower, like any worker.
 import { BALANCE } from '../../data/balance';
 import { BUILDINGS } from '../../data/buildings';
-import { EDGES } from '../../data/house';
+import { EDGES, HOUSE, LIGHT_SITE, MOVE_SITE } from '../../data/house';
 import type { Resource } from '../../data/resources';
+import { getTile, setTile, Tile } from '../grid';
+import { CLEAR_SITE } from './jobs';
 import { center, hopeSpeed } from '../query';
 import { addLog, type World } from '../world';
 
@@ -31,6 +33,59 @@ export function constructionSystem(world: World, dt: number): void {
     b.status = 'ok';
     world.buildRev++;
     if (BUILDINGS[b.type].build >= 10) addLog(world, `The ${BUILDINGS[b.type].name} is built.`, center(b));
+  }
+  // Mending: worn furniture, walls, and roofs, and rubble to clear.
+  for (const b of world.buildings) {
+    if (b.repair === null || b.construct > 0) continue;
+    b.repair = Math.max(0, b.repair - dt * crew(world, b.id) * hopeSpeed(world));
+    if (b.repair > 0) continue;
+    [b.repair, b.broken, b.hp] = [null, false, BUILDINGS[b.type].hp];
+    world.buildRev++;
+    addLog(world, `The ${BUILDINGS[b.type].name.toLowerCase()} is mended.`, center(b));
+  }
+  for (const e of world.house.edges) {
+    if (e.repair === null || e.construct > 0) continue;
+    e.repair = Math.max(0, e.repair - dt * crew(world, e.id) * hopeSpeed(world));
+    if (e.repair > 0) continue;
+    [e.repair, e.hp] = [null, EDGES[e.kind].levels[e.level - 1].hp];
+    world.buildRev++;
+  }
+  for (const f of world.house.floors) {
+    if (f.roofWork === null) continue;
+    f.roofWork = Math.max(0, f.roofWork - dt * crew(world, f.id) * hopeSpeed(world));
+    if (f.roofWork > 0) continue;
+    [f.roofWork, f.roofBroken] = [null, false];
+    world.buildRev++;
+  }
+  for (const c of [...world.clearing]) {
+    c.left = Math.max(0, c.left - dt * crew(world, CLEAR_SITE - c.tile) * hopeSpeed(world));
+    if (c.left > 0) continue;
+    const [x, y] = [c.tile % world.map.width, Math.floor(c.tile / world.map.width)];
+    if (getTile(world.map, x, y) === Tile.Rubble) setTile(world.map, x, y, Tile.Ground);
+    world.nodes[c.tile] = 0;
+    world.stock.scrap += HOUSE.clearRubble.scrap;
+    world.clearing = world.clearing.filter((o) => o !== c);
+    world.mapRev++;
+    world.buildRev++;
+  }
+  // The hearth: lighting it, and building its new place.
+  const h = world.hearth;
+  if (h.lighting !== null) {
+    h.lighting = Math.max(0, h.lighting - dt * crew(world, LIGHT_SITE) * hopeSpeed(world));
+    if (h.lighting <= 0) {
+      [h.lighting, h.ignited, h.lit] = [null, true, true];
+      addLog(world, 'The hearth catches. Warmth spreads through the ruin.', h);
+    }
+  }
+  const site = world.hearthSite;
+  if (site) {
+    site.construct = Math.max(0, site.construct - dt * crew(world, MOVE_SITE) * hopeSpeed(world));
+    if (site.construct <= 0) {
+      [h.x, h.y] = [site.x, site.y];
+      world.hearthSite = null;
+      world.buildRev++;
+      addLog(world, 'The hearth is lit in its new place.', h);
+    }
   }
   // House floors and walls are built the same way.
   for (const f of world.house.floors) {

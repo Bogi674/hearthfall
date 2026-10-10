@@ -5,15 +5,21 @@ import { BUILDINGS } from '../data/buildings';
 import { RECIPES } from '../data/recipes';
 import { CRAFTABLE, WEAPONS } from '../data/weapons';
 import { EDGES, FLOORS } from '../data/house';
-import { buildingUpgradeError, hearthUpgradeError } from '../sim/commands';
-import { houseRooms, lotRadius, roomHasTile, roomInfos } from '../sim/house';
+import { buildingUpgradeError } from '../sim/commands';
+import { hearthUpgradeError, lightError, moveCost } from '../sim/hearth';
+import { edgeRepair, furnitureRepair, roofPatchable } from '../sim/mend';
+import { HOUSE } from '../data/house';
+import { BLUEPRINT, STASH_SITE } from '../data/vehicle';
+import { roomHasTile, roomInfos } from '../sim/house';
 import { hearthStage, isBuilt, missing } from '../sim/query';
 import { nameOf, taskText } from './people';
 import type { Building, BuildingStatus, World } from '../sim/world';
 import { amounts } from './build';
+import type { Amounts } from '../data/resources';
 import { BUILDING_ICONS } from './icons';
 
 export const STATUS_TEXT: Partial<Record<BuildingStatus, string>> = {
+  broken: 'Broken. Mend it',
   noWorkers: 'No workers',
   noDefender: 'No defender',
   noFuel: 'No fuel to light',
@@ -26,8 +32,9 @@ export const STATUS_TEXT: Partial<Record<BuildingStatus, string>> = {
 
 const bar = (fraction: number) => `<i class="bar wide"><b style="width:${Math.round(fraction * 100)}%"></b></i>`;
 
-export function selectionHtml(w: World, selected: number | 'hearth' | null): string {
+export function selectionHtml(w: World, selected: number | 'hearth' | 'stash' | null): string {
   if (selected === 'hearth') return houseHtml(w);
+  if (selected === 'stash') return stashHtml(w);
   const b = w.buildings.find((b) => b.id === selected);
   if (!b) return colonistHtml(w, selected as number) || edgeHtml(w, selected as number) || floorHtml(w, selected as number);
   const def = BUILDINGS[b.type];
@@ -40,6 +47,7 @@ export function selectionHtml(w: World, selected: number | 'hearth' | null): str
     return lines.join('');
   }
   if (STATUS_TEXT[b.status]) lines.push(`<p class="alert">${STATUS_TEXT[b.status]}</p>`);
+  if (def.furniture) lines.push(repairHtml(w, b.repair !== null, furnitureRepair(b), `mend:furniture:${b.id}`, b.broken ? 'Broken. It does nothing until it is mended.' : ''));
   if (def.workers > 0) {
     const crew = w.colonists.filter((c) => (def.nightDuty ? c.duty : c.job) === b.id).length;
     lines.push(`<p class="workers">${def.nightDuty ? 'Defenders' : 'Workers'} ${crew}/${b.workers} of ${def.workers}
@@ -68,10 +76,18 @@ export function selectionHtml(w: World, selected: number | 'hearth' | null): str
   return lines.join('');
 }
 
+/** The repair button of a worn piece with its cost, or the note that builders are on it. */
+function repairHtml(w: World, working: boolean, plan: { cost: Amounts; seconds: number } | null, act: string, note = ''): string {
+  if (working) return '<p>Builders are mending it.</p>';
+  if (!plan) return note ? `<p class="alert">${note}</p>` : '';
+  const short = missing(w, plan.cost);
+  return `${note ? `<p class="alert">${note}</p>` : ''}${short ? `<p class="alert">Mending costs ${amounts(plan.cost)}. Not enough resources</p>` : `<button data-act="${act}">Mend</button><small class="note">Costs ${amounts(plan.cost)}.</small>`}`;
+}
+
 /** Taking a building apart returns most of its cost (section 8.2). */
 function salvageHtml(b: Building): string {
   if (b.type === 'supplyCart') return '';
-  if (BUILDINGS[b.type].furniture) return `<button data-act="remove:furniture:${b.id}">Remove</button><small class="note">Gives back half the cost.</small>`;
+  if (BUILDINGS[b.type].furniture) return `<button data-act="remove:furniture:${b.id}">Remove</button><small class="note">Gives back ${b.ruin ? 'most of' : 'half'} the cost.</small>`;
   return b.salvage !== null
     ? `<p class="alert">Marked to be taken apart.</p><button data-act="salvage:${b.id}">Keep it</button>`
     : `<button data-act="salvage:${b.id}">Take apart</button><small class="note">Colonists without a job do it and bring back 75 percent of the cost.</small>`;
@@ -108,20 +124,33 @@ function armoryHtml(w: World, b: Building): string {
     <div class="menu-row choices">${choices}</div>${bar(b.progress / weapon.craft)}<p>Rack: ${rack}.</p><p>Carried: ${armed}.</p>`;
 }
 
-/** The Hearth House: repairs, the house lot, and its rooms (section 5.6). */
+/** The hearth: its state, light, move, and upgrade (M12). */
 function houseHtml(w: World): string {
   const lvl = BALANCE.hearth.levels[w.hearth.level - 1];
   const next = BALANCE.hearth.levels[w.hearth.level];
   const error = hearthUpgradeError(w);
-  const rooms = houseRooms(w).filter((r) => r.floorCount > 0).length - 1;
-  const sites = w.house.floors.filter((f) => f.construct > 0).length + w.house.edges.filter((e) => e.construct > 0).length;
-  return `<h3>Hearth House</h3><p>${lvl.name}, stage ${w.hearth.level} of ${BALANCE.hearth.levels.length}.</p>
+  const rooms = roomInfos(w).filter((r) => r.roofed).length;
+  const state = w.hearth.lit ? 'Burning' : w.hearth.ignited ? 'Out of fuel' : w.hearth.lighting !== null ? 'Someone is lighting it' : 'Smoldering. Someone has to light it';
+  const light = w.hearth.ignited ? '' : lightError(w) ? `<p class="alert">${lightError(w)}</p>` : `<button data-act="light">Light the fire</button><small class="note">Takes ${BALANCE.hearth.lightFuel} fuel and a few seconds of kindling.</small>`;
+  const cost = moveCost(w);
+  const move = w.hearthSite
+    ? `<p>A new place is being built. The old hearth keeps burning until it is done.</p><button data-act="cancelmove">Cancel the move</button>`
+    : `<button data-act="move">Move the hearth</button><small class="note">Costs ${amounts(cost)}. Pick a tile with the cursor.</small>`;
+  return `<h3>${lvl.name}</h3><p>Stage ${w.hearth.level} of ${BALANCE.hearth.levels.length}.</p>
     <p>Health ${Math.ceil(w.hearth.hp)}/${hearthStage(w).hp}. Warms a radius of ${lvl.radius} tiles. Burns ${lvl.fuelPerMinute} fuel per minute.</p>
-    <p class="${w.hearth.lit ? '' : 'alert'}">${w.hearth.lit ? 'Burning' : 'Out of fuel'}</p>
-    ${next ? `<h4>Next repair: ${next.name}</h4><p>Radius ${next.radius}, ${next.fuelPerMinute} fuel per minute, ${next.hp} health. Costs ${amounts(next.cost)}.</p>
-      ${error ? `<p class="alert">${error}</p>` : '<button data-act="upgrade">Repair the house</button>'}` : '<p>The house is fully restored.</p>'}
-    <h4>The house lot</h4><p>The lot reaches ${lotRadius(w)} tiles from the hearth. ${rooms > 0 ? `${rooms} closed room${rooms > 1 ? 's' : ''} so far.` : 'No closed rooms yet.'}${sites ? ` ${sites} pieces are waiting for builders.` : ''}</p>
-    <p>Build floors, walls, and doors from the Structure tab, and furniture from the Furniture tab. People in a closed room are safe while its walls stand.</p>`;
+    <p class="${w.hearth.lit ? '' : 'alert'}">${state}</p>${light}
+    ${next ? `<h4>Next stage: ${next.name}</h4><p>Radius ${next.radius}, ${next.fuelPerMinute} fuel per minute, ${next.hp} health. ${next.stands === 'room' ? 'Must stand in a closed room with a whole roof. ' : next.stands === 'floor' ? 'Must stand on a house floor. ' : ''}Costs ${amounts(next.cost)}.</p>
+      ${error ? `<p class="alert">${error}</p>` : '<button data-act="upgrade">Upgrade the hearth</button>'}` : '<p>The hearth is fully upgraded.</p>'}
+    <h4>Move it</h4>${move}
+    <p>${rooms > 0 ? `${rooms} closed room${rooms > 1 ? 's' : ''} with a whole roof on the map.` : 'No closed room has a whole roof yet.'} Mend the old house from the Structure tab. Walls hold heat in and shade the ground behind them.</p>`;
+}
+
+/** The stash found under a loose board (M12). */
+function stashHtml(w: World): string {
+  const s = w.stash;
+  if (!s) return '';
+  const crew = w.colonists.filter((c) => c.site === STASH_SITE && c.task === 'build').length;
+  return `<h3>Locked tin box</h3><p>It lay under a loose board. ${s.state === 'opened' ? 'It is open.' : `The crew is opening it, ${Math.floor((1 - s.open / BLUEPRINT.openSeconds) * 100)}% done. ${crew} working now.`}</p>${bar(1 - s.open / BLUEPRINT.openSeconds)}`;
 }
 
 const meter = (label: string, v: number) => `<p class="meter"><span>${label}</span>${bar(v)}</p>`;
@@ -143,7 +172,9 @@ function edgeHtml(w: World, id: number): string {
   if (!e) return '';
   const level = EDGES[e.kind].levels[e.level - 1];
   const lines = [`<h3>${level.name}</h3><p>Health ${Math.ceil(e.hp)}/${level.hp}.</p>${bar(e.hp / level.hp)}`];
+  if (e.ruin) lines.push('<p>Part of the old house.</p>');
   if (e.construct > 0) lines.push(`<p>Being built, ${Math.floor((1 - e.construct / level.build) * 100)}% done.</p>`);
+  lines.push(repairHtml(w, e.repair !== null, edgeRepair(e), `mend:edge:${e.id}`, e.hp < level.hp * 0.5 && e.construct <= 0 ? 'Worn through. Monsters break it fast.' : ''));
   if (e.pending) lines.push(`<p>Being changed to a ${EDGES[e.pending.kind].levels[e.pending.level - 1].name.toLowerCase()}.</p>`);
   if (e.kind === 'gunPort' && e.construct <= 0) {
     const defender = w.colonists.find((c) => c.duty === e.id);
@@ -159,7 +190,7 @@ function edgeHtml(w: World, id: number): string {
       lines.push(`<button data-act="edge:${e.id}:gunPort:1" ${missing(w, port.cost) ? 'disabled' : ''}>Make a gun port</button><small class="note">${amounts(port.cost)}. A defender fires through it.</small>`);
     }
   }
-  lines.push(`<button data-act="remove:edge:${e.id}">Remove</button><small class="note">Gives back half the cost.</small>`);
+  lines.push(`<button data-act="remove:edge:${e.id}">Remove</button><small class="note">Gives back ${e.ruin ? 'most of' : 'half'} the cost.</small>`);
   return lines.join('');
 }
 
@@ -169,11 +200,14 @@ function floorHtml(w: World, id: number): string {
   if (!f) return '';
   const room = roomInfos(w).find((r) => Math.abs(r.x - f.x) < 12 && Math.abs(r.y - f.y) < 12 && roomHasTile(w, r, f.x, f.y));
   const lines = [`<h3>${FLOORS[f.kind].name}</h3>`];
+  if (f.ruin) lines.push('<p>Part of the old house.</p>');
+  if (f.roofWork !== null) lines.push('<p>Builders are patching the roof.</p>');
+  else if (roofPatchable(f)) lines.push(`<p class="alert">The roof is open. Snow falls in and the room cannot hold heat.</p>${missing(w, HOUSE.roofPatch.cost) ? `<p class="alert">A patch costs ${amounts(HOUSE.roofPatch.cost)}. Not enough resources</p>` : `<button data-act="mend:roof:${f.id}">Patch the roof</button><small class="note">Costs ${amounts(HOUSE.roofPatch.cost)}.</small>`}`);
   if (f.construct > 0) lines.push(`<p>Being built, ${Math.floor((1 - f.construct / FLOORS[f.kind].build) * 100)}% done.</p>`);
   if (room) {
     lines.push(`<p>${room.name}. ${room.floors} floor tiles, ${room.beds} bed${room.beds === 1 ? '' : 's'}, ${room.seats} seat${room.seats === 1 ? '' : 's'}, ${room.decor} decor.</p>`);
     lines.push(`<p class="${room.closed && !room.note ? '' : 'alert'}">${room.closed ? (room.note || 'Closed. People inside are safe while the walls stand.') : room.note}</p>`);
   }
-  lines.push(`<button data-act="remove:floor:${f.id}">Remove</button><small class="note">Gives back half the cost.</small>`);
+  lines.push(`<button data-act="remove:floor:${f.id}">Remove</button><small class="note">Gives back ${f.ruin ? 'most of' : 'half'} the cost.</small>`);
   return lines.join('');
 }

@@ -13,6 +13,8 @@ export type HouseTool =
   | { kind: 'edge'; edge: EdgeKind; level: number }
   | { kind: 'room'; floor: FloorId; level: number }
   | { kind: 'erase' }
+  | { kind: 'mend' }
+  | { kind: 'hearth' }
   | { kind: 'site' };
 export type BuildCat = BuildingCategory;
 
@@ -26,11 +28,11 @@ export function parseTool(id: string): HouseTool {
   if (kind === 'floor') return { kind, floor: a as FloorId };
   if (kind === 'edge') return { kind, edge: a as EdgeKind, level: Number(b) };
   if (kind === 'room') return { kind, floor: a as FloorId, level: Number(b) };
-  return kind === 'site' ? { kind: 'site' } : { kind: 'erase' };
+  return kind === 'site' ? { kind: 'site' } : kind === 'mend' ? { kind: 'mend' } : kind === 'hearth' ? { kind: 'hearth' } : { kind: 'erase' };
 }
 
 /** Tools that draw a shape when the fill toggle is on: a rectangle of floor, a straight run of wall, or an area to take apart. */
-export const drawsShapes = (t: HouseTool): boolean => t.kind === 'floor' || t.kind === 'edge' || t.kind === 'erase' || t.kind === 'room';
+export const drawsShapes = (t: HouseTool): boolean => t.kind === 'floor' || t.kind === 'edge' || t.kind === 'erase' || t.kind === 'room' || t.kind === 'mend';
 
 export const amounts = (a: Amounts) => Object.entries(a).map(([r, n]) => `${n} ${RESOURCE_NAMES[r as Resource]}`).join(' + ');
 
@@ -51,7 +53,7 @@ function structureHtml(w: World, tool: HouseTool | null, placing: string | null,
   const edge = (k: EdgeKind) => EDGES[k].levels.map((l, i) => button({ kind: 'edge', edge: k, level: i + 1 }, l.name, l.cost, fill ? 'Drag a line' : 'Click a tile border', k === 'wall' && i === 0 ? 'T' : ''));
   const stairs = BUILDABLE.filter((t) => BUILDINGS[t].category === 'Structure').map((t) => buildingButton(w, t, placing));
   return `<div class="sections">${[
-    section('Tools', shape + button({ kind: 'erase' }, 'Remove', null, fill ? 'Drag an area to clear' : 'Click a piece', 'X')),
+    section('Tools', shape + button({ kind: 'mend' }, 'Mend', null, 'Drag over the ruin to repair walls, furniture, roofs, and rubble', 'M') + button({ kind: 'erase' }, 'Remove', null, fill ? 'Drag an area to clear' : 'Click a piece', 'X')),
     section('Floors', floors.join('')),
     section('Rooms', rooms.join('')),
     section('Walls', edge('wall').join('')),

@@ -80,7 +80,7 @@ function airship(w: World): string {
   const out = [`<p>Built ${air.built.length} of ${COMPONENT_IDS.length} components.</p>`];
   // The old owner's blueprint, the choice of where the airship rises, and the seats aboard (section 11.2).
   if (!air.blueprint) {
-    out.push(`<div class="card"><b>The blueprint</b><small>Somewhere in the old house are plans for a balloon craft. Repair the house to stage ${BLUEPRINT.hearthLevel} and keep hope at ${BLUEPRINT.hope} or more.</small></div>`);
+    out.push(`<div class="card"><b>The blueprint</b><small>${w.stash?.state === 'found' ? 'The crew found a locked tin box under a loose board. They are opening it.' : `Somewhere in the old house the owner hid plans for a balloon craft. Mend ${BLUEPRINT.rooms} rooms with a roof, a door, and working furniture, and keep hope at ${BLUEPRINT.hope} or more.`}</small></div>`);
     return out.join('');
   }
   if (!air.site) {

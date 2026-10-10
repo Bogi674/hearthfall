@@ -225,3 +225,18 @@ Design and architecture decisions that are not already in `docs/GAME_DESIGN.md`.
 - **Loading fuel keeps a hearth reserve.** A loss because the airship drank the fuel the hearth needed felt unfair. The launch now waits for more fuel instead.
 - **Skipping turns does not stress the scripted player.** The player is paced by the economy, not by how often it acts, so a test that skips turns says little. Wave strength and delays do.
 
+
+## M12: The ruin is the house
+
+- **The ruin is data, not a model.** The starting house is generated as floors, wall edges, doors, windows, and furniture with a `ruin` flag and low hit points. Every query that worked on player pieces now works on the ruin, so there is no second code path to keep in step. The cost is one more flag on each piece.
+- **Rooms are found per cluster.** About 70 town ruins would have made a whole map flood fill on every change. Pieces that touch are grouped, and only the group a change touches is analysed again. A ruin anywhere costs the same as one beside the hearth.
+- **Routes run in a box around the walk.** The old route search covered the lot. The new one covers the walk with a margin, so a colonist crossing a ruin far from the hearth still gets a route.
+- **The hearth is an object with a stage.** The old Hearth House was a model with a lot. Now the hearth is one tile, and the house around it is made of ordinary pieces. Stage 3 needs a floor and stages 4 and 5 need a closed room with a whole roof, which gives a reason to repair the roof and a reason to move the hearth into a good room.
+- **Lighting costs fuel and a few seconds of work.** The run begins with a smoldering hearth, so there is a first action and a first small decision. An unlit hearth cannot lose the run, so the tutorial cannot punish a slow start.
+- **Moving the hearth is a crew job.** The new place is built while the old one burns, so there is never a gap with no fire. The price is wood plus half of the stage cost, so a late move hurts but is possible.
+- **Walls shade heat and do not stop it.** A first version stopped heat at every wall, and colonists in tents beside the house froze on day one. Each wall now adds 3 tiles to the way heat travels. A closed room still holds heat and gets a bonus of 10, and the ground behind a wall is cooler.
+- **Ruined furniture counts only near the hearth.** With 70 houses, hundreds of beds and crates stood on the map, and colonists walked to a far bed and froze. A ruined piece counts as home inside the hearth radius or on a warm tile. Pieces the player built count anywhere.
+- **A mend order pays when it is given.** Repairs need wood, planks, or stone like any other work. Paying at once makes the cost visible in the preview and stops a half finished job from stalling on an empty stockpile. The order is all or nothing so the preview is the exact cost.
+- **The blueprint is a stash.** Tying it to a hearth stage made the story depend on a number. Now someone finds a tin box once three rooms are mended and hope is up. The player has to make real rooms, and the story reads as a find.
+- **Every ruin has a way in.** Town houses can touch each other, and a room can end up shut in. After the map is built, a fallen wall opens each such room, so the no sealed rooms rule holds for ruins as well.
+- **One painted look.** Buildings, props, ground, and people share the house textures. They are mapped from world position, except people, whose textures are mapped to the limb so they do not slide when someone walks.

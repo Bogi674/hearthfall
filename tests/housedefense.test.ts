@@ -4,8 +4,8 @@ import { edgePlacementError, placeBuilding, placementError, removeHouseItem } fr
 import { currentPhase, lightSources } from '../src/sim/query';
 import { combatSystem } from '../src/sim/systems/combat';
 import { pathfindingSystem } from '../src/sim/systems/pathfinding';
-import { createWorld, stepWorld, TICKS_PER_SECOND, type Enemy, type World } from '../src/sim/world';
-import { closedRoom, finish } from './helpers';
+import { stepWorld, TICKS_PER_SECOND, type Enemy, type World } from '../src/sim/world';
+import { bareWorld, closedRoom, finish } from './helpers';
 
 const seconds = (w: World, s: number) => {
   for (let i = 0; i < s * TICKS_PER_SECOND && !w.lost; i++) stepWorld(w);
@@ -48,7 +48,7 @@ const dark = (w: World) => {
 
 describe('gun ports, upgrades, and walls under attack (section 9.8)', () => {
   it('a wall becomes a gun port, a defender takes it, and it fires at night', () => {
-    const w = createWorld(1);
+    const w = bareWorld(1);
     rich(w);
     closedRoom(w);
     const { x, y } = w.hearth;
@@ -76,7 +76,7 @@ describe('gun ports, upgrades, and walls under attack (section 9.8)', () => {
   });
 
   it('a gun port with no defender does not fire, and a stronger port can be built over a weaker one', () => {
-    const w = createWorld(1);
+    const w = bareWorld(1);
     rich(w);
     closedRoom(w);
     const { x, y } = w.hearth;
@@ -100,7 +100,7 @@ describe('gun ports, upgrades, and walls under attack (section 9.8)', () => {
   });
 
   it('people in a closed room are safe, and exposed once a wall is broken', () => {
-    const w = createWorld(1);
+    const w = bareWorld(1);
     rich(w);
     ring(w);
     dark(w);
@@ -122,7 +122,7 @@ describe('gun ports, upgrades, and walls under attack (section 9.8)', () => {
   });
 
   it('breakers smash a house wall, and go for the door before a wall', () => {
-    const w = createWorld(1);
+    const w = bareWorld(1);
     rich(w);
     ring(w);
     dark(w);
@@ -142,7 +142,7 @@ describe('gun ports, upgrades, and walls under attack (section 9.8)', () => {
 
 describe('roof turrets and spotlights (section 9.8)', () => {
   it('a roof turret needs a closed room, takes a defender, and fires from the roof', () => {
-    const w = createWorld(1);
+    const w = bareWorld(1);
     rich(w);
     const { x, y } = w.hearth;
     for (const dy of [0, 1]) w.commands.push({ type: 'paintFloor', x: x + 2, y: y + dy, kind: 'boards' });
@@ -167,7 +167,7 @@ describe('roof turrets and spotlights (section 9.8)', () => {
   });
 
   it('a spotlight lights a wide circle at night for fuel', () => {
-    const w = createWorld(1);
+    const w = bareWorld(1);
     rich(w);
     closedRoom(w);
     const { x, y } = w.hearth;

@@ -7,13 +7,23 @@ import type { Amounts } from './resources';
 /** Height of one storey in world units, floor to floor. Walls are 1.15 tall, the rest is the floor slab. */
 export const STOREY_HEIGHT = 1.4;
 
+/** Builder site ids for jobs that are not pieces: lighting the hearth and moving it. The stash uses -1 (see vehicle.ts). */
+export const LIGHT_SITE = -2;
+export const MOVE_SITE = -3;
+
 export const HOUSE = {
-  /** Storeys the house may have at each hearth stage. Storey 0 is the ground floor (M11). */
-  storeys: [1, 2, 2, 3, 3],
-  /** Tiles from the hearth to the edge of the house lot at each hearth stage. */
-  lotRadius: [4, 5, 6, 7, 8],
+  /** The highest storey. Storey 0 is the ground floor, so the house may have three. */
+  maxStorey: 2,
   /** Builders on one floor tile or wall edge at a time. */
   buildersPerPiece: 2,
+  /** Share of a piece's cost, and of its build time, that repairing it takes. */
+  repairShare: 0.4,
+  /** Builder seconds to patch the roof over one tile, and what it costs. */
+  roofPatch: { seconds: 3, cost: { wood: 1 } as Amounts },
+  /** Builder seconds to clear one tile of rubble, and the scrap it gives back. */
+  clearRubble: { seconds: 3, scrap: 1 },
+  /** Share of a piece's cost that tearing down a ruin gives back. */
+  ruinSalvage: 0.75,
 };
 
 export type FloorId = 'boards' | 'stone';
@@ -23,11 +33,13 @@ export interface FloorDef {
   cost: Amounts;
   /** Seconds of builder work. */
   build: number;
+  /** The highest storey this floor can hold up. Planks carry two storeys and stone carries three. */
+  maxStorey: number;
 }
 
 export const FLOORS: Record<FloorId, FloorDef> = {
-  boards: { name: 'Plank Floor', cost: { wood: 2 }, build: 3 },
-  stone: { name: 'Stone Floor', cost: { stone: 2 }, build: 4 },
+  boards: { name: 'Plank Floor', cost: { wood: 2 }, build: 3, maxStorey: 1 },
+  stone: { name: 'Stone Floor', cost: { stone: 2 }, build: 4, maxStorey: 2 },
 };
 export const FLOOR_IDS = Object.keys(FLOORS) as FloorId[];
 

@@ -1,4 +1,5 @@
 import type { BuildingType } from './buildings';
+import { mendedRooms } from '../sim/house';
 import type { World } from '../sim/world';
 
 // Tutorial hints for the first two days (M6). One goal shows at a time, in order, until it is done.
@@ -13,13 +14,15 @@ const has = (w: World, type: BuildingType, n = 1) => w.buildings.filter((b) => b
 export const HINT_DAYS = 2;
 
 export const HINTS: Hint[] = [
+  { text: 'The hearth only smolders. Click it and press Light the fire. It takes a few fuel and a colonist with kindling.', done: (w) => w.hearth.ignited },
   { text: 'Build a Woodcutter Camp near trees. New buildings start as sites, and colonists without a job build them.', done: (w) => has(w, 'woodcutterCamp') },
-  { text: 'Build a floor, walls, and a door next to the house and put a Bed inside, or put up two Tents. Colonists only rest in beds on warm tiles.', done: (w) => has(w, 'bed') || has(w, 'tent', 2) },
+  { text: 'Pick the Mend tool in the Structure tab and drag over the old house. Builders repair worn walls, broken furniture, and open roofs.', done: (w) => mendedRooms(w) >= 1 },
+  { text: 'Put a Bed inside a closed room with a whole roof, or put up two Tents. Colonists only rest in beds on warm tiles.', done: (w) => has(w, 'bed') || has(w, 'tent', 2) },
   { text: 'The hearth burns fuel every second. Build a Quarry by the ruins for stone.', done: (w) => has(w, 'quarry') },
   { text: 'Build a Charcoal Kiln. It turns wood into fuel. If the hearth stays out for a minute, the run is lost.', done: (w) => has(w, 'charcoalKiln') },
   { text: 'Build a Forager Hut and a Kitchen so colonists have meals.', done: (w) => has(w, 'foragerHut') && has(w, 'kitchen') },
   { text: 'Click any building to see why it is blocked and to change its workers.', done: (w) => w.day > 1 || w.dayTime > 200 },
-  { text: 'Click the house to repair it. Each repair warms a wider area and makes the house tougher.', done: (w) => w.hearth.level > 1 },
+  { text: 'Click the hearth to upgrade it or move it into the house. A stove needs a house floor. A fireplace needs a closed room with a whole roof.', done: (w) => w.hearth.level > 1 },
   { text: 'Monsters attack from night 2. Build a Watchtower. Two defenders man its guns at night.', done: (w) => has(w, 'watchtower') },
   { text: 'Build a Sawmill for planks. Planks repair the house and build rooms.', done: (w) => has(w, 'sawmill') },
   { text: 'Ring the hearth with Wooden Barricades. Monsters break the weakest wall, so leave no gaps.', done: (w) => has(w, 'woodenBarricade', 12) },

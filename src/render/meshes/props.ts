@@ -61,12 +61,12 @@ export function buildProps(map: MapState): PropLayer[] {
   );
   const foliage = layer(
     foliageGeo,
-    createPropMaterial(mixPalette(PALETTE.warmShadow, PALETTE.oldWood, 0.35), mixPalette(PALETTE.nightBlue, PALETTE.frost, 0.2), true),
+    createPropMaterial(mixPalette(PALETTE.warmShadow, PALETTE.oldWood, 0.35), mixPalette(PALETTE.nightBlue, PALETTE.frost, 0.2), true, 'needles'),
     trees.length,
   );
   const trunks = layer(
     new THREE.CylinderGeometry(0.09, 0.15, 0.75, 8).translate(0, 0.37, 0),
-    createPropMaterial(PALETTE.oldWood, mixPalette(PALETTE.oldWood, PALETTE.nightBlue, 0.6), false),
+    createPropMaterial(PALETTE.oldWood, mixPalette(PALETTE.oldWood, PALETTE.nightBlue, 0.6), false, 'bark'),
     trees.length,
   );
   for (const t of trees) {
@@ -85,7 +85,7 @@ export function buildProps(map: MapState): PropLayer[] {
   const rubbleTiles = tilesOfType(map, Tile.Rubble);
   const rubble = layer(
     new THREE.IcosahedronGeometry(0.22, 1),
-    createPropMaterial(mixPalette(PALETTE.warmShadow, PALETTE.oldWood, 0.5), mixPalette(PALETTE.nightBlue, PALETTE.frost, 0.3), true),
+    createPropMaterial(mixPalette(PALETTE.warmShadow, PALETTE.oldWood, 0.5), mixPalette(PALETTE.nightBlue, PALETTE.frost, 0.3), true, 'rock'),
     rubbleTiles.length * 3,
   );
   for (const t of rubbleTiles) {
@@ -107,7 +107,7 @@ export function buildProps(map: MapState): PropLayer[] {
   const isWall = (x: number, z: number) => x >= 0 && z >= 0 && x < map.width && z < map.height && map.tiles[z * map.width + x] === Tile.RuinWall;
   const walls = layer(
     new RoundedBoxGeometry(1, 1, 1, 2, 0.06).translate(0, 0.5, 0),
-    createPropMaterial(mixPalette(PALETTE.oldWood, PALETTE.frost, 0.3), mixPalette(PALETTE.nightBlue, PALETTE.frost, 0.4), true),
+    createPropMaterial(mixPalette(PALETTE.oldWood, PALETTE.frost, 0.3), mixPalette(PALETTE.nightBlue, PALETTE.frost, 0.4), true, 'brick'),
     wallTiles.length * 2,
   );
   q.identity();
@@ -151,7 +151,7 @@ export function buildProps(map: MapState): PropLayer[] {
     new THREE.CylinderGeometry(0.15, 0.15, 0.56, 8).rotateX(Math.PI / 2).translate(0.3, 0.15, 0),
     new THREE.CylinderGeometry(0.15, 0.15, 0.56, 8).rotateX(Math.PI / 2).translate(-0.3, 0.15, 0),
   ]);
-  const cars = layer(carGeo, createPropMaterial(mixPalette(PALETTE.ember, PALETTE.oldWood, 0.55), mixPalette(PALETTE.nightBlue, PALETTE.frost, 0.25), true), carTiles.length);
+  const cars = layer(carGeo, createPropMaterial(mixPalette(PALETTE.ember, PALETTE.oldWood, 0.55), mixPalette(PALETTE.nightBlue, PALETTE.frost, 0.25), true, 'metal'), carTiles.length);
   for (const t of carTiles) {
     const x = t % map.width;
     const z = Math.floor(t / map.width);
@@ -167,7 +167,7 @@ export function buildProps(map: MapState): PropLayer[] {
   const drumTiles = rubbleTiles.filter((t) => hash(t + 40) < 0.07);
   const drums = layer(
     new THREE.CylinderGeometry(0.16, 0.16, 0.42, 9).translate(0, 0.21, 0),
-    createPropMaterial(mixPalette(PALETTE.ember, PALETTE.warmShadow, 0.55), mixPalette(PALETTE.nightBlue, PALETTE.frost, 0.2), true),
+    createPropMaterial(mixPalette(PALETTE.ember, PALETTE.warmShadow, 0.55), mixPalette(PALETTE.nightBlue, PALETTE.frost, 0.2), true, 'metal'),
     drumTiles.length,
   );
   for (const t of drumTiles) {

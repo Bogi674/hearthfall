@@ -80,18 +80,22 @@ This is the system that connects survival, defense, and the visual identity.
 - Past its radius a heat source does not stop at once. Its warmth fades over another 60 percent of its radius, like real light fading into the dark.
 - Outdoor temperature lowers the baseline warmth everywhere over time.
 
-### 5.2 Hearth House
-The hearth is a fireplace inside a run down house in the town square. The colony repairs the house one stage at a time. Each stage makes the house look more whole, warms a wider radius, burns more fuel, and makes the house tougher. Monsters that reach the house attack it, and the run is lost if it falls.
+### 5.2 The hearth (M12)
+The hearth is an object, not a building with a lot of its own. It stands on one tile. It starts as a pit of embers in the hall of the starting ruin. It smolders and gives no warmth until someone lights it. Lighting costs 5 fuel and a few seconds of a colonist with kindling. The run cannot be lost to a hearth that was never lit.
 
-| Stage | Name | Radius in tiles | Fuel per minute | HP | Repair cost |
-|---|---|---|---|---|---|
-| 1 | Ruined House | 8 | 3 | 4000 | Start |
-| 2 | Patched Roof | 10 | 4 | 4500 | 20 wood, 10 planks |
-| 3 | Rebuilt Walls | 12 | 5 | 5000 | 40 planks, 10 stone |
-| 4 | Glazed and Stoved | 14 | 6 | 5500 | 40 planks, 20 metal |
-| 5 | Restored Lodge | 16 | 8 | 6000 | 80 planks, 60 metal, 10 parts |
+The hearth can be upgraded and moved.
 
-The player can set the hearth to Low, Normal, or Overdrive. Low halves fuel use and shrinks the radius by 30 percent. Overdrive doubles fuel use and grows the radius by 30 percent.
+| Stage | Name | Radius in tiles | Fuel per minute | HP | Cost | Where it stands |
+|---|---|---|---|---|---|---|
+| 1 | Fire Pit | 8 | 3 | 4000 | Start | Anywhere |
+| 2 | Stone Hearth | 10 | 4 | 4500 | 20 wood, 10 planks | Anywhere |
+| 3 | Iron Stove | 12 | 5 | 5000 | 40 planks, 10 stone | On a house floor |
+| 4 | Brick Fireplace | 14 | 6 | 5500 | 40 planks, 20 metal | On a floor in a closed room with a whole roof |
+| 5 | Great Hearth | 16 | 8 | 6000 | 80 planks, 60 metal, 10 parts | On a floor in a closed room with a whole roof |
+
+- **Moving.** The player picks any tile that suits the stage. The crew builds the new place and the old hearth burns until it is done. It costs 10 wood plus half the cost of the current stage and 12 builder seconds. The move can be cancelled for half of the price back.
+- **Heat and walls.** Heat spreads from the hearth through open space. Each wall or window it passes adds 3 tiles to its way, and a door adds none. A closed room with a whole roof holds heat, so its tiles are 10 warmer. A broken roof lets the heat out.
+- **The tile.** Nothing else is built on the hearth tile. A colonist idles in a ring around it.
 
 ### 5.3 Effects of warmth
 - Buildings on warm tiles work at full speed. Cold tiles reduce speed to 50 percent. Freezing tiles stop work.
@@ -127,25 +131,29 @@ Outdoor temperature has a base of minus 2 degrees on day 1 that drops by 1 degre
 
 ---
 
-### 5.5 Restoring the house
-The house is not only repaired in stages. The colony also builds onto it, the way a survivor shelter grows from a ruin into a bunker. The player draws floors and walls and places furniture on the house lot. Rooms are whatever the walls enclose. Sections 5.6 and 5.7 describe how.
+### 5.5 The ruin is the house (M12)
+The starting house is a half destroyed building made of the same pieces the player builds with: floors, wall edges, doors, windows, and furniture. It has a hall with the old hearth, a bedroom, a kitchen, a storeroom, and a ruined attic over the bedroom. The player can repair it, extend it, convert it, tear down any part of it, add storeys, windows, doors, pillars, turrets, furniture, and new rooms. People use all of it.
+
+- **Worn pieces.** A ruin wall starts with 20 to 80 percent of its hit points, and about 15 percent of the walls are gone. Doorways are doors that survived or gaps. Some tiles lost their floor, and some of those are rubble. About 40 percent of the roofs are open to the sky. About half of the furniture is broken. One room is kept in better shape than the others.
+- **Mending.** The Mend tool (M) repairs worn walls, doors, windows, and furniture, patches open roofs with planks, and clears rubble. A mend order pays now and then builders do the work. A selected piece has its own Mend button. Broken furniture does nothing until it is mended. A broken staircase cannot be climbed.
+- **Salvage.** Taking a ruin piece apart returns 75 percent of its cost, so tearing down is a choice and not a loss.
+- **Every ruined house on the map is the same.** The town has about 70 small ruined houses made of the same pieces. Each has a way in. The player can claim any of them by repairing it and heating it, for example with a heater or by moving the hearth there. A ruined bed or table counts as home only when it stands near the hearth or on a warm tile.
+- **Rooms.** Rooms are found from the walls in each cluster of pieces, so a ruin anywhere is analysed like the starting one. A room is closed when walls and doors surround it. It is roofed when every tile has a whole roof or a floor above it. People in a closed room are safe while its walls stand.
 
 ### 5.6 Building the house: floors, walls, and doors
-The house is built tile by tile, like a survivor shelter growing from a ruin.
+New pieces are built the same way anywhere on open ground. There is no build limit.
 
-- **House lot.** The lot around the hearth grows with the Hearth House stage: 4, 5, 6, 7, and 8 tiles from the hearth, so 9 by 9 up to 17 by 17. Floors, walls, and furniture go only on the lot.
-- **Floors.** Plank Floor (2 wood) and Stone Floor (2 stone). A floor tile must touch the house or another floor. Drag to paint.
+- **Floors.** Plank Floor (2 wood) and Stone Floor (2 stone). Drag to paint. Rubble must be cleared first.
 - **Walls, doors, windows, and gun ports.** These sit on the border between two tiles and need a floor on one side. Walls come in wood, reinforced, stone, and metal. Doors come in wood and reinforced. Windows let light through and stop people. Gun ports are walls a defender fires through (section 9.8). A built piece can be upgraded or changed to another kind. The old piece stands until the work is done.
-- **The house itself** is a wall with a front door on its south side. A door can be cut into any other house wall.
-- **No sealed rooms.** A wall that would shut a room in with no door is refused with the reason "A room would have no door. Add a door first". A door that is the only way into a room cannot be removed.
+- **No sealed rooms.** A wall that would shut a room in with no door is refused with the reason "A room would have no door. Add a door first".
 - **Builders.** Every floor tile, wall, door, window, and piece of furniture is a construction site. Colonists without a job build the nearest one. Up to 2 builders work on one floor tile or wall edge. Builders stand on the open side of a wall.
-- **Walking.** Near the house colonists walk tile to tile. Finished walls and windows stop them and doors let them through. Away from the house they still walk straight. Until the first floor or wall is built, the old house does not block walking.
-- **Removing.** An untouched site refunds its full cost. Anything finished refunds half. A building outside the house can be taken apart by colonists, who bring back 75 percent of the cost.
+- **Walking.** Near any house piece colonists walk tile to tile. Finished walls and windows stop them and doors let them through. Away from houses they walk straight.
+- **Removing.** An untouched site refunds its full cost. A finished piece refunds half. A ruin piece refunds 75 percent. A building outside the house can be taken apart by colonists, who bring back 75 percent of the cost.
 
 ### 5.8 Storeys and the builder tools (M11)
 The house can grow upward like a stack of cabins on a tower.
 
-- **Storeys.** The ground floor is storey 0. The Hearth House stage sets how high the house may go: 1 storey at stage 1, 2 from stage 2, and 3 from stage 4. The roof of the top storey is the roof deck.
+- **Storeys.** The ground floor is storey 0. A house may have up to 3 storeys. Wood floors hold up 2. The third needs a stone floor. The roof of the top storey is the roof deck.
 - **Upper floors.** A floor on storey 1 or 2 needs a floor right under it, or a floor beside it that has one, so a balcony may stick out one tile. Posts hold up any tile with nothing under it. Walls, doors, windows, gun ports, and furniture go on any storey. Upper floors cannot cover the hearth hall.
 - **Stairs.** A flight of stairs stands on one tile of a floor and climbs to the floor above through the same tile. The tile above has no floor and needs a floor beside it. The stairs cost 14 wood. Colonists walk up and down them. The top of the stairs counts as the entrance of an upper room, so an upstairs room needs no door to the outside.
 - **Living upstairs.** Beds, tables, and sofas work on any storey. A colonist upstairs in a closed room is safe like one downstairs. Monsters only break the walls of the ground floor. Guns fire 1.2 tiles farther for each storey up.
@@ -244,7 +252,7 @@ Costs and numbers are starting values and live in data files.
 
 | Building | Cost | Workers | Function | Prototype |
 |---|---|---|---|---|
-| Hearth House | Start | 1 stoker | Warmth and light core, repaired in stages (section 5.2), grows rooms (section 5.5) | Yes |
+| Hearth | Start | 1 stoker | Warmth and light core. Smolders until lit, then moves and upgrades (section 5.2). The ruin around it is mended and grown (section 5.5) | Yes |
 | Supply Cart | Start | 0 | 300 storage | Yes |
 | Tent | 10 wood | 0 | Beds for 4 | Yes |
 | Bunkhouse | 30 planks, 10 stone | 0 | Beds for 10, small warmth bonus | Yes |
@@ -414,7 +422,7 @@ Later versions may offer a rocket or makeshift plane as alternate vehicles with 
 ### 11.2 The blueprint, the Moot, and the Launch Pad
 The airship is not known at the start. The survivors find a ruined house and make it a home. Then the old owner's story turns up.
 
-1. **The blueprint.** At dawn, once the house is at stage 3 and hope is at least 50, the crew finds a sealed attic. Inside are the old owner's plans for a small balloon craft. The owner never finished it because the monsters came. Nothing airship related can be built before this.
+1. **The blueprint.** At dawn, once 3 closed rooms with a whole roof and working furniture stand and hope is at least 50, someone finds a loose board in the storeroom floor and a locked tin box under it. The crew gathers and opens it in about 10 seconds. Inside are the old owner's plans for a small balloon craft. The owner never finished it because the monsters came. Nothing airship related can be built before this.
 2. **The Moot.** The crew chooses where the airship will rise. The old owner's paddock (section 4) always has room. The player picks the Launch Pad site. The pad is 6 by 6 tiles with a ring of open ground around it, and it must be within 18 tiles of the house so the last dash is possible. The chosen ground and its ring are kept free of new buildings and floors.
 3. **Clear the ground.** If buildings already stand in the ring, the player can have colonists take them apart. They bring back 75 percent of the cost.
 4. **Building.** Colonists at a Drafting Table in the house (four workers) and at the Launch Pad both build components. The pad is needed for the launch. A pad in the cold works at half speed, so the table in the warm house is the better bench.
@@ -465,6 +473,7 @@ Orthographic camera at a classic isometric angle. Zoom with scroll. Rotate in 90
 - House floors, walls, and roofs vary slightly in shade piece by piece. Window glow flickers on its own rhythm.
 - Roofs carry snow. A blizzard day leaves them nearly white.
 - Wrecked cars stand along the roads away from the square. Drums stand among the rubble.
+- **One painted look (M12).** Every surface in the game uses the painted textures of the house, mapped from where a fragment is in the world: worn planks, board siding, flagstone, brick, patched corrugated sheet, rusty roofing, woven cloth, bark, pine needles, and speckled rock. Buildings, barricades, gates, towers, camps, production buildings, furniture, trees, rubble, ruins, cars, drums, and the ground all use them. People's clothes use woven cloth that is mapped to each limb so it travels with it. The palette colors still tint every surface.
 
 ### 12.4b Character animation
 - Every figure keeps its own motion state, so nothing snaps. Walking blends in and out over a fraction of a second, the stride only advances while moving, and the body bobs, leans forward, and sways a little with each step.
@@ -578,7 +587,7 @@ src/
       vehicle.ts
   data/
     buildings.ts
-    house.ts          floors, walls, doors, and the house lot
+    house.ts          floors, walls, doors, rooms, and roofs of every house on the map
     enemies.ts
     resources.ts
     recipes.ts
@@ -716,6 +725,14 @@ Each milestone must meet its acceptance criteria before the next starts.
 - Fuel use, outdoor work, lookout sight, expedition risk, and heat reach follow the weather.
 - Sky, fog, light, and snow follow the weather (section 12.2).
 - **Done when:** the weather changes day to day, the top bar shows today and tomorrow, cold costs fuel, and a careful scripted run still launches on most seeds.
+
+### M12: The Ruin Is the House
+- The starting house is a half destroyed building made of real pieces. Every ruined house in town is made of the same pieces (section 5.5).
+- The hearth is an object that smolders, is lit, moves, and upgrades (section 5.2).
+- Mend, patch roofs, clear rubble, and take apart ruins for salvage.
+- The blueprint is a stash found when rooms are mended (section 11.2). No build limit.
+- Every asset shares the painted look of the house: buildings, props, ground, and people's clothes (section 12.4a).
+- **Done when:** a new game starts in a ruin with a smoldering hearth. The player lights it, mends and extends the house with the same tools, moves or upgrades the hearth into a closed room, finds the stash, and the scripted full run still launches the airship.
 
 ### Later milestones
 - Physical hauling, hand carts, and conveyor lines.

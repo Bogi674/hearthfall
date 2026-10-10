@@ -2,19 +2,23 @@ import { describe, expect, it } from 'vitest';
 import { pick, targetOf } from '../src/input/pick';
 import { placeBuilding } from '../src/sim/placement';
 import { createWorld, stepWorld, type World } from '../src/sim/world';
+import { EDGES } from '../src/data/house';
+import { planArea } from '../src/input/areas';
 import { selectionHtml } from '../src/ui/selection';
 import { taskText } from '../src/ui/people';
 import { buildMenuHtml } from '../src/ui/build';
-import { closedRoom, finish } from './helpers';
+import { bareWorld, closedRoom, finish } from './helpers';
 
 const rich = (w: World) => Object.assign(w.stock, { wood: 500, scrap: 100, planks: 100, metal: 50, stone: 50, parts: 20 });
 
 function roomWorld(): World {
-  const w = createWorld(1);
+  const w = bareWorld(1);
   rich(w);
   closedRoom(w);
   placeBuilding(w, 'bed', w.hearth.x + 2, w.hearth.y, false);
   finish(w);
+  // The crew stands well away, so the cursor tests below see only the room.
+  for (const c of w.colonists) [c.x, c.y, c.px, c.py] = [c.x - 30, c.y, c.px - 30, c.py];
   return w;
 }
 
@@ -105,7 +109,7 @@ describe('the selection panel for the house (section 14)', () => {
   });
 
   it('the build menu offers rotation only while placing, and says why a pad cannot go down', () => {
-    const w = createWorld(1);
+    const w = bareWorld(1);
     expect(buildMenuHtml(w, 'Furniture', null, null, false)).not.toContain('data-act="rotate"');
     expect(buildMenuHtml(w, 'Furniture', 'bed', null, false)).toContain('data-act="rotate"');
     expect(buildMenuHtml(w, 'Escape', null, null, false)).toMatch(/Needs the old owner/);
@@ -113,5 +117,69 @@ describe('the selection panel for the house (section 14)', () => {
     expect(buildMenuHtml(w, 'Escape', null, null, false)).toMatch(/Choose the site in the Airship tab/);
     expect(buildMenuHtml(w, 'Defense', null, null, false)).toContain('Gun Port');
     expect(buildMenuHtml(w, 'Structure', null, null, false)).toContain('Wood Room');
+  });
+});
+
+describe('the ruin in the interface (M12)', () => {
+  it('the hearth panel offers Light while it smolders, then Move and Upgrade', () => {
+    const w = createWorld(1);
+    const html = selectionHtml(w, 'hearth');
+    expect(html).toContain('Fire Pit');
+    expect(html).toMatch(/Smoldering/);
+    expect(html).toContain('data-act="light"');
+    expect(html).toContain('data-act="move"');
+    w.hearth.ignited = true;
+    w.hearth.lit = true;
+    const lit = selectionHtml(w, 'hearth');
+    expect(lit).not.toContain('data-act="light"');
+    expect(lit).toMatch(/Burning/);
+    Object.assign(w.stock, { wood: 100, planks: 100 });
+    expect(selectionHtml(w, 'hearth')).toContain('data-act="upgrade"');
+    w.hearthSite = { x: w.hearth.x + 5, y: w.hearth.y, construct: 5 };
+    expect(selectionHtml(w, 'hearth')).toContain('data-act="cancelmove"');
+  });
+
+  it('a worn wall, a broken piece of furniture, and an open roof each offer Mend', () => {
+    const w = createWorld(1);
+    Object.assign(w.stock, { wood: 300, planks: 100, stone: 100 });
+    const wall = w.house.edges.find((e) => e.ruin && e.kind === 'wall' && e.hp < EDGES.wall.levels[e.level - 1].hp)!;
+    expect(selectionHtml(w, wall.id)).toContain(`data-act="mend:edge:${wall.id}"`);
+    const broken = w.buildings.find((b) => b.ruin && b.broken)!;
+    expect(selectionHtml(w, broken.id)).toContain(`data-act="mend:furniture:${broken.id}"`);
+    expect(selectionHtml(w, broken.id)).toMatch(/Broken/);
+    const open = w.house.floors.find((f) => f.roofBroken)!;
+    expect(selectionHtml(w, open.id)).toContain(`data-act="mend:roof:${open.id}"`);
+  });
+
+  it('the stash can be picked once found, and its panel shows the progress', () => {
+    const w = createWorld(1);
+    const s = w.stash!;
+    expect(pick(w, s.x, s.y)?.kind).not.toBe('stash');
+    s.state = 'found';
+    expect(pick(w, s.x, s.y)).toMatchObject({ kind: 'stash', w: 1, h: 1 });
+    expect(selectionHtml(w, 'stash')).toMatch(/Locked tin box/);
+    expect(targetOf(w, 'stash')?.kind).toBe('stash');
+  });
+
+  it('the hearth is one tile to pick', () => {
+    const w = createWorld(1);
+    const { x, y } = w.hearth;
+    for (const c of w.colonists) c.x = c.px = x + 40;
+    expect(pick(w, x, y)?.kind).toBe('hearth');
+    expect(pick(w, x, y)).toMatchObject({ w: 1, h: 1 });
+  });
+
+  it('the mend tool previews the pieces and the cost', () => {
+    const w = createWorld(1);
+    Object.assign(w.stock, { wood: 300, planks: 100, stone: 100 });
+    const a = { x: w.hearth.x - 3, y: w.hearth.y - 2 };
+    const b = { x: w.hearth.x + 3, y: w.hearth.y + 2 };
+    const plan = planArea(w, { kind: 'mend' }, a, b, 0);
+    expect(plan.items.length).toBeGreaterThan(3);
+    expect(plan.text).toMatch(/^Mend \d+ pieces/);
+    expect(plan.command).toMatchObject({ type: 'mendArea' });
+    expect(plan.blocked).toBe(false);
+    w.stock.wood = 0;
+    expect(planArea(w, { kind: 'mend' }, a, b, 0).blocked).toBe(true);
   });
 });

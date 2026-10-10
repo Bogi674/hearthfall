@@ -4,7 +4,13 @@ Bugs, shortcuts, and loose ends that are known but not fixed yet.
 
 ## Open
 
-- **M11.** The Hearth House stays a fixed model. It does not cut away with the wall views, and upper floors cannot be built over it.
+- **M12.** A mend order is all or nothing. If the stockpile cannot pay for every piece in the rectangle, nothing is queued. Drag a smaller area.
+- **M12.** Ruin furniture in far houses is solid to monsters, like a barricade, and costs them path length. Small houses can funnel a night attack in odd ways.
+- **M12.** Town houses are mended by hand. There is no claim shortcut. A far house counts as home only once it is heated.
+- **M12.** The scripted player closes the ruin with its own helper, not with the UI tools. It does not move the hearth.
+- **M12.** The hearth move and the stash have no sound, and the stash glint is a plain additive sphere.
+- **M12.** Painted textures on people use a fixed size per limb and do not follow the figure's scale. Monsters keep their old flat materials.
+
 - **M11.** Selecting a thing on another storey needs that storey to be the current one. Colonists on other storeys cannot be clicked in the world, only from the list.
 - **M11.** Builders of an upper floor that sticks out two storeys over nothing walk straight to it. Stairs and balconies of one tile never hit this.
 - **M11.** The Structure tab is tall. Shrinking it with a collapsed view is still to do.
@@ -17,11 +23,9 @@ Bugs, shortcuts, and loose ends that are known but not fixed yet.
 - **M10.1c.** Roof turrets stand on a raised deck where the roof is open, and their defender stands on it, not on the roof.
 - **M10.1b.** There is no tool for moving a wall outward. Players place new walls and take the old ones apart.
 - **M10.1b.** Salvaging a building keeps its workers at their jobs until the work is done.
-- **M10.1a.** Until the player builds a floor or wall, the Hearth House does not block walking, so a colony that never builds on the house plays exactly as before. Once any floor or wall exists, the house walls and front door block and route colonists.
 - **M10.1a.** Furniture does not block walking. Colonists walk through beds and shelves.
 - **M10.1a.** A trip is planned as a straight walk when no route exists, for example a colonist standing inside a tile that was walled in by a save from a bug. The colonist then walks through walls instead of getting stuck.
 - **M10.1a.** Floor sites count as floors for furniture placement before they are finished. Walls have no corner posts.
-- **M10.1a.** Stage 2 and above of the house grow the lot, but outside buildings may still be placed on the grown lot tiles that are not floors. They then block the lot from growing there.
 - **M10.1c.** Rotation is a half turn toggle. Buildings cannot face four ways.
 - **M10.1c.** Hover frames draw on top of everything and so show through walls and roofs.
 - **M10.1c.** The room overlay recomputes names every frame while it is shown. It was not measured on a large house.

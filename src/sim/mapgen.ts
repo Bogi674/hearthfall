@@ -3,6 +3,7 @@ import { BALANCE } from '../data/balance';
 import { POI_TYPES, POIS } from '../data/pois';
 import { getTile, inBounds, setTile, Tile, type MapState } from './grid';
 import { chance, nextFloat, nextInt, type RngState } from './rng';
+import { emptyRuins, startingRuin, townRuin, type Ruins } from './ruins';
 
 const CFG = BALANCE.map;
 
@@ -10,6 +11,8 @@ export interface GeneratedMap {
   map: MapState;
   hearth: { x: number; y: number };
   pois: { type: (typeof POI_TYPES)[number]; x: number; y: number; clears: number; seen: 'hidden' | 'rumored' | 'known' }[];
+  /** Every ruined house on the map as worn house pieces, the starting ruin first among them. */
+  ruins: Ruins;
 }
 
 export function generateMap(rng: RngState): GeneratedMap {
@@ -19,16 +22,24 @@ export function generateMap(rng: RngState): GeneratedMap {
   const hx = Math.floor(width / 2);
   const hy = Math.floor(height / 2);
 
+  const ruins = emptyRuins();
   placeRoads(map, rng, hx, hy);
-  placeHouses(map, rng, hx, hy);
+  placeHouses(map, rng, hx, hy, ruins);
   placePonds(map, rng, hx, hy);
   placeTrees(map, rng, hx, hy);
   placeStreetRubble(map, rng);
   clearAround(map, hx, hy, CFG.clearingRadius);
 
+  // The starting ruin goes in last, so nothing grows over it. It clears its own ground.
+  const start = startingRuin(rng, map, hx, hy);
+  ruins.floors.push(...start.floors);
+  ruins.edges.push(...start.edges);
+  ruins.furniture.push(...start.furniture);
+  ruins.stash = start.stash;
+
   const pois = placePois(map, rng, hx, hy);
   placeYard(map, rng, hx, hy);
-  return { map, hearth: { x: hx, y: hy }, pois };
+  return { map, hearth: { x: hx, y: hy }, pois, ruins };
 }
 
 /**
@@ -80,8 +91,8 @@ function placeRoads(map: MapState, rng: RngState, hx: number, hy: number): void 
   }
 }
 
-/** Ruined houses are rectangles of broken wall with rubble inside. */
-function placeHouses(map: MapState, rng: RngState, hx: number, hy: number): void {
+/** Ruined houses in town: worn floors and walls, made of house pieces, with masonry heaps beside them. */
+function placeHouses(map: MapState, rng: RngState, hx: number, hy: number, ruins: Ruins): void {
   let placed = 0;
   for (let attempt = 0; attempt < CFG.houseAttempts && placed < CFG.houseCountMax; attempt++) {
     const w = nextInt(rng, CFG.houseWidth[0], CFG.houseWidth[1]);
@@ -91,18 +102,9 @@ function placeHouses(map: MapState, rng: RngState, hx: number, hy: number): void
     const x0 = Math.round(hx + Math.cos(angle) * r - w / 2);
     const y0 = Math.round(hy + Math.sin(angle) * r - d / 2);
     if (!areaIsGround(map, x0 - 1, y0 - 1, w + 2, d + 2)) continue;
-
-    for (let y = y0; y < y0 + d; y++) {
-      for (let x = x0; x < x0 + w; x++) {
-        const edge = x === x0 || y === y0 || x === x0 + w - 1 || y === y0 + d - 1;
-        if (edge) {
-          if (!chance(rng, CFG.wallGapChance)) setTile(map, x, y, Tile.RuinWall);
-          else if (chance(rng, 0.5)) setTile(map, x, y, Tile.Rubble);
-        } else if (chance(rng, CFG.houseRubbleChance)) {
-          setTile(map, x, y, Tile.Rubble);
-        }
-      }
-    }
+    // The starting ruin and its yard are kept clear.
+    if (x0 - 1 <= hx + 10 && x0 + w + 1 >= hx - 10 && y0 - 1 <= hy + 9 && y0 + d + 1 >= hy - 5) continue;
+    townRuin(rng, map, x0, y0, w, d, ruins);
     placed++;
   }
 }

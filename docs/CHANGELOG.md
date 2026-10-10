@@ -2,6 +2,16 @@
 
 Newest entries first. Each entry names the milestone it belongs to.
 
+## 2026-10-10 (M12: The Ruin Is the House)
+
+- **The starting house is a ruin of real pieces.** A hall, a bedroom, a kitchen, a storeroom, and an attic are made of floors, wall edges, doors, windows, and furniture, all worn: low wall hit points, missing walls, lost floors and rubble, open roofs, and broken furniture. One room is kept in better shape. About 70 town houses are made of the same pieces, and each has a way in. Save version is now 8.
+- **Mend.** A Mend tool (M) repairs worn walls, doors, windows, and furniture, patches roofs with planks, and clears rubble. Selected pieces have their own Mend buttons. Broken furniture does nothing until mended. Taking a ruin piece apart returns 75 percent of its cost.
+- **The hearth is an object.** It smolders until someone lights it for 5 fuel. It can be moved to any tile the stage allows and upgraded through five stages. The stove needs a floor, and the fireplaces need a closed room with a whole roof. The lot and the hearth wall are gone, and there is no build limit.
+- **Heat and rooms.** Rooms are found per cluster of pieces anywhere on the map. Each wall adds 3 tiles to the way heat travels, and a closed roofed room is 10 warmer. An open roof lets heat out.
+- **The blueprint is a stash.** With 3 mended rooms and hope at 50, someone finds a loose board and a tin box at dawn, and the crew opens it for the plans.
+- **One painted look.** Buildings, barricades, gates, towers, camps, production buildings, furniture, trees, rubble, ruins, cars, drums, and the ground use the painted textures of the house. People wear woven cloth.
+- **Other.** New hints and intro text, a hearth panel with Light, Move, and Upgrade, a stash marker and panel, and broken furniture that sags. Tests use a bare world helper for the mechanics and new ruin tests for the ruin. The scripted player closes gaps, walls off rooms, mends, furnishes, and clears ruins for the launch pad.
+
 ## 2026-10-10 (M11: The House That Grows)
 
 - **Wall views (M11a).** Walls up, walls cut, and walls down, cycled with V or a button. Tab peeks with every wall down.

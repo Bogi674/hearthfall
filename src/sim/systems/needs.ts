@@ -2,7 +2,7 @@
 import { BALANCE } from '../../data/balance';
 import { BUILDINGS } from '../../data/buildings';
 import { isIndoors } from '../house';
-import { bandAt, DAY_SECONDS, isBuilt } from '../query';
+import { atHome, bandAt, DAY_SECONDS, isBuilt } from '../query';
 import { recordDeath, type World } from '../world';
 
 const N = BALANCE.needs;
@@ -11,7 +11,7 @@ const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 export function needsSystem(world: World, dt: number): void {
   const byId = new Map(world.buildings.map((b) => [b.id, b]));
   // With a table in the house colonists eat there in the evening instead of anywhere (section 5.7).
-  const hasTable = world.buildings.some((b) => BUILDINGS[b.type].social === 'eat' && isBuilt(b));
+  const hasTable = world.buildings.some((b) => BUILDINGS[b.type].social === 'eat' && isBuilt(b) && atHome(world, b));
   for (const c of world.colonists) {
     // A bed in a closed room, a sickbed, and a mat each change how fast sleepers rest and heal (section 5.6).
     const bed = c.asleep && c.bed !== null ? byId.get(c.bed) : undefined;

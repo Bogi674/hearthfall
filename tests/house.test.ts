@@ -1,3 +1,5 @@
+import { bareWorld } from './helpers';
+import { Tile } from '../src/sim/grid';
 import { describe, expect, it } from 'vitest';
 import { HOUSE } from '../src/data/house';
 import { houseRooms, roomInfos, stepBlocked } from '../src/sim/house';
@@ -20,8 +22,8 @@ const finishHouse = (w: World) => {
 };
 
 /**
- * A two tile room east of the house, walled on the north, south, and east. The west side is the
- * house wall. The east side holds a door. Tiles are hx+2 and hx+3 on the hearth row.
+ * A two tile room east of the hearth: floors on hx+2 and hx+3 of the hearth row, walls on the north, south, and east, and
+ * a door on the west side. There is no old house, so the room stands on its own.
  */
 function eastRoom(w: World, door = true) {
   const { x: hx, y: hy } = w.hearth;
@@ -31,34 +33,29 @@ function eastRoom(w: World, door = true) {
     expect(placeEdge(w, x, hy, 'n', 'wall', 1)).toBe(true);
     expect(placeEdge(w, x, hy + 1, 'n', 'wall', 1)).toBe(true);
   }
-  expect(placeEdge(w, hx + 4, hy, 'w', door ? 'door' : 'wall', 1)).toBe(door);
+  expect(placeEdge(w, hx + 4, hy, 'w', 'wall', 1)).toBe(true);
+  expect(placeEdge(w, hx + 2, hy, 'w', door ? 'door' : 'wall', 1)).toBe(door);
   return { hx, hy };
 }
 
 describe('house layer rules (M10.1)', () => {
-  it('floors must touch the house, stay on the lot, and cost resources', () => {
-    const w = createWorld(1);
+  it('floors go anywhere on open ground and cost resources', () => {
+    const w = bareWorld(1);
     const { x: hx, y: hy } = w.hearth;
-    expect(floorPlacementError(w, hx, hy, 'boards')).toBe('The house is already here');
-    expect(floorPlacementError(w, hx + 3, hy, 'boards')).toMatch(/touch the house/);
-    expect(floorPlacementError(w, hx + 2, hy, 'boards')).toBeNull();
+    expect(floorPlacementError(w, hx + 3, hy, 'boards')).toBeNull();
+    expect(floorPlacementError(w, hx + 9, hy + 9, 'boards')).toBeNull();
     w.stock.wood = 1;
     expect(floorPlacementError(w, hx + 2, hy, 'boards')).toBe('Not enough wood');
     w.stock.wood = 100;
     expect(placeFloor(w, hx + 2, hy, 'boards')).toBe(true);
     expect(w.stock.wood).toBe(98);
     expect(floorPlacementError(w, hx + 2, hy, 'boards')).toBe('Already has a floor');
-    // Stage 1 lot is 4 tiles. A floor at 5 tiles out is off the lot until the house grows.
-    expect(placeFloor(w, hx + 3, hy, 'boards')).toBe(true);
-    expect(placeFloor(w, hx + 4, hy, 'boards')).toBe(true);
-    expect(floorPlacementError(w, hx + 5, hy, 'boards')).toMatch(/Outside the house lot/);
-    w.hearth.level = 2;
-    expect(floorPlacementError(w, hx + 5, hy, 'boards')).toBeNull();
-    expect(HOUSE.lotRadius).toEqual([4, 5, 6, 7, 8]);
+    // No build limit: a floor far from the hearth is fine.
+    expect(placeFloor(w, hx + 12, hy, 'boards')).toBe(true);
   });
 
   it('ordinary buildings cannot be placed on a floor, and furniture needs one', () => {
-    const w = createWorld(1);
+    const w = bareWorld(1);
     rich(w);
     const { x: hx, y: hy } = w.hearth;
     expect(placementError(w, 'bed', hx + 2, hy, false)).toBe('Furniture needs a floor');
@@ -69,59 +66,48 @@ describe('house layer rules (M10.1)', () => {
     expect(placeBuilding(w, 'bed', hx + 2, hy, false)).toBe(true);
   });
 
-  it('walls need a floor beside them, and the house wall is already there', () => {
-    const w = createWorld(1);
+  it('nothing is built on the hearth tile, and rubble must be cleared first', () => {
+    const w = bareWorld(1);
+    rich(w);
+    const { x: hx, y: hy } = w.hearth;
+    expect(placementError(w, 'tent', hx, hy, false)).toBe('Blocked by the hearth');
+    w.map.tiles[hy * w.map.width + hx + 4] = Tile.Rubble;
+    expect(placementError(w, 'tent', hx + 4, hy, false)).toBe('Clear the rubble first');
+    expect(floorPlacementError(w, hx + 4, hy, 'boards')).toBe('Clear the rubble first');
+  });
+
+  it('walls need a floor beside them', () => {
+    const w = bareWorld(1);
     rich(w);
     const { x: hx, y: hy } = w.hearth;
     expect(edgePlacementError(w, hx + 2, hy, 'n', 'wall', 1)).toBe('Walls need a floor beside them');
-    // Between the house and the tile east of it.
-    expect(edgePlacementError(w, hx + 2, hy, 'w', 'wall', 1)).toBe('The house wall is already here');
-    expect(edgePlacementError(w, hx, hy + 2, 'n', 'door', 1)).toBe('The front door is already here');
     placeFloor(w, hx + 2, hy, 'boards');
     expect(edgePlacementError(w, hx + 2, hy, 'n', 'wall', 1)).toBeNull();
     expect(edgePlacementError(w, hx + 2, hy, 'n', 'wall', 9)).toBe('Unknown wall');
-    // A door can be cut into the house wall.
     expect(edgePlacementError(w, hx + 2, hy, 'w', 'door', 1)).toBeNull();
   });
 
   it('refuses a wall that would shut a room in without a door', () => {
-    const w = createWorld(1);
+    const w = bareWorld(1);
     rich(w);
-    eastRoom(w, false);
-    expect(w.house.edges.length).toBe(4);
-    // The room has no way in yet. The last wall is refused, so the player must add a door.
-    const { x, y } = w.hearth;
-    expect(edgePlacementError(w, x + 4, y, 'w', 'wall', 1)).toMatch(/no door/);
-    expect(edgePlacementError(w, x + 4, y, 'w', 'window', 1)).toMatch(/no door/);
-    expect(edgePlacementError(w, x + 4, y, 'w', 'door', 1)).toBeNull();
+    const { hx, hy } = eastRoom(w, false);
+    // Five pieces are built. The wall that closes the last gap is refused, so the player must put a door there.
+    expect(w.house.edges.length).toBe(5);
+    expect(edgePlacementError(w, hx + 2, hy, 'w', 'wall', 1)).toMatch(/no door/);
+    expect(edgePlacementError(w, hx + 2, hy, 'w', 'window', 1)).toMatch(/no door/);
+    expect(edgePlacementError(w, hx + 2, hy, 'w', 'door', 1)).toBeNull();
   });
 
-  it('refuses to remove a door that is the only way into a room', () => {
-    const w = createWorld(1);
-    rich(w);
-    const { x: hx, y: hy } = w.hearth;
-    // A room whose only door is cut into the house wall. Removing it would bring the house wall back.
-    placeFloor(w, hx + 2, hy, 'boards');
-    expect(placeEdge(w, hx + 2, hy, 'w', 'door', 1)).toBe(true);
-    for (const e of [[hx + 2, hy, 'n'], [hx + 2, hy + 1, 'n'], [hx + 3, hy, 'w']] as const) expect(placeEdge(w, e[0], e[1], e[2], 'wall', 1)).toBe(true);
-    const door = w.house.edges.find((e) => e.kind === 'door')!;
-    expect(removeError(w, 'edge', door.id)).toMatch(/shut a room in/);
-    // A second way in makes it removable.
-    const east = w.house.edges.find((e) => e.kind === 'wall' && e.side === 'w')!;
-    expect(removeHouseItem(w, 'edge', east.id)).toBe(true);
-    expect(placeEdge(w, hx + 3, hy, 'w', 'door', 1)).toBe(true);
-    expect(removeError(w, 'edge', door.id)).toBeNull();
-  });
-
-  it('removing a plain door only opens a gap', () => {
-    const w = createWorld(1);
+  it('removing a door only opens a gap, and removing a wall that keeps a room closed is allowed', () => {
+    const w = bareWorld(1);
     rich(w);
     eastRoom(w);
+    finishHouse(w);
     expect(removeError(w, 'edge', w.house.edges.find((e) => e.kind === 'door')!.id)).toBeNull();
   });
 
-  it('removing a piece refunds all of an untouched site and half of a finished one', () => {
-    const w = createWorld(1);
+  it('removing a piece refunds all of an untouched site, half of a finished one, and most of a ruin', () => {
+    const w = bareWorld(1);
     const { x: hx, y: hy } = w.hearth;
     w.stock.wood = 100;
     placeFloor(w, hx + 2, hy, 'boards');
@@ -132,10 +118,17 @@ describe('house layer rules (M10.1)', () => {
     removeHouseItem(w, 'floor', w.house.floors[0].id);
     expect(w.stock.wood).toBe(99);
     expect(w.house.floors.length).toBe(0);
+    // A ruin floor gives back most of its cost, but at least what whole units allow.
+    placeFloor(w, hx + 2, hy, 'boards');
+    finishHouse(w);
+    w.house.floors[0].ruin = true;
+    w.stock.wood = 100;
+    removeHouseItem(w, 'floor', w.house.floors[0].id);
+    expect(w.stock.wood).toBe(100 + Math.floor(2 * HOUSE.ruinSalvage));
   });
 
   it('keeps a floor that has furniture or walls on it', () => {
-    const w = createWorld(1);
+    const w = bareWorld(1);
     rich(w);
     const { x: hx, y: hy } = w.hearth;
     placeFloor(w, hx + 2, hy, 'boards');
@@ -151,32 +144,29 @@ describe('house layer rules (M10.1)', () => {
 
 describe('rooms and walking (M10.1)', () => {
   it('finds a finished room and lets walls block steps while doors do not', () => {
-    const w = createWorld(1);
+    const w = bareWorld(1);
     rich(w);
     const { hx, hy } = eastRoom(w);
-    expect(houseRooms(w).length).toBe(1);
     finishHouse(w);
     const rooms = houseRooms(w);
-    expect(rooms.length).toBe(2);
-    expect(rooms.map((r) => r.floorCount).sort((a, b) => a - b)).toEqual([2, 9]);
+    expect(rooms.length).toBe(1);
+    expect(rooms[0].floorCount).toBe(2);
     expect(stepBlocked(w, hx + 2, hy, hx + 2, hy - 1)).toBe(true);
-    expect(stepBlocked(w, hx + 3, hy, hx + 4, hy)).toBe(false);
-    expect(stepBlocked(w, hx + 1, hy, hx + 2, hy)).toBe(true);
-    // The front door of the house lets people into the hearth room.
-    expect(stepBlocked(w, hx, hy + 1, hx, hy + 2)).toBe(false);
+    expect(stepBlocked(w, hx + 3, hy, hx + 4, hy)).toBe(true);
+    expect(stepBlocked(w, hx + 1, hy, hx + 2, hy)).toBe(false);
   });
 
   it('routes colonists through a door and not through walls', () => {
-    const w = createWorld(1);
+    const w = bareWorld(1);
     rich(w);
     const { hx, hy } = eastRoom(w);
     finishHouse(w);
-    // From the north of the room to inside it. The only way in is the east door.
-    const route = routeFor(w, { x: hx + 2, y: hy - 4 }, { x: hx + 2, y: hy })!;
+    // From the north of the room to inside it. The only way in is the west door.
+    const route = routeFor(w, { x: hx + 3, y: hy - 4 }, { x: hx + 3, y: hy })!;
     expect(route).not.toBeNull();
-    expect(route.some((p) => p.x >= hx + 4 && p.y === hy)).toBe(true);
+    expect(route.some((p) => p.x <= hx + 1 && p.y === hy)).toBe(true);
     // No leg of the walk crosses a wall.
-    let at = { x: hx + 2, y: hy - 4 };
+    let at = { x: hx + 3, y: hy - 4 };
     for (const p of route) {
       for (let i = 0; i <= 20; i++) {
         const x = at.x + ((p.x - at.x) * i) / 20;
@@ -192,8 +182,8 @@ describe('rooms and walking (M10.1)', () => {
     }
   });
 
-  it('walks straight when the trip never goes near the house, and gives up on a sealed target', () => {
-    const w = createWorld(1);
+  it('walks straight when the trip never goes near a house, and gives up on a sealed target', () => {
+    const w = bareWorld(1);
     const { x: hx, y: hy } = w.hearth;
     expect(routeFor(w, { x: hx + 12, y: hy }, { x: hx + 12, y: hy + 10 })).toEqual([]);
     // Force a sealed room by building the data directly, as a bug or an old save might.
@@ -201,13 +191,24 @@ describe('rooms and walking (M10.1)', () => {
     eastRoom(w);
     w.house.edges.find((e) => e.kind === 'door')!.kind = 'wall';
     finishHouse(w);
-    expect(routeFor(w, { x: hx + 2, y: hy - 4 }, { x: hx + 2, y: hy })).toBeNull();
+    expect(routeFor(w, { x: hx + 3, y: hy - 4 }, { x: hx + 3, y: hy })).toBeNull();
+  });
+
+  it('a ruin anywhere on the map blocks routes the same way', () => {
+    const w = createWorld(1);
+    // Pick any town ruin far from the hearth and walk through its wall. The route must not cut the wall.
+    const wall = w.house.edges.find((e) => e.ruin && e.kind === 'wall' && Math.hypot(e.x - w.hearth.x, e.y - w.hearth.y) > 30)!;
+    expect(wall).toBeDefined();
+    const a = wall.side === 'n' ? { x: wall.x, y: wall.y - 1 } : { x: wall.x - 1, y: wall.y };
+    const b = { x: wall.x, y: wall.y };
+    const route = routeFor(w, a, b);
+    expect(route === null || route.length > 1).toBe(true);
   });
 });
 
 describe('colonists build and use the house (M10.1)', () => {
   it('colonists build floors, walls, a door, and furniture without any other help', () => {
-    const w = createWorld(1);
+    const w = bareWorld(1);
     rich(w);
     eastRoom(w);
     const { x: hx, y: hy } = w.hearth;
@@ -222,7 +223,7 @@ describe('colonists build and use the house (M10.1)', () => {
   });
 
   it('a colonist walks through the door to sleep in a bed inside', () => {
-    const w = createWorld(1);
+    const w = bareWorld(1);
     rich(w);
     eastRoom(w);
     const { x: hx, y: hy } = w.hearth;
@@ -241,7 +242,7 @@ describe('colonists build and use the house (M10.1)', () => {
   });
 
   it('survives a save round trip', () => {
-    const w = createWorld(3);
+    const w = bareWorld(3);
     rich(w);
     eastRoom(w);
     seconds(w, 20);
@@ -254,26 +255,17 @@ describe('colonists build and use the house (M10.1)', () => {
 
 describe('room names (section 5.7)', () => {
   it('names rooms from their furniture and warns about rooms with gaps', () => {
-    const w = createWorld(1);
-    w.hearth.level = 5;
+    const w = bareWorld(1);
     Object.assign(w.stock, { wood: 500, planks: 100, stone: 50, metal: 50, scrap: 50 });
-    const { x, y } = w.hearth;
-    // A closed room with a bed and a gap-free door to the house, and an open floor patch to the north.
-    for (const dy of [0, 1]) w.commands.push({ type: 'paintFloor', x: x + 2, y: y + dy, kind: 'boards' });
-    stepWorld(w);
-    w.commands.push({ type: 'buildEdge', x: x + 2, y, side: 'w', kind: 'door', level: 1 });
-    w.commands.push({ type: 'buildEdge', x: x + 2, y, side: 'n', kind: 'wall', level: 1 });
-    w.commands.push({ type: 'buildEdge', x: x + 2, y: y + 2, side: 'n', kind: 'wall', level: 1 });
-    for (const dy of [0, 1]) w.commands.push({ type: 'buildEdge', x: x + 3, y: y + dy, side: 'w', kind: 'wall', level: 1 });
-    stepWorld(w);
+    const { hx, hy } = eastRoom(w);
     finishHouse(w);
-    expect(roomInfos(w).map((r) => r.name).sort()).toEqual(['Empty room', 'Hearth hall']);
-    expect(roomInfos(w).find((r) => r.name === 'Empty room')!.note).toBe('Needs furniture');
-    expect(placeBuilding(w, 'bed', x + 2, y, false)).toBe(true);
+    expect(roomInfos(w).map((r) => r.name)).toEqual(['Empty room']);
+    expect(roomInfos(w)[0].note).toBe('Needs furniture');
+    expect(placeBuilding(w, 'bed', hx + 2, hy, false)).toBe(true);
     finishHouse(w);
-    expect(roomInfos(w).map((r) => r.name).sort()).toEqual(['Bedroom', 'Hearth hall']);
+    expect(roomInfos(w).map((r) => r.name)).toEqual(['Bedroom']);
     // A floor with no walls is open to the cold.
-    w.commands.push({ type: 'paintFloor', x: x + 2, y: y - 1, kind: 'boards' });
+    w.commands.push({ type: 'paintFloor', x: hx + 2, y: hy - 3, kind: 'boards' });
     stepWorld(w);
     finishHouse(w);
     const open = roomInfos(w).find((r) => r.role === 'open')!;

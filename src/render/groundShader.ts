@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { PALETTE } from './materials';
+import { surfaceTexture } from './surfaces';
 
 // Ground shader. Samples the warmth map and blends a warm palette with a cold one (section 12.2).
 
@@ -27,6 +28,8 @@ export function createGroundMaterial(
       uFogDepth: { value: textures.fogDepth },
       uLight: { value: textures.light },
       uTime: { value: 0 },
+      uRock: { value: surfaceTexture('rock') },
+      uStone: { value: surfaceTexture('stone') },
       uMapSize: { value: mapSize },
       uWarmT: { value: warmThreshold / 100 },
       uFrost: { value: 0 },
@@ -54,6 +57,8 @@ uniform sampler2D uWarmth;
 uniform sampler2D uTiles;
 uniform sampler2D uFogDepth;
 uniform sampler2D uLight;
+uniform sampler2D uRock;
+uniform sampler2D uStone;
 uniform float uTime;
 uniform vec2 uMapSize;
 uniform float uWarmT;
@@ -86,6 +91,9 @@ void main() {
   float road = smoothstep(0.3, 0.7, tiles.r);
   float water = smoothstep(0.3, 0.7, tiles.g);
   float grain = noise(vXZ * 0.35) * 0.5 + noise(vXZ * 1.7) * 0.35 + noise(vXZ * 6.0) * 0.15;
+  // The painted surfaces of the house: speckled earth and snow, and flagstones on the roads.
+  float rock = texture2D(uRock, vXZ / 2.6).r;
+  float flag = texture2D(uStone, vXZ / 1.6).r;
 
   // Warm side: dry earth lit by the light map. Light is full in the core of each light and
   // fades to dark at its radius, in the same steps that protect people (section 5.3).
@@ -93,6 +101,7 @@ void main() {
   float heat = smoothstep(uWarmT, 1.0, w);
   vec3 earth = mix(uWarmShadow, uOldWood, 0.3 + 0.5 * grain);
   earth = mix(earth, uWarmShadow * 1.3, road * 0.6);
+  earth *= mix(0.78, 1.22, rock) * mix(1.0, 0.7 + 0.6 * flag, road);
   vec3 warm = earth * (0.3 + 1.05 * light) + uLantern * 0.06 * light + uEmber * 0.22 * heat * heat * heat;
 
   // Cold side: blue ground under snow that grows with the frost amount.
@@ -100,7 +109,8 @@ void main() {
   float nearWarm = smoothstep(uWarmT - 0.25, uWarmT, w);
   float snow = smoothstep(0.35, 0.6, grain + uFrost) * (1.0 - nearWarm * 0.7);
   snow *= 1.0 - road * 0.3;
-  vec3 cold = mix(dirt, mix(uNightBlue, uFrostCol, 0.14), snow);
+  dirt *= mix(0.8, 1.2, rock) * mix(1.0, 0.7 + 0.6 * flag, road);
+  vec3 cold = mix(dirt, mix(uNightBlue, uFrostCol, 0.14), snow) * mix(0.93, 1.07, rock);
   cold += uFrostCol * 0.1 * step(0.992, hash(floor(vXZ * 9.0))) * snow;
   vec3 ice = mix(uNightBlue, uFrostCol, 0.1 + 0.08 * noise(vXZ * 0.8));
   cold = mix(cold, ice, water);

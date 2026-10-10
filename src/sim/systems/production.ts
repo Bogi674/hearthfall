@@ -13,6 +13,10 @@ export function productionSystem(world: World, dt: number): void {
   for (const b of world.buildings) {
     const recipe = recipeFor(b);
     if (!recipe || !isBuilt(b)) continue;
+    if (b.broken) {
+      b.status = 'broken';
+      continue;
+    }
     const slots = BUILDINGS[b.type].workers;
     const at = center(b);
     const crew = world.colonists.filter((c) => c.job === b.id && c.task === 'work');

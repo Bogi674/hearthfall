@@ -7,15 +7,18 @@ import { BUILDINGS, type BuildingType } from '../src/data/buildings';
 import { POIS, type ItemId, type PoiType } from '../src/data/pois';
 import type { Amounts } from '../src/data/resources';
 import { COMPONENT_IDS, COMPONENTS, type ComponentId } from '../src/data/vehicle';
-import { buildingUpgradeError, componentError, hearthUpgradeError, launchError } from '../src/sim/commands';
-import { floorAt } from '../src/sim/house';
-import { floorPlacementError, padError, placementError, siteError } from '../src/sim/placement';
+import { buildingUpgradeError, componentError, launchError } from '../src/sim/commands';
+import { hearthUpgradeError, lightError } from '../src/sim/hearth';
+import { isIndoors } from '../src/sim/house';
+import { mendArea, mendCount, planMend } from '../src/sim/mend';
+import { padError, placementError, siteError } from '../src/sim/placement';
 import { bandAt, capacity, center, currentPhase, launchFuelNeeded, missing, stockTotal } from '../src/sim/query';
 import type { World } from '../src/sim/world';
-import { findSpot } from './helpers';
+import { findSpot, partitionRuin, sealGaps } from './helpers';
 
-const RING = 5;
-const OUTSIDE = 8;
+/** The ring of barricades stands outside the old house, which reaches 7 tiles from the hearth. */
+const RING = 9;
+const OUTSIDE = 12;
 const ITEM_POIS: [ItemId, PoiType][] = [
   ['pressureValve', 'gasStation'],
   ['silkCanopy', 'farmhouse'],
@@ -62,27 +65,79 @@ function nextTarget(w: World): { target: Target; cost: Amounts } | null {
   return null;
 }
 
+/** The nearest spot on a house floor in a closed room with a whole roof where the piece of furniture can stand. */
+function furnishSpot(w: World, type: BuildingType): { x: number; y: number } | null {
+  const [fw, fh] = BUILDINGS[type].size;
+  const floors = w.house.floors
+    .filter((f) => f.storey === 0 && Math.hypot(f.x - w.hearth.x, f.y - w.hearth.y) < 14)
+    .sort((a, b) => Math.hypot(a.x - w.hearth.x, a.y - w.hearth.y) - Math.hypot(b.x - w.hearth.x, b.y - w.hearth.y));
+  for (const f of floors) {
+    if (placementError(w, type, f.x, f.y, false)) continue;
+    let indoors = true;
+    for (let dy = 0; dy < fh; dy++) for (let dx = 0; dx < fw; dx++) indoors &&= isIndoors(w, f.x + dx, f.y + dy, 0);
+    if (indoors) return { x: f.x, y: f.y };
+  }
+  return null;
+}
+
+/** The area of the starting ruin, and the rooms of it that are mended one after the other. */
+const ruinArea = (w: World) => ({ x: w.hearth.x - 9, y: w.hearth.y - 4, w: 19, h: 13 });
+
 /**
- * Puts one more bed in the house: floors on the east side of the house, two tiles for each bed, kept inside the
- * ring of walls. Rows and columns are tried nearest first, and the drafting table has its own row.
+ * Plays the old house like a person would: light the hearth, close the gaps, wall off the rooms, mend what is worn,
+ * and later clear the ruins the launch pad needs. Orders are small so a thin stockpile still makes progress.
  */
-function houseBed(w: World): void {
+function houseWork(w: World, started: boolean): void {
+  if (!w.hearth.ignited && !lightError(w)) w.commands.push({ type: 'lightHearth' });
+  // The first goal is wood for the colony. The house waits for a woodcutter.
+  if (!started || w.stock.wood < 40) return;
+  const area = ruinArea(w);
+  const reserve = 25;
+  const sites = w.house.edges.filter((e) => e.construct > 0).length;
+  if (sites < 12) {
+    if (w.stock.wood > reserve + 20) sealGaps(w, area);
+    if (w.stock.wood > reserve + 20) partitionRuin(w);
+  }
+  // Mend room by room, nearest the hearth first, as long as the stockpile can pay.
   const { x, y } = w.hearth;
-  for (const dx of [2, 3, 4]) {
-    for (const dy of [0, 2, -3, 4]) {
-      const tiles: [number, number][] = [[x + dx, y + dy], [x + dx, y + dy + 1]];
-      if (tiles.some(([tx, ty]) => Math.max(Math.abs(tx - x), Math.abs(ty - y)) > 4)) continue;
-      if (!placementError(w, 'bed', tiles[0][0], tiles[0][1], false)) {
-        w.commands.push({ type: 'place', building: 'bed', x: tiles[0][0], y: tiles[0][1], rotated: false });
-        return;
-      }
-      const missingFloor = tiles.find(([tx, ty]) => !floorAt(w, tx, ty));
-      if (missingFloor && !floorPlacementError(w, missingFloor[0], missingFloor[1], 'boards')) {
-        w.commands.push({ type: 'paintFloor', x: missingFloor[0], y: missingFloor[1], kind: 'boards' });
-        return;
-      }
+  const rooms = [
+    { x: x - 3, y: y - 2, w: 7, h: 5 },
+    { x: x - 7, y: y - 2, w: 4, h: 5 },
+    { x: x + 4, y: y - 2, w: 4, h: 5 },
+    { x: x - 3, y: y + 3, w: 7, h: 3 },
+    { x: x - 7, y: y - 2, w: 4, h: 5, storey: 1 },
+  ];
+  for (const r of rooms) {
+    const storey = r.storey ?? 0;
+    const plan = planMend(w, r, storey);
+    if (mendCount(plan) === 0 || w.stock.wood < reserve + (plan.cost.wood ?? 0)) continue;
+    mendArea(w, r, storey);
+    return;
+  }
+}
+
+/** Puts one more bed in a closed room of the house. */
+function houseBed(w: World): void {
+  const spot = furnishSpot(w, 'bed');
+  if (spot) w.commands.push({ type: 'place', building: 'bed', x: spot.x, y: spot.y, rotated: false });
+}
+
+/** Ruins crowd the ground. The crew takes the ones on the nearest site apart, and clears its rubble, so the pad can go down. */
+function padClearing(w: World): void {
+  let best: { x: number; y: number; n: number } | null = null;
+  for (let y = w.hearth.y - 24; y <= w.hearth.y + 24; y++) {
+    for (let x = w.hearth.x - 24; x <= w.hearth.x + 24; x++) {
+      const d = Math.hypot(x + 2.5 - w.hearth.x, y + 2.5 - w.hearth.y);
+      if (d < OUTSIDE + 4 || d > 28) continue;
+      const [x0, y0, x1, y1] = [x - 1, y - 1, x + 7, y + 7];
+      const n = w.house.floors.filter((f) => f.x >= x0 && f.x < x1 && f.y >= y0 && f.y < y1).length + w.house.edges.filter((e) => e.x >= x0 && e.x <= x1 && e.y >= y0 && e.y <= y1).length;
+      if (!best || n < best.n) best = { x, y, n };
     }
   }
+  if (!best) return;
+  const r = { x: best.x - 1, y: best.y - 1, w: 8, h: 8 };
+  w.commands.push({ type: 'demolishArea', ...r });
+  w.commands.push({ type: 'mendArea', ...r });
 }
 
 export function fullRunPlayer() {
@@ -90,6 +145,7 @@ export function fullRunPlayer() {
     const phase = currentPhase(w);
     const s = w.stock;
     const next = nextTarget(w);
+    houseWork(w, count(w, 'woodcutterCamp') > 0 && count(w, 'charcoalKiln') > 0);
 
     // Work toward the next target.
     if (next) {
@@ -102,7 +158,9 @@ export function fullRunPlayer() {
       } else if (isComponent(t)) {
         if (!componentError(w, t)) w.commands.push({ type: 'buildComponent', component: t });
       } else {
-        const spot = findSpot(w, t, INSIDE.includes(t) ? 0 : OUTSIDE, t === 'woodcutterCamp' ? 30 : 10);
+        const inside = INSIDE.includes(t);
+        // Walls stop heat, so the buildings people live and stand guard in go where the tile is warm.
+        const spot = findSpot(w, t, inside ? 0 : OUTSIDE, t === 'woodcutterCamp' ? 30 : 10, inside ? (x, y) => bandAt(w, x, y) === 'warm' : undefined);
         if (spot) w.commands.push({ type: 'place', building: t, x: spot.x, y: spot.y, rotated: false });
       }
     }
@@ -120,12 +178,12 @@ export function fullRunPlayer() {
         }
       }
       if (best) w.commands.push({ type: 'chooseSite', x: best.x, y: best.y });
+      else padClearing(w);
     }
     // Once the blueprint turns up, a Drafting Table on a house floor lets the crew build components in the warm house.
     if (w.airship.blueprint && count(w, 'draftingTable') === 0) {
-      const { x, y } = w.hearth;
-      for (const dx of [2, 3]) w.commands.push({ type: 'paintFloor', x: x + dx, y: y - 1, kind: 'boards' });
-      w.commands.push({ type: 'place', building: 'draftingTable', x: x + 2, y: y - 1, rotated: false });
+      const spot = furnishSpot(w, 'draftingTable');
+      if (spot) w.commands.push({ type: 'place', building: 'draftingTable', x: spot.x, y: spot.y, rotated: false });
     }
     // Replace gatherers that ran out of nodes.
     for (const [type, keep] of [['woodcutterCamp', 2], ['salvageYard', 1]] as [BuildingType, number][]) {

@@ -1,19 +1,12 @@
 // The airship (section 11): dock work on components, and The Last Night launch with fuel loading and boarding.
 import { BALANCE } from '../../data/balance';
 import { BUILDINGS } from '../../data/buildings';
-import { BERTH, BLUEPRINT, COMPONENTS, LAST_NIGHT, SCORE } from '../../data/vehicle';
-import { bandAt, center, fuelBurnPerSecond, hopeSpeed, phaseStarted, seatCount } from '../query';
+import { BERTH, COMPONENTS, LAST_NIGHT, SCORE } from '../../data/vehicle';
+import { bandAt, center, fuelBurnPerSecond, hopeSpeed, seatCount } from '../query';
 import { addLog, type World } from '../world';
 
 export function vehicleSystem(world: World, dt: number): void {
   const air = world.airship;
-  // The old owner's blueprint turns up in the attic once the house is repaired and hope is up (section 11.2).
-  if (!air.blueprint && phaseStarted(world, 'Dawn', dt) && world.hearth.level >= BLUEPRINT.hearthLevel && world.hope >= BLUEPRINT.hope) {
-    air.blueprint = true;
-    const finder = world.colonists.find((c) => c.expedition === null) ?? world.colonists[0];
-    addLog(world, `${finder?.name ?? 'Someone'} found the old owner's blueprints in the attic. A small balloon craft, never finished. The crew can build it.`, world.hearth);
-  }
-
   // The crew works at the Launch Pad and at any Drafting Table. Every station adds its crew's work.
   const stations = world.buildings.filter((b) => (b.type === 'airshipDock' || b.type === 'draftingTable') && b.construct <= 0);
   if (stations.length > 0 && !air.launch) {

@@ -35,8 +35,11 @@ export function center(b: Building): { x: number; y: number } {
 /** True once builders have finished it (section 8.2). Sites do nothing until then. */
 export const isBuilt = (b: Building) => b.construct <= 0;
 
+/** Finished and not broken. Broken furniture in a ruin does nothing until it is mended (M12). */
+export const isUsable = (b: Building) => b.construct <= 0 && !b.broken;
+
 export function capacity(world: World): number {
-  return world.buildings.reduce<number>((s, b) => s + (isBuilt(b) ? (BUILDINGS[b.type].storage ?? 0) : 0), BALANCE.start.storage);
+  return world.buildings.reduce<number>((s, b) => s + (isUsable(b) && atHome(world, b) ? (BUILDINGS[b.type].storage ?? 0) : 0), BALANCE.start.storage);
 }
 
 export interface LightSource {
@@ -50,7 +53,7 @@ export function lightSources(world: World): LightSource[] {
   const out: LightSource[] = [];
   if (world.hearth.lit) out.push({ x: world.hearth.x, y: world.hearth.y, r: hearthStage(world).radius });
   for (const b of world.buildings) {
-    if (!isBuilt(b)) continue;
+    if (!isUsable(b)) continue;
     const def = BUILDINGS[b.type];
     let r = def.glow ?? 0;
     if (b.lit && def.light) r = Math.max(r, def.light.radius);
@@ -127,6 +130,16 @@ export function fuelBurnPerSecond(world: World): number {
 export const launchFuelNeeded = (world: World): number => Math.ceil(LAST_NIGHT.fuel + fuelBurnPerSecond(world) * (LAST_NIGHT.seconds + LAST_NIGHT.hearthReserveSeconds));
 
 export const hearthStage = (world: World) => BALANCE.hearth.levels[world.hearth.level - 1];
+
+/**
+ * True when people can live with this building. Things the player built count anywhere. A ruined piece counts when it stands
+ * within reach of the hearth or on a warm tile, so a bed in a far empty house is not anyone's home until the house is heated.
+ */
+export const atHome = (world: World, b: Building): boolean => {
+  if (!b.ruin) return true;
+  const c = center(b);
+  return Math.hypot(c.x - world.hearth.x, c.y - world.hearth.y) <= hearthStage(world).radius || bandAt(world, c.x, c.y) === 'warm';
+};
 
 /** Work speed multiplier from hope (section 6.5). */
 export function hopeSpeed(world: World): number {

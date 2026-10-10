@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { BUILDINGS } from '../data/buildings';
 import { EDGES, FLOORS, STOREY_HEIGHT } from '../data/house';
-import { covered, floorAt, flanks, houseRooms, isHearthTile, isLanding } from '../sim/house';
+import { covered, floorAt, flanks, houseRooms, isLanding } from '../sim/house';
 import type { World } from '../sim/world';
 import { mixPalette, PALETTE } from './materials';
 import { createHouseDecor } from './houseDecor';
@@ -11,7 +11,7 @@ import { createSurfaceMaterial } from './surfaces';
 // Pieces rise out of the ground as builders work on them. Roofs cover closed rooms and fade away for the cutaway view.
 // Rebuilt every frame since the counts are small.
 
-const CAPACITY = 3000;
+const CAPACITY = 7000;
 const WALL_HEIGHT = 1.15;
 const THICK = 0.14;
 const ROOF_THICK = 0.1;
@@ -108,11 +108,16 @@ export function createHouseView(scene: THREE.Scene): HouseView {
       const ox = w.map.width / 2;
       const oy = w.map.height / 2;
       for (const mesh of all) mesh.count = 0;
+      // Pieces under the fog of war are not drawn until a colonist or a lookout sees them.
+      const seen = (x: number, y: number) => w.revealed[y * w.map.width + x] === 1;
 
       for (const f of w.house.floors) {
-        if (f.storey > look.storey) continue;
+        if (f.storey > look.storey || !seen(f.x, f.y)) continue;
         const done = 1 - f.construct / FLOORS[f.kind].build;
         const color = tint.copy(FLOOR_COLOR[f.kind]).multiplyScalar((f.construct > 0 ? 0.6 : 1) * shade(f.x * 31 + f.y + f.storey * 7));
+        // A ruin floor is dirty, and where the roof is gone the snow lies on it.
+        if (f.ruin) color.multiplyScalar(0.8);
+        if (f.roofBroken) color.lerp(SNOW_COLOR, 0.42);
         const floors = f.kind === 'stone' ? floorsStone : floorsBoards;
         if (f.storey === 0) put(floors, f.x - ox, 0, f.y - oy, 1, 0.03 + 0.05 * done, 1, color);
         else {
@@ -126,7 +131,7 @@ export function createHouseView(scene: THREE.Scene): HouseView {
       }
 
       for (const e of w.house.edges) {
-        if (e.storey > look.storey) continue;
+        if (e.storey > look.storey || !(seen(e.x, e.y) || seen(...flanks(e.x, e.y, e.side)[1]))) continue;
         const yo = e.storey * STOREY_HEIGHT;
         // Wood walls and doors are board siding, stone is brick, and the reinforced and metal ones are patched sheet.
         const walls = e.kind === 'wall' ? (e.level === 3 ? wallsStone : e.level === 1 ? wallsWood : wallsMetal) : e.kind === 'gunPort' && e.level > 1 ? wallsMetal : wallsWood;
@@ -139,7 +144,9 @@ export function createHouseView(scene: THREE.Scene): HouseView {
         const target = look.walls === 'up' || (look.walls === 'cut' && back) ? 1 : LOW;
         const eased = (cut.get(e.id) ?? target) + (target - (cut.get(e.id) ?? target)) * Math.min(1, dt * 9);
         cut.set(e.id, eased);
-        const rise = (e.construct > 0 ? 0.08 + 0.92 * (1 - e.construct / level.build) : 1) * eased;
+        // A battered wall has crumbled down. The more hit points it lost, the lower it stands.
+        const crumble = e.construct > 0 ? 1 : 0.5 + 0.5 * Math.min(1, e.hp / level.hp);
+        const rise = (e.construct > 0 ? 0.08 + 0.92 * (1 - e.construct / level.build) : crumble) * eased;
         const x = e.side === 'w' ? e.x - 0.5 - ox : e.x - ox;
         const z = e.side === 'n' ? e.y - 0.5 - oy : e.y - oy;
         const along = e.side === 'n' ? 'x' : 'z';
@@ -188,7 +195,7 @@ export function createHouseView(scene: THREE.Scene): HouseView {
             const tx = t % w.map.width;
             const ty = Math.floor(t / w.map.width);
             const f = floorAt(w, tx, ty, st);
-            if ((st === 0 && isHearthTile(w, tx, ty)) || !f || f.construct > 0 || turrets.has(t + st * w.map.width * w.map.height)) continue;
+            if (!f || f.construct > 0 || f.roofBroken || !seen(tx, ty) || turrets.has(t + st * w.map.width * w.map.height)) continue;
             // A floor or a flight of stairs above is the ceiling already.
             if (st < look.storey && (floorAt(w, tx, ty, st + 1) || isLanding(w, tx, ty, st + 1))) continue;
             put(roofs, tx - ox, st * STOREY_HEIGHT + WALL_HEIGHT, ty - oy, 1.08, ROOF_THICK, 1.08, roof);
@@ -200,7 +207,7 @@ export function createHouseView(scene: THREE.Scene): HouseView {
       roofMat.depthWrite = roofOpacity > 0.98;
       roofs.visible = roofOpacity > 0.02;
 
-      decor.update(w, look.storey, (id) => cut.get(id) ?? 1);
+      decor.update(w, look.storey, (id) => cut.get(id) ?? 1, seen);
       for (const mesh of all) {
         mesh.instanceMatrix.needsUpdate = true;
         if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;

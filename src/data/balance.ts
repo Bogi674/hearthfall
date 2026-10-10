@@ -1,5 +1,8 @@
 // Balance numbers and content tuning. Values follow docs/GAME_DESIGN.md and are expected to change.
 
+/** Where a hearth stage may stand: anywhere on the ground, on a house floor, or on a floor in a closed room with its roof on. */
+export type Stands = 'anywhere' | 'floor' | 'room';
+
 export const BALANCE = {
   /** Section 18. */
   start: {
@@ -8,7 +11,7 @@ export const BALANCE = {
     /** Storage without any building. The Supply Cart holds the rest. */
     storage: 0,
     /** Where the Supply Cart stands, relative to the hearth. */
-    cart: { x: -1, y: 4 },
+    cart: { x: 2, y: 8 },
     weapon: 'pipe',
   },
   /** Section 3.2. Phases run in this order and repeat every day. */
@@ -81,28 +84,49 @@ export const BALANCE = {
     freezingThreshold: 20,
     /** Past its radius a heat source fades from the warm threshold to 0 over this fraction of its radius. */
     edgeFalloff: 0.6,
+    /** A closed room with a whole roof holds heat, so its tiles are this much warmer. */
+    indoorBonus: 10,
+    /** Heat that passes through a wall or window travels this many tiles farther. Doors cost nothing. */
+    wallCost: 3,
   },
   hearth: {
     /** Radius in tiles per hearth level, from section 5.2. */
     /** The Hearth House stages from section 5.2. Cost is what it takes to reach that stage. */
     levels: [
-      { name: 'Ruined House', radius: 8, fuelPerMinute: 3, hp: 4000, cost: {} },
-      { name: 'Patched Roof', radius: 10, fuelPerMinute: 4, hp: 4500, cost: { wood: 20, planks: 10 } },
-      { name: 'Rebuilt Walls', radius: 12, fuelPerMinute: 5, hp: 5000, cost: { planks: 40, stone: 10 } },
-      { name: 'Glazed and Stoved', radius: 14, fuelPerMinute: 6, hp: 5500, cost: { planks: 40, metal: 20 } },
-      { name: 'Restored Lodge', radius: 16, fuelPerMinute: 8, hp: 6000, cost: { planks: 80, metal: 60, parts: 10 } },
+      { name: 'Fire Pit', radius: 8, fuelPerMinute: 3, hp: 4000, cost: {}, stands: 'anywhere' as Stands },
+      { name: 'Stone Hearth', radius: 10, fuelPerMinute: 4, hp: 4500, cost: { wood: 20, planks: 10 }, stands: 'anywhere' as Stands },
+      { name: 'Iron Stove', radius: 12, fuelPerMinute: 5, hp: 5000, cost: { planks: 40, stone: 10 }, stands: 'floor' as Stands },
+      { name: 'Brick Fireplace', radius: 14, fuelPerMinute: 6, hp: 5500, cost: { planks: 40, metal: 20 }, stands: 'room' as Stands },
+      { name: 'Great Hearth', radius: 16, fuelPerMinute: 8, hp: 6000, cost: { planks: 80, metal: 60, parts: 10 }, stands: 'room' as Stands },
     ],
-    /** The run is lost after the hearth is out this long. */
+    /** The run is lost after a lit hearth is out this long. */
     outLossSeconds: 60,
-    /** Tiles kept for house rooms in every direction from the hearth (section 5.5). */
-    lot: 3,
+    /** Fuel it takes to light a smoldering hearth, and the builder seconds of kindling. */
+    lightFuel: 5,
+    lightSeconds: 6,
+    /** Moving the hearth costs this much wood plus half of its stage cost, and takes this many builder seconds. */
+    moveWood: 10,
+    moveSeconds: 12,
+  },
+  /** How worn ruined houses start (M12). Shares are chances per piece, and hit points are shares of the full amount. */
+  ruin: {
+    wallHp: [0.2, 0.8],
+    wallMissing: 0.15,
+    doorSurvives: 0.6,
+    windowChance: 0.12,
+    floorMissing: 0.12,
+    rubbleOnLostFloor: 0.5,
+    roofBroken: 0.4,
+    furnitureBroken: 0.55,
+    townExtraRoofBroken: 0.35,
+    townFurniture: 0.12,
   },
   colonist: {
     /** Tiles per second. */
     speed: 3,
     arriveDistance: 0.6,
-    /** Idle colonists wait in a ring this far from the hearth, outside the house lot. */
-    idleRadius: 4.6,
+    /** Idle colonists wait in a ring this far from the hearth. */
+    idleRadius: 2.2,
     /** Builders per construction site. */
     buildersPerSite: 3,
   },

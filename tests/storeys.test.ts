@@ -2,15 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { barrierBetween, houseRooms, isIndoors, roomAt, sealsRoom } from '../src/sim/house';
 import { edgePlacementError, floorPlacementError, placeBuilding, placeEdge, placeFloor, placementError, removeError } from '../src/sim/placement';
 import { routeFor } from '../src/sim/route';
-import { createWorld, stepWorld, TICKS_PER_SECOND, type World } from '../src/sim/world';
-import { finish } from './helpers';
+import { stepWorld, TICKS_PER_SECOND, type World } from '../src/sim/world';
+import { bareWorld, finish } from './helpers';
 
 const seconds = (w: World, s: number) => {
   for (let i = 0; i < s * TICKS_PER_SECOND && !w.lost; i++) stepWorld(w);
 };
 
 function rich(level = 5): World {
-  const w = createWorld(1);
+  const w = bareWorld(1);
   w.hearth.level = level;
   Object.assign(w.stock, { wood: 900, planks: 300, stone: 300, scrap: 300, metal: 200, parts: 50, rawFood: 100, meals: 100, fuel: 500 });
   return w;
@@ -49,14 +49,15 @@ function tower() {
 }
 
 describe('storeys: placement', () => {
-  it('upper storeys wait for the house to grow', () => {
+  it('a house can rise to three storeys, and wood only holds up two', () => {
     const w = rich(1);
     const { x, y } = w.hearth;
     placeFloor(w, x + 2, y, 'boards');
-    expect(floorPlacementError(w, x + 2, y, 'boards', 1)).toMatch(/higher/);
-    w.hearth.level = 2;
     expect(floorPlacementError(w, x + 2, y, 'boards', 1)).toBeNull();
-    expect(floorPlacementError(w, x + 2, y, 'boards', 2)).toMatch(/higher/);
+    expect(placeFloor(w, x + 2, y, 'boards', 1)).toBe(true);
+    expect(floorPlacementError(w, x + 2, y, 'boards', 2)).toMatch(/Use stone/);
+    expect(floorPlacementError(w, x + 2, y, 'stone', 2)).toBeNull();
+    expect(floorPlacementError(w, x + 2, y, 'stone', 3)).toMatch(/as high as/);
   });
 
   it('an upper floor needs a floor below, or a neighbor that has one', () => {

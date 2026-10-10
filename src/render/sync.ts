@@ -19,6 +19,7 @@ import { colonistFigures } from './colonists';
 import { createFigureSet } from './meshes/figures';
 import { PERSON_RIG } from './meshes/people';
 import { createHearthMesh } from './meshes/hearth';
+import { createHearthSiteMesh, createStashMesh } from './meshes/markers';
 import { createHouseView, type HouseLook } from './houseView';
 import { buildProps, colorPropsByWarmth } from './meshes/props';
 import { createPoiMesh } from './meshes/pois';
@@ -104,6 +105,11 @@ export function createWorldView(world: World, view: Pick<View, 'scene' | 'fog' |
   const hearth = createHearthMesh();
   hearth.group.position.set(world.hearth.x - width / 2, 0, world.hearth.y - height / 2);
   scene.add(hearth.group);
+  const stash = createStashMesh();
+  if (world.stash) stash.group.position.set(world.stash.x - width / 2, 0, world.stash.y - height / 2);
+  scene.add(stash.group);
+  const hearthSite = createHearthSiteMesh();
+  scene.add(hearthSite.group);
   const hearthLight = createHearthLight();
   hearthLight.position.add(hearth.group.position);
   scene.add(hearthLight);
@@ -158,7 +164,13 @@ export function createWorldView(world: World, view: Pick<View, 'scene' | 'fog' |
         lightTex.needsUpdate = true;
       }
       groundMat.uniforms.uTime.value = time;
-      hearth.update(time, w.hearth.lit, w.hearth.level);
+      hearth.update(time, { lit: w.hearth.lit, ignited: w.hearth.ignited, stage: w.hearth.level });
+      hearth.group.position.set(w.hearth.x - width / 2, 0, w.hearth.y - height / 2);
+      stash.update(time, w.stash?.state ?? 'hidden');
+      if (w.stash) stash.group.position.set(w.stash.x - width / 2, 0, w.stash.y - height / 2);
+      if (w.hearthSite) hearthSite.group.position.set(w.hearthSite.x - width / 2, 0, w.hearthSite.y - height / 2);
+      hearthSite.update(time, w.hearthSite !== null, w.hearthSite ? 1 - w.hearthSite.construct / BALANCE.hearth.moveSeconds : 0);
+      hearthLight.position.set(hearth.group.position.x, 1.4, hearth.group.position.z + 0.3);
       hearthLight.visible = w.hearth.lit;
       hearthLight.intensity = baseIntensity * (1 + Math.sin(time * 11) * 0.05 + Math.sin(time * 27) * 0.03);
 
@@ -199,6 +211,9 @@ export function createWorldView(world: World, view: Pick<View, 'scene' | 'fog' |
         body.scale.y = isBuilt(b) ? 1 : 0.08 + 0.92 * (1 - b.construct / BUILDINGS[b.type].build);
         if (site && isBuilt(b)) g.remove(site);
         g.visible = b.storey <= look.storey;
+        // Broken furniture sags to one side until it is mended.
+        g.rotation.z = b.broken ? 0.16 : 0;
+        g.rotation.x = b.broken ? -0.1 : 0;
         const light = g.getObjectByName('light');
         if (light) light.visible = b.lit;
         for (let s = 1; s <= 3; s++) {
@@ -219,7 +234,7 @@ export function createWorldView(world: World, view: Pick<View, 'scene' | 'fog' |
         const max = EDGES[e.kind].levels[e.level - 1].hp;
         if (e.construct <= 0 && e.hp < max) barList.push({ x: (e.side === 'w' ? e.x - 0.5 : e.x) - width / 2, z: (e.side === 'n' ? e.y - 0.5 : e.y) - height / 2, y: 1.5, fraction: e.hp / max, enemy: false });
       }
-      if (w.hearth.hp < hearthStage(w).hp) barList.push({ x: 0, z: 0, y: 3.5, fraction: w.hearth.hp / hearthStage(w).hp, enemy: false });
+      if (w.hearth.hp < hearthStage(w).hp) barList.push({ x: w.hearth.x - width / 2, z: w.hearth.y - height / 2, y: 2.6, fraction: w.hearth.hp / hearthStage(w).hp, enemy: false });
       // Monsters under fog of war stay unseen.
       const seen = w.enemies.filter((e) => w.revealed[Math.round(e.y) * width + Math.round(e.x)] === 1);
       for (const e of seen) {
