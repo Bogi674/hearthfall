@@ -63,6 +63,8 @@ export interface BuildingDef {
   restBonus?: number;
   /** Joins its storey to the one above, through the same tile (M11). */
   stairs?: boolean;
+  /** Its workers hunt animals in the wild and bring the meat back (M13). */
+  hunt?: boolean;
 }
 
 export const GUN_MAKESHIFT: Gun = { name: 'Makeshift gun', range: 6, damage: 12, interval: 1 };
@@ -97,6 +99,8 @@ const DEFS = {
   salvageYard: { name: 'Salvage Yard', category: 'Production', cost: { wood: 20 }, size: [2, 2], build: 15, workers: 3, hp: 150, work: 'pry', glow: 2 },
   quarry: { name: 'Quarry', category: 'Production', cost: { wood: 30 }, size: [2, 2], build: 18, workers: 3, hp: 150, work: 'pick', glow: 2 },
   foragerHut: { name: 'Forager Hut', category: 'Production', cost: { wood: 15 }, size: [2, 2], build: 12, workers: 2, hp: 150, work: 'gather', glow: 2 },
+  huntingLodge: { name: 'Hunting Lodge', category: 'Production', cost: { wood: 30, scrap: 6 }, size: [2, 2], build: 16, workers: 2, hp: 150, work: 'hammer', hunt: true, glow: 2 },
+  hydroponics: { name: 'Hydroponic Farm', category: 'Production', cost: { planks: 20, metal: 8, parts: 2 }, size: [2, 2], build: 30, workers: 2, hp: 100, furniture: true, roofed: true, indoor: true, work: 'stir', glow: 3 },
   kitchen: { name: 'Kitchen', category: 'Production', cost: { wood: 25 }, size: [2, 2], build: 18, workers: 2, hp: 150, indoor: true, work: 'stir', glow: 2 },
   sawmill: { name: 'Sawmill', category: 'Production', cost: { wood: 30, scrap: 10 }, size: [3, 2], build: 25, workers: 2, hp: 150, indoor: true, work: 'saw', glow: 2.5 },
   charcoalKiln: { name: 'Charcoal Kiln', category: 'Production', cost: { wood: 20, stone: 10 }, size: [2, 2], build: 18, workers: 1, hp: 150, work: 'tend', glow: 2.5 },
@@ -114,7 +118,7 @@ const DEFS = {
   lampPost: { name: 'Lamp Post', category: 'Defense', cost: { scrap: 10, metal: 5, parts: 2 }, size: [1, 1], build: 8, workers: 0, hp: 90, light: { radius: 6, fuel: 1 } },
   lookoutPost: {
     name: 'Lookout Post', category: 'Escape', cost: { wood: 20, planks: 10 }, size: [1, 1], build: 15, workers: 0, hp: 120,
-    sight: [52, 66, 78], upgrades: [{ planks: 30, stone: 10 }, { planks: 40, metal: 15 }], glow: 1.5,
+    sight: [66, 88, 108], upgrades: [{ planks: 30, stone: 10 }, { planks: 40, metal: 15 }], glow: 1.5,
   },
   airshipDock: { name: 'Launch Pad', category: 'Escape', cost: { planks: 70, metal: 50, parts: 12 }, size: [6, 6], build: 40, workers: 4, hp: 500, work: 'hammer', glow: 3 },
 } satisfies Record<string, BuildingDef>;

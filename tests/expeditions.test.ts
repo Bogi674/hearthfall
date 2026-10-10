@@ -39,7 +39,9 @@ describe('expeditions (M4)', () => {
     expect(world.pois.length).toBe(6);
     for (const p of world.pois) {
       const d = Math.hypot(p.x - world.hearth.x, p.y - world.hearth.y);
-      expect(d).toBeGreaterThan(POIS[p.type].distance - 6);
+      // Each place sits within a tenth of its design distance, a little nearer or farther by the map.
+      expect(d).toBeGreaterThan(POIS[p.type].distance * 0.86);
+      expect(d).toBeLessThan(POIS[p.type].distance * 1.14);
     }
   });
 

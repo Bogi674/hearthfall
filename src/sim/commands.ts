@@ -7,6 +7,7 @@ import { RESOURCE_NAMES, type Resource } from '../data/resources';
 import { BERTH, COMPONENT_IDS, COMPONENTS, type ComponentId } from '../data/vehicle';
 import type { EdgeKind, FloorId } from '../data/house';
 import type { Side } from './house';
+import { cancelBuild, moveBuilding, scavengeError } from './manage';
 import { mendArea, mendItem } from './mend';
 import { hearthMoveError, hearthUpgradeError, lightError, moveCost } from './hearth';
 import { buildLine, buildRoom, demolishArea, paintArea } from './build';
@@ -24,6 +25,9 @@ export type Command =
   | { type: 'buildBerth' }
   | { type: 'chooseSite'; x: number; y: number }
   | { type: 'salvage'; id: number }
+  | { type: 'cancelBuild'; id: number }
+  | { type: 'moveBuilding'; id: number; x: number; y: number; rotated: boolean }
+  | { type: 'scavenge'; house: number }
   | { type: 'clearArea'; x: number; y: number; w: number; h: number }
   | { type: 'launch' }
   | { type: 'upgradeHearth' }
@@ -79,7 +83,15 @@ export function applyCommands(world: World): void {
     }
     if (c.type === 'salvage') {
       const b = world.buildings.find((b) => b.id === c.id);
-      if (b && b.type !== 'supplyCart') b.salvage = b.salvage === null ? Math.max(3, BUILDINGS[b.type].build / 2) : null;
+      // Taking a building apart can be called off. A move order is cancelled with it.
+      if (b) [b.salvage, b.move] = b.salvage === null ? [Math.max(3, BUILDINGS[b.type].build / 2), null] : [null, null];
+    }
+    if (c.type === 'cancelBuild') cancelBuild(world, c.id);
+    if (c.type === 'moveBuilding') moveBuilding(world, c.id, c.x, c.y, c.rotated);
+    if (c.type === 'scavenge' && !scavengeError(world, c.house)) {
+      const house = world.houses.find((h) => h.id === c.house)!;
+      house.state = 'working';
+      addLog(world, 'The crew heads out to search a ruined house.', { x: house.x + house.w / 2, y: house.y + house.d / 2 });
     }
     if (c.type === 'clearArea') {
       // Marks every building touching the area, such as the ring of ground around the launch pad.

@@ -106,7 +106,7 @@ describe('the hearth object (M12)', () => {
     stepWorld(w);
     expect(w.hearth.level).toBe(4);
     // An open roof stops the room holding a fireplace.
-    w.house.floors[0].roofBroken = true;
+    w.house.floors.find((f) => f.x === x && f.y === y)!.roofBroken = true;
     w.buildRev++;
     expect(isIndoors(w, x, y)).toBe(false);
     expect(hearthUpgradeError(w)).toBe('This stage needs a closed room with a whole roof');

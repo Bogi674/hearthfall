@@ -10,6 +10,7 @@ import { COMPONENT_IDS, COMPONENTS, type ComponentId } from '../src/data/vehicle
 import { buildingUpgradeError, componentError, launchError } from '../src/sim/commands';
 import { hearthUpgradeError, lightError } from '../src/sim/hearth';
 import { isIndoors } from '../src/sim/house';
+import { scavengeError } from '../src/sim/manage';
 import { mendArea, mendCount, planMend } from '../src/sim/mend';
 import { padError, placementError, siteError } from '../src/sim/placement';
 import { bandAt, capacity, center, currentPhase, launchFuelNeeded, missing, stockTotal } from '../src/sim/query';
@@ -27,7 +28,7 @@ const ITEM_POIS: [ItemId, PoiType][] = [
 ];
 type Target = BuildingType | 'hearth' | 'lookout' | ComponentId;
 const TARGETS: Target[] = [
-  'woodcutterCamp', 'tent', 'quarry', 'charcoalKiln', 'foragerHut', 'kitchen', 'tent', 'sawmill', 'watchtower', 'watchtower',
+  'woodcutterCamp', 'tent', 'quarry', 'charcoalKiln', 'foragerHut', 'kitchen', 'huntingLodge', 'tent', 'sawmill', 'watchtower', 'watchtower',
   'woodcutterCamp', 'gate', 'lookoutPost', 'hearth', 'salvageYard', 'storageShed', 'lookout', 'smelter', 'hearth', 'watchtower', 'watchtower',
   'lookout', 'storageShed',
   'workshop', 'sawmill', 'woodcutterCamp', 'storageShed', 'charcoalKiln',
@@ -117,6 +118,15 @@ function houseWork(w: World, started: boolean): void {
   }
 }
 
+/** Sends two colonists to search the nearest unsearched house the colony has seen, one house at a time and only with daylight to spare. */
+function scavengeNearby(w: World): void {
+  if (currentPhase(w).name !== 'Day' || currentPhase(w).left < 150 || w.houses.some((h) => h.state === 'working')) return;
+  const open = w.houses
+    .filter((h) => h.state === 'fresh' && !scavengeError(w, h.id) && Math.hypot(h.x - w.hearth.x, h.y - w.hearth.y) < 55)
+    .sort((a, b) => Math.hypot(a.x - w.hearth.x, a.y - w.hearth.y) - Math.hypot(b.x - w.hearth.x, b.y - w.hearth.y));
+  if (open[0]) w.commands.push({ type: 'scavenge', house: open[0].id });
+}
+
 /** Puts one more bed in a closed room of the house. */
 function houseBed(w: World): void {
   const spot = furnishSpot(w, 'bed');
@@ -149,6 +159,7 @@ export function fullRunPlayer() {
     const s = w.stock;
     const next = nextTarget(w, skip);
     houseWork(w, count(w, 'woodcutterCamp') > 0 && count(w, 'charcoalKiln') > 0);
+    scavengeNearby(w);
 
     // Work toward the next target.
     if (next) {
@@ -243,6 +254,7 @@ export function fullRunPlayer() {
     const want: [BuildingType, number][] = [
       ['kitchen', s.meals < 30 ? 2 : s.meals < 60 ? 1 : 0],
       ['foragerHut', s.rawFood < 40 ? 2 : 0],
+      ['huntingLodge', s.rawFood < 60 ? 2 : 0],
       ['charcoalKiln', s.fuel < fuelTarget && s.wood >= 2 ? 2 : 0],
       ['woodcutterCamp', 3],
       ['draftingTable', w.airship.building ? 4 : 0],

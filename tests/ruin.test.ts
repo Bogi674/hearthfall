@@ -69,9 +69,9 @@ describe('the hearth smolders until it is lit (M12)', () => {
     const w = createWorld(1);
     expect(w.hearth.ignited).toBe(false);
     expect(w.hearth.lit).toBe(false);
-    const fuel = w.stock.fuel;
     seconds(w, 150);
-    expect(w.stock.fuel).toBe(fuel);
+    // The old kitchen stove may cook with some fuel, but the hearth burns none and is never counted as out.
+    expect(w.hearth.outSeconds).toBe(0);
     expect(w.lost).toBeNull();
   });
 

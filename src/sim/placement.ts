@@ -71,7 +71,7 @@ export function placeBuilding(world: World, type: BuildingType, x: number, y: nu
   if (!prebuilt) pay(world, def.cost);
   world.buildings.push({
     id: world.nextId++, type, x, y, w, h, workers: def.workers, progress: 0, loaded: false, status: prebuilt ? 'ok' : 'building',
-    hp: def.hp, lit: false, level: 1, construct: prebuilt ? 0 : def.build, node: -1, shelter: false, craft: 'spear', salvage: null, storey, ruin: false, broken: false, repair: null,
+    hp: def.hp, lit: false, level: 1, construct: prebuilt ? 0 : def.build, node: -1, shelter: false, craft: 'spear', salvage: null, move: null, storey, ruin: false, broken: false, repair: null,
   });
   world.buildRev++;
   return true;

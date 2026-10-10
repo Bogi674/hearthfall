@@ -44,9 +44,11 @@ export interface Ruins {
   furniture: RuinFurniture[];
   /** Where the hidden stash lies in the starting ruin. */
   stash: { x: number; y: number };
+  /** The rectangle of every town house, which can be scavenged (M13). */
+  houses: { x: number; y: number; w: number; d: number }[];
 }
 
-export const emptyRuins = (): Ruins => ({ floors: [], edges: [], furniture: [], stash: { x: 0, y: 0 } });
+export const emptyRuins = (): Ruins => ({ floors: [], edges: [], furniture: [], stash: { x: 0, y: 0 }, houses: [] });
 
 const key = (x: number, y: number) => `${x},${y}`;
 
@@ -241,6 +243,7 @@ export function townRuin(rng: RngState, map: MapState, x0: number, y0: number, w
   out.floors.push(...made.floors);
   out.edges.push(...made.edges);
   out.furniture.push(...made.furniture);
+  out.houses.push({ x: x0, y: y0, w, d });
   // Masonry heaps and rubble beside the house, where fallen walls and roofs lie. Quarries work the masonry for stone and salvage yards work the rubble.
   for (let blob = 0; blob < 5; blob++) {
     const cx = nextInt(rng, x0 - 3, x0 + w + 2);

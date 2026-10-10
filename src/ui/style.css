@@ -677,3 +677,339 @@ button.colonist:hover:not(:disabled) {
 #build .sec button.item {
   width: 164px;
 }
+
+/*
+ * The look of the interface (M13). Everything the player builds and touches is warm: walnut panels, amber trim, and a glow like
+ * a banked fire. What comes from outside is cold: the forecast and the warnings sit in frosted blue steel. The contrast of the
+ * world is the contrast of the screen.
+ */
+:root {
+  --ember: #ff9a3c;
+  --lantern: #ffc56b;
+  --wood: #6b4a32;
+  --walnut: #2a1a14;
+  --walnut-deep: #1a100c;
+  --frost: #a9c4d8;
+  --night: #1b2838;
+  --deep: #0e1621;
+  --cream: #f1e3c8;
+  --serif: 'Palatino Linotype', 'Book Antiqua', Palatino, Georgia, 'Times New Roman', serif;
+}
+
+html,
+body,
+#hud {
+  color: var(--cream);
+}
+
+.panel {
+  background:
+    linear-gradient(180deg, rgba(255, 197, 107, 0.07), rgba(255, 197, 107, 0) 28%),
+    linear-gradient(180deg, rgba(42, 26, 20, 0.94), rgba(26, 16, 12, 0.94));
+  border: 1px solid rgba(255, 197, 107, 0.28);
+  border-radius: 10px;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 197, 107, 0.14), inset 0 0 28px rgba(255, 154, 60, 0.05);
+  backdrop-filter: blur(3px);
+}
+
+h3,
+h4,
+.title-card h1,
+#intro h1 {
+  font-family: var(--serif);
+  letter-spacing: 0.02em;
+}
+
+h3 {
+  font-size: 16px;
+  padding-bottom: 4px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 197, 107, 0.2);
+}
+
+h4 {
+  font-size: 13px;
+  color: #ffd79a;
+}
+
+/* The top bar reads as a row of lit tokens. */
+#topbar {
+  padding: 6px 12px;
+  background:
+    linear-gradient(180deg, rgba(255, 154, 60, 0.12), rgba(255, 154, 60, 0) 60%),
+    linear-gradient(180deg, rgba(42, 26, 20, 0.96), rgba(26, 16, 12, 0.96));
+}
+
+#top span {
+  padding: 2px 9px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 197, 107, 0.16);
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+#top span b {
+  font-family: var(--serif);
+  color: var(--lantern);
+}
+
+#top span.alert {
+  border-color: rgba(255, 154, 60, 0.7);
+  background: rgba(255, 154, 60, 0.12);
+  animation: pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% {
+    box-shadow: 0 0 10px rgba(255, 154, 60, 0.45);
+  }
+}
+
+/* Buttons are planks with an amber edge. */
+button {
+  background: linear-gradient(180deg, #4a3223, #2f1d14);
+  border: 1px solid #7c5738;
+  border-radius: 6px;
+  box-shadow: inset 0 1px 0 rgba(255, 197, 107, 0.18), 0 1px 2px rgba(0, 0, 0, 0.5);
+  color: var(--cream);
+}
+
+button:hover:not(:disabled) {
+  background: linear-gradient(180deg, #5b3d2a, #3a2418);
+  border-color: var(--lantern);
+  box-shadow: inset 0 1px 0 rgba(255, 197, 107, 0.3), 0 0 10px rgba(255, 197, 107, 0.35);
+}
+
+button.on {
+  background: linear-gradient(180deg, #8a6038, #6b4a32);
+  border-color: var(--lantern);
+  color: #fff4dc;
+}
+
+button.primary,
+#intro button {
+  background: linear-gradient(180deg, #b0612a, #7a3f1a);
+  border-color: var(--ember);
+  color: #fff4dc;
+  font-family: var(--serif);
+  letter-spacing: 0.03em;
+}
+
+button.alarm {
+  background: linear-gradient(180deg, #3b1f18, #29140f);
+}
+
+/* Cold things: the forecast, the log of bad news, and the expedition cards belong to the outside. */
+#forecast {
+  background:
+    linear-gradient(180deg, rgba(169, 196, 216, 0.1), rgba(169, 196, 216, 0) 50%),
+    linear-gradient(180deg, rgba(27, 40, 56, 0.94), rgba(14, 22, 33, 0.94));
+  border-color: rgba(169, 196, 216, 0.3);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.6), inset 0 0 26px rgba(120, 170, 220, 0.07);
+  color: #d4e4f0;
+}
+
+#forecast b {
+  font-family: var(--serif);
+  color: #cfe4f5;
+}
+
+#forecast b.alert,
+#forecast .alert {
+  color: #ff9a3c;
+}
+
+#log {
+  background:
+    linear-gradient(180deg, rgba(27, 40, 56, 0.92), rgba(14, 22, 33, 0.92));
+  border-color: rgba(169, 196, 216, 0.22);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.55), inset 0 0 22px rgba(120, 170, 220, 0.05);
+}
+
+#log div {
+  padding: 2px 0;
+  border-bottom: 1px solid rgba(169, 196, 216, 0.08);
+}
+
+#hint {
+  background:
+    linear-gradient(180deg, rgba(255, 197, 107, 0.16), rgba(255, 197, 107, 0.04)),
+    rgba(26, 16, 12, 0.94);
+  border-color: rgba(255, 197, 107, 0.5);
+  font-family: var(--serif);
+  font-size: 14px;
+}
+
+/* Colonist list and bars. */
+.bar {
+  height: 5px;
+  background: rgba(0, 0, 0, 0.45);
+  box-shadow: inset 0 0 0 1px rgba(255, 197, 107, 0.1);
+}
+
+.bar b {
+  background: linear-gradient(90deg, #ff9a3c, #ffc56b);
+  box-shadow: 0 0 6px rgba(255, 154, 60, 0.5);
+}
+
+.card {
+  background: rgba(0, 0, 0, 0.22);
+  border-color: rgba(255, 197, 107, 0.2);
+  border-radius: 8px;
+}
+
+/* The build menu: cards with an icon in a small amber lamp. */
+#build {
+  padding: 8px 12px 10px;
+}
+
+#build .tabs {
+  justify-content: center;
+}
+
+#build .tabs button {
+  flex: 0 0 auto;
+  padding: 4px 14px;
+  font-family: var(--serif);
+  border-radius: 999px;
+}
+
+#build button.item {
+  background: linear-gradient(180deg, rgba(74, 50, 35, 0.9), rgba(42, 26, 20, 0.9));
+  border-radius: 8px;
+}
+
+#build button.item svg {
+  padding: 3px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 154, 60, 0.28), rgba(255, 154, 60, 0) 72%);
+}
+
+#build .sec h5 {
+  font-family: var(--serif);
+  color: #ffd79a;
+  border-bottom: 1px solid rgba(255, 197, 107, 0.18);
+  padding-bottom: 2px;
+  margin-bottom: 3px;
+}
+
+#build .facts {
+  min-height: 74px;
+  max-height: 74px;
+  overflow: hidden;
+  margin: 0 auto 8px;
+  width: min(880px, calc(100vw - 48px));
+  box-sizing: border-box;
+  padding: 6px 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 197, 107, 0.2);
+  border-radius: 8px;
+  display: grid;
+  grid-template-columns: minmax(150px, 220px) 1fr;
+  gap: 0 14px;
+  align-items: start;
+}
+
+#build .facts h4 {
+  grid-row: 1 / 3;
+  font-size: 15px;
+  margin: 0;
+}
+
+#build .facts p {
+  margin: 0;
+  color: #ead9bb;
+}
+
+#build .facts ul {
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  color: #c9b99c;
+  font-size: 12px;
+}
+
+#build .facts p.hint {
+  grid-column: 1 / -1;
+  color: #a9987e;
+  font-style: italic;
+}
+
+/* The selection panel. */
+.desc {
+  font-style: italic;
+  color: #d9c7a4;
+}
+
+details.stats {
+  margin: 4px 0;
+}
+
+details.stats summary {
+  cursor: pointer;
+  color: var(--lantern);
+}
+
+details.stats ul {
+  margin: 4px 0 0;
+  padding-left: 16px;
+  color: #c9b99c;
+}
+
+/* Floating labels over the map. */
+#labels div {
+  background: rgba(26, 16, 12, 0.92);
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+#labels .poi {
+  background: rgba(14, 22, 33, 0.9);
+  color: #cfe4f5;
+  border-color: rgba(169, 196, 216, 0.6);
+}
+
+/* Title, intro, and menus. */
+.title-card,
+#intro .story {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 154, 60, 0.16), rgba(255, 154, 60, 0) 60%),
+    linear-gradient(180deg, rgba(42, 26, 20, 0.96), rgba(18, 11, 8, 0.97));
+  border: 1px solid rgba(255, 197, 107, 0.4);
+  border-radius: 14px;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.7), 0 0 60px rgba(255, 154, 60, 0.12);
+}
+
+.title-card h1,
+#intro h1 {
+  text-shadow: 0 0 18px rgba(255, 154, 60, 0.55);
+}
+
+#title {
+  background: radial-gradient(circle at 50% 50%, rgba(255, 154, 60, 0.1), rgba(14, 22, 33, 0.94) 60%);
+}
+
+#intro {
+  background: rgba(14, 22, 33, 0.82);
+}
+
+#intro .story {
+  font-family: var(--serif);
+}
+
+/* Slim warm scrollbars. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #6b4a32 transparent;
+}
+
+small {
+  color: #b7a98e;
+}
+
+small.why {
+  color: #ff9a3c;
+}

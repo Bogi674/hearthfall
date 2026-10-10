@@ -17,6 +17,10 @@ import type { Building, BuildingStatus, World } from '../sim/world';
 import { amounts } from './build';
 import type { Amounts } from '../data/resources';
 import { BUILDING_ICONS } from './icons';
+import { BUILDING_INFO } from '../data/descriptions';
+import { statLines } from './stats';
+import { SCAVENGE } from '../data/wild';
+import { scavengeError } from '../sim/manage';
 
 export const STATUS_TEXT: Partial<Record<BuildingStatus, string>> = {
   broken: 'Broken. Mend it',
@@ -38,12 +42,12 @@ export function selectionHtml(w: World, selected: number | 'hearth' | 'stash' | 
   const b = w.buildings.find((b) => b.id === selected);
   if (!b) return colonistHtml(w, selected as number) || edgeHtml(w, selected as number) || floorHtml(w, selected as number);
   const def = BUILDINGS[b.type];
-  const lines = [`<h3 class="with-icon">${BUILDING_ICONS[b.type]}${def.name}</h3><p>Health ${Math.ceil(b.hp)}/${def.hp}</p>`];
+  const lines = [`<h3 class="with-icon">${BUILDING_ICONS[b.type]}${def.name}</h3><p class="desc">${BUILDING_INFO[b.type]}</p><p>Health ${Math.ceil(b.hp)}/${def.hp}</p>`];
   if (!isBuilt(b)) {
     const builders = w.colonists.filter((c) => c.site === b.id && c.task === 'build').length;
     lines.push(`<p>Being built, ${Math.floor((1 - b.construct / def.build) * 100)}% done. ${builders} building now.</p>${bar(1 - b.construct / def.build)}`);
     lines.push(`<p class="${builders ? '' : 'alert'}">${builders ? 'Colonists without a job help build.' : 'Nobody is building. Free up a colonist by lowering workers elsewhere.'}</p>`);
-    lines.push(salvageHtml(b));
+    lines.push(isBuilt(b) || b.salvage !== null ? salvageHtml(b) : `<button data-act="cancelbuild:${b.id}">Cancel construction</button><small class="note">${b.construct >= def.build ? 'Nothing is built yet, so all of the cost comes back.' : 'Half of the cost comes back.'}</small>`);
     return lines.join('');
   }
   if (STATUS_TEXT[b.status]) lines.push(`<p class="alert">${STATUS_TEXT[b.status]}</p>`);
@@ -72,6 +76,7 @@ export function selectionHtml(w: World, selected: number | 'hearth' | 'stash' | 
       ? `<button data-act="shelter:${b.id}:0">Back to work</button>`
       : `<button data-act="shelter:${b.id}:1">Take shelter</button><small class="note">Workers hide inside until you call them back.</small>`);
   }
+  lines.push(`<details class="stats"><summary>Facts</summary><ul>${statLines(b.type).map((l) => `<li>${l}</li>`).join('')}</ul></details>`);
   lines.push(salvageHtml(b));
   return lines.join('');
 }
@@ -84,13 +89,15 @@ function repairHtml(w: World, working: boolean, plan: { cost: Amounts; seconds: 
   return `${note ? `<p class="alert">${note}</p>` : ''}${short ? `<p class="alert">Mending costs ${amounts(plan.cost)}. Not enough resources</p>` : `<button data-act="${act}">Mend</button><small class="note">Costs ${amounts(plan.cost)}.</small>`}`;
 }
 
-/** Taking a building apart returns most of its cost (section 8.2). */
+/** Deconstruct and move buttons for a finished building. Builders do the work (M13). */
 function salvageHtml(b: Building): string {
-  if (b.type === 'supplyCart') return '';
-  if (BUILDINGS[b.type].furniture) return `<button data-act="remove:furniture:${b.id}">Remove</button><small class="note">Gives back ${b.ruin ? 'most of' : 'half'} the cost.</small>`;
-  return b.salvage !== null
-    ? `<p class="alert">Marked to be taken apart.</p><button data-act="salvage:${b.id}">Keep it</button>`
-    : `<button data-act="salvage:${b.id}">Take apart</button><small class="note">Colonists without a job do it and bring back 75 percent of the cost.</small>`;
+  const def = BUILDINGS[b.type];
+  if (def.furniture) return `<button data-act="remove:furniture:${b.id}">Remove</button><small class="note">Gives back ${b.ruin ? 'most of' : 'half'} the cost.</small>`;
+  if (b.salvage !== null) {
+    return `<p class="alert">${b.move ? 'The crew is taking it down to move it.' : 'Marked to be taken apart.'}</p><button data-act="salvage:${b.id}">${b.move ? 'Keep it here' : 'Keep it'}</button>`;
+  }
+  const move = b.type === 'airshipDock' || !isBuilt(b) ? '' : `<button data-act="movebuilding:${b.id}">Move</button>`;
+  return `${move}<button data-act="salvage:${b.id}">Deconstruct</button><small class="note">Colonists without a job do it. Moving costs nothing but time. Deconstructing brings back 75 percent of the cost.</small>`;
 }
 
 function upgradeButton(w: World, b: Building, label: string): string {
@@ -153,6 +160,14 @@ function stashHtml(w: World): string {
   return `<h3>Locked tin box</h3><p>It lay under a loose board. ${s.state === 'opened' ? 'It is open.' : `The crew is opening it, ${Math.floor((1 - s.open / BLUEPRINT.openSeconds) * 100)}% done. ${crew} working now.`}</p>${bar(1 - s.open / BLUEPRINT.openSeconds)}`;
 }
 
+/** The scavenge button of a ruined house, with how far it is and whether it was searched (M13). */
+function scavengeHtml(w: World, house: World['houses'][number]): string {
+  const d = Math.round(Math.hypot(house.x + house.w / 2 - w.hearth.x, house.y + house.d / 2 - w.hearth.y));
+  const error = scavengeError(w, house.id);
+  const state = house.state === 'working' ? `<p>The crew is searching it, ${Math.floor((1 - house.left / SCAVENGE.seconds) * 100)}% done.</p>` : house.state === 'looted' ? '<p>Searched. Nothing is left.</p>' : '';
+  return `<h4>A ruined house, ${d} tiles from the fire</h4>${state}${house.state === 'fresh' ? (error ? `<p class="alert">${error}</p>` : `<button data-act="scavenge:${house.id}">Scavenge it</button><small class="note">Two colonists search it for food, scrap, and sometimes more. Houses farther out hold more, and it is colder there.</small>`) : ''}`;
+}
+
 const meter = (label: string, v: number) => `<p class="meter"><span>${label}</span>${bar(v)}</p>`;
 
 /** A colonist: needs, what they are doing, and where they sleep and work. */
@@ -208,6 +223,8 @@ function floorHtml(w: World, id: number): string {
     lines.push(`<p>${room.name}. ${room.floors} floor tiles, ${room.beds} bed${room.beds === 1 ? '' : 's'}, ${room.seats} seat${room.seats === 1 ? '' : 's'}, ${room.decor} decor.</p>`);
     lines.push(`<p class="${room.closed && !room.note ? '' : 'alert'}">${room.closed ? (room.note || 'Closed. People inside are safe while the walls stand.') : room.note}</p>`);
   }
+  const house = w.houses.find((h) => f.x >= h.x - 1 && f.x <= h.x + h.w && f.y >= h.y - 1 && f.y <= h.y + h.d && f.storey === 0);
+  if (house) lines.push(scavengeHtml(w, house));
   lines.push(`<button data-act="remove:floor:${f.id}">Remove</button><small class="note">Gives back ${f.ruin ? 'most of' : 'half'} the cost.</small>`);
   return lines.join('');
 }

@@ -22,34 +22,50 @@ export const BALANCE = {
     { name: 'Dawn', seconds: 30, work: true },
   ],
   map: {
-    width: 160,
-    height: 160,
+    width: 240,
+    height: 240,
     /** Tiles around the hearth that are always clear ground. */
     clearingRadius: 8,
-    /** Ruined town extends this far from the hearth. Trees thicken beyond it. */
-    townRadius: 50,
-    houseAttempts: 560,
-    houseCountMax: 70,
+    /** The ruined town reaches this far from the hearth. Trees thicken beyond it. */
+    townRadius: 84,
     houseWidth: [4, 7],
     houseDepth: [4, 6],
-    /** Chance that a wall tile of a ruined house has collapsed. */
-    wallGapChance: 0.3,
-    houseRubbleChance: 0.25,
-    streetRubbleChance: 0.04,
-    ponds: 4,
+    streetRubbleChance: 0.03,
+    ponds: 8,
     /** Side streets run parallel to the main roads at these offsets from the hearth. */
-    sideStreets: [-32, -17, 16, 31],
+    sideStreets: [-52, -30, -17, 16, 31, 50],
     pondRadius: [3, 5],
-    forestNoiseScale: 9,
-    /** Trees start to thicken this far from the hearth and reach full density this many tiles later. */
+    forestNoiseScale: 11,
+    /**
+     * Houses come in three kinds so that distances vary. A few neighbors stand close to the hearth, hamlets of two to six houses
+     * stand far apart, and lone houses stand by themselves out in the dark.
+     */
+    neighbors: { count: 4, between: [15, 27] },
+    hamlets: { count: [10, 13], from: 30, spacing: 28, size: [2, 6], spread: 9, houseGap: 3 },
+    lone: { count: 14, from: 34, spacing: 20 },
     /** The paddock beside the house that is always open ground (section 4). Size is in tiles, distance from the hearth. */
     yard: { size: 12, distance: 13 },
+    /** Trees start to thicken this far from the hearth and reach full density this many tiles later. */
     forestStart: 19,
-    forestRamp: 44,
+    forestRamp: 62,
   },
   temperature: {
     day1: -2,
     dropPerDay: 1,
+  },
+  /**
+   * Harvested ground grows back (M13). A tree, a stone heap, or a rubble pile that ran out comes back after some days as a smaller
+   * one. Growth happens at dawn, never near the hearth, and only on bare ground. It is slower than harvesting, so a crew that
+   * strips an area still finds it empty for days.
+   */
+  regrow: {
+    tree: { days: [4, 7], share: 0.5 },
+    ruinWall: { days: [5, 9], share: 0.35 },
+    rubble: { days: [4, 7], share: 0.4 },
+    /** Nothing grows back this close to the hearth, so the camp stays open. */
+    keepClear: 12,
+    /** A blocked spot is tried again on the next dawns this many times. */
+    retries: 3,
   },
   /** Weather (M10.2). A seeded chain picks each day's weather. Offsets add to the day's base temperature. */
   weather: {
@@ -160,7 +176,7 @@ export const BALANCE = {
     /** Spawn edges grow by one every this many nights, up to 4. */
     nightsPerEdge: 4,
     /** Monsters spawn on the sides of a square this many tiles out from the hearth. */
-    spawnDistance: 42,
+    spawnDistance: 56,
     /** From this day a small raid prowls in at this many seconds into the day (section 9.5). */
     raidFromDay: 3,
     raidAt: 120,
@@ -215,7 +231,7 @@ export const BALANCE = {
   expeditions: {
     maxSquad: 4,
     /** Squads walk slower than colonists in camp. Tiles per second. */
-    speed: 1.6,
+    speed: 2.4,
     searchSeconds: 60,
     rollSeconds: 6,
     /** Chance of a danger event per roll is danger times this, divided by the square root of squad size. */
@@ -234,7 +250,7 @@ export const BALANCE = {
     /** The most colonists the colony can hold. It matches the most seats on the airship. */
     maxColonists: 20,
     /** Tiles from the hearth where they appear, and how fast they walk toward the light. */
-    distance: 34,
+    distance: 46,
     speed: 1.2,
     joinDistance: 3,
   },

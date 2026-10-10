@@ -27,10 +27,18 @@ uniform float uAspect;
 varying vec2 vUv;
 float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
 void main() {
-  vec4 color = texture2D(tDiffuse, vUv);
+  // A slight pull of the colors apart toward the edges, like an old lens.
+  vec2 off = (vUv - 0.5) * 0.0016;
+  vec4 color = vec4(texture2D(tDiffuse, vUv + off).r, texture2D(tDiffuse, vUv).g, texture2D(tDiffuse, vUv - off).b, 1.0);
   vec2 c = (vUv - 0.5) * vec2(uAspect, 1.0);
-  float vignette = smoothstep(1.05, 0.35, length(c));
-  color.rgb *= mix(0.45, 1.0, vignette);
+  // Grade: shadows lean cold and blue, highlights lean warm and gold, so the lit camp glows against the dark around it.
+  float luma = dot(color.rgb, vec3(0.299, 0.587, 0.114));
+  vec3 coldShadow = vec3(0.82, 0.93, 1.12);
+  vec3 warmLight = vec3(1.1, 1.0, 0.86);
+  color.rgb *= mix(coldShadow, warmLight, smoothstep(0.08, 0.7, luma));
+  color.rgb = mix(vec3(luma), color.rgb, 1.08);
+  float vignette = smoothstep(1.1, 0.3, length(c));
+  color.rgb *= mix(0.32, 1.0, vignette);
   color.rgb += (hash(vUv * 1000.0 + fract(uTime) * 100.0) - 0.5) * 0.035;
   gl_FragColor = color;
 }
@@ -45,7 +53,7 @@ export interface Post {
 export function createPost(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.Camera): Post {
   const composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
-  const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.55, 0.45, 1.0);
+  const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.75, 0.55, 0.92);
   composer.addPass(bloom);
   composer.addPass(new OutputPass());
   const grain = new ShaderPass(VignetteGrainShader);

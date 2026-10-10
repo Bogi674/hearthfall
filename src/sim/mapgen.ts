@@ -59,7 +59,8 @@ function placeYard(map: MapState, rng: RngState, hx: number, hy: number): void {
 function placePois(map: MapState, rng: RngState, hx: number, hy: number): GeneratedMap['pois'] {
   return POI_TYPES.map((type) => {
     const a = nextFloat(rng) * Math.PI * 2;
-    const r = POIS[type].distance;
+    // Each place sits near its design distance, a little nearer or farther by the map.
+    const r = POIS[type].distance * (0.9 + nextFloat(rng) * 0.2);
     const x = Math.max(3, Math.min(map.width - 4, Math.round(hx + Math.cos(a) * r)));
     const y = Math.max(3, Math.min(map.height - 4, Math.round(hy + Math.sin(a) * r)));
     clearAround(map, x, y, 4);
@@ -91,21 +92,61 @@ function placeRoads(map: MapState, rng: RngState, hx: number, hy: number): void 
   }
 }
 
-/** Ruined houses in town: worn floors and walls, made of house pieces, with masonry heaps beside them. */
+/** True when the starting ruin and its yard are in the way of a house at this spot. */
+const nearStart = (hx: number, hy: number, x0: number, y0: number, w: number, d: number) =>
+  x0 - 1 <= hx + 10 && x0 + w + 1 >= hx - 10 && y0 - 1 <= hy + 9 && y0 + d + 1 >= hy - 5;
+
+/**
+ * Ruined houses: worn floors and walls, made of house pieces, with masonry heaps beside them. A few neighbors stand near the
+ * hearth, hamlets stand far apart from each other, and lone houses stand out by themselves. The gaps between them vary,
+ * so a long walk may find nothing and a short one may find a hamlet.
+ */
 function placeHouses(map: MapState, rng: RngState, hx: number, hy: number, ruins: Ruins): void {
-  let placed = 0;
-  for (let attempt = 0; attempt < CFG.houseAttempts && placed < CFG.houseCountMax; attempt++) {
+  const houses: { x: number; y: number }[] = [];
+  const tooClose = (x: number, y: number, gap: number) => houses.some((h) => dist(h.x, h.y, x, y) < gap);
+  const tryHouse = (cx: number, cy: number, gap: number): boolean => {
     const w = nextInt(rng, CFG.houseWidth[0], CFG.houseWidth[1]);
     const d = nextInt(rng, CFG.houseDepth[0], CFG.houseDepth[1]);
-    const angle = nextFloat(rng) * Math.PI * 2;
-    const r = CFG.clearingRadius + 3 + nextFloat(rng) * (CFG.townRadius - CFG.clearingRadius - 3);
-    const x0 = Math.round(hx + Math.cos(angle) * r - w / 2);
-    const y0 = Math.round(hy + Math.sin(angle) * r - d / 2);
-    if (!areaIsGround(map, x0 - 1, y0 - 1, w + 2, d + 2)) continue;
-    // The starting ruin and its yard are kept clear.
-    if (x0 - 1 <= hx + 10 && x0 + w + 1 >= hx - 10 && y0 - 1 <= hy + 9 && y0 + d + 1 >= hy - 5) continue;
+    const x0 = Math.round(cx - w / 2);
+    const y0 = Math.round(cy - d / 2);
+    if (!areaIsGround(map, x0 - 1, y0 - 1, w + 2, d + 2) || nearStart(hx, hy, x0, y0, w, d) || tooClose(cx, cy, gap)) return false;
     townRuin(rng, map, x0, y0, w, d, ruins);
-    placed++;
+    houses.push({ x: cx, y: cy });
+    return true;
+  };
+  const around = (r0: number, r1: number) => {
+    const a = nextFloat(rng) * Math.PI * 2;
+    const r = r0 + nextFloat(rng) * (r1 - r0);
+    return { x: hx + Math.cos(a) * r, y: hy + Math.sin(a) * r };
+  };
+
+  // Neighbors close to the hearth, so the first days have something to scavenge.
+  const N = CFG.neighbors;
+  for (let placed = 0, tries = 0; placed < N.count && tries < 200; tries++) {
+    const p = around(N.between[0], N.between[1]);
+    if (tryHouse(p.x, p.y, 8)) placed++;
+  }
+  // Hamlets, each far from the others.
+  const H = CFG.hamlets;
+  const centers: { x: number; y: number }[] = [];
+  const hamletCount = nextInt(rng, H.count[0], H.count[1]);
+  for (let tries = 0; centers.length < hamletCount && tries < 400; tries++) {
+    const p = around(H.from, CFG.townRadius);
+    if (p.x < 12 || p.y < 12 || p.x > map.width - 12 || p.y > map.height - 12) continue;
+    if (centers.some((c) => dist(c.x, c.y, p.x, p.y) < H.spacing + nextFloat(rng) * 10)) continue;
+    centers.push(p);
+    const size = nextInt(rng, H.size[0], H.size[1]);
+    for (let placed = 0, k = 0; placed < size && k < 80; k++) {
+      const q = { x: p.x + (nextFloat(rng) - 0.5) * 2 * H.spread, y: p.y + (nextFloat(rng) - 0.5) * 2 * H.spread };
+      if (tryHouse(q.x, q.y, H.houseGap + 4)) placed++;
+    }
+  }
+  // Lone houses out in the dark.
+  const L = CFG.lone;
+  for (let placed = 0, tries = 0; placed < L.count && tries < 400; tries++) {
+    const p = around(L.from, CFG.townRadius * 1.35);
+    if (p.x < 8 || p.y < 8 || p.x > map.width - 8 || p.y > map.height - 8) continue;
+    if (tryHouse(p.x, p.y, L.spacing)) placed++;
   }
 }
 
@@ -122,7 +163,7 @@ function areaIsGround(map: MapState, x0: number, y0: number, w: number, d: numbe
 function placePonds(map: MapState, rng: RngState, hx: number, hy: number): void {
   for (let p = 0; p < CFG.ponds; p++) {
     const angle = nextFloat(rng) * Math.PI * 2;
-    const r = CFG.townRadius - 4 + nextFloat(rng) * 8;
+    const r = 28 + nextFloat(rng) * (CFG.townRadius * 1.2 - 28);
     const cx = Math.round(hx + Math.cos(angle) * r);
     const cy = Math.round(hy + Math.sin(angle) * r);
     const radius = CFG.pondRadius[0] + nextFloat(rng) * (CFG.pondRadius[1] - CFG.pondRadius[0]);

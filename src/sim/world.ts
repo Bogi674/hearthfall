@@ -5,6 +5,7 @@ import type { EnemyType } from '../data/enemies';
 import { COLONIST_NAMES } from '../data/colonists';
 import type { ItemId, PoiType } from '../data/pois';
 import { BLUEPRINT, type ComponentId } from '../data/vehicle';
+import { SCAVENGE, WILD, type AnimalKind } from '../data/wild';
 import { WEAPON_IDS, type WeaponId } from '../data/weapons';
 import { NODE_AMOUNTS } from '../data/recipes';
 import { RESOURCES, type Amounts, type Resource } from '../data/resources';
@@ -27,6 +28,8 @@ import { hopeSystem } from './systems/hope';
 import { pathfindingSystem } from './systems/pathfinding';
 import { productionSystem } from './systems/production';
 import { timeSystem } from './systems/time';
+import { animalsSystem, spawnAnimals } from './systems/animals';
+import { regrowSystem } from './systems/regrow';
 import { stashSystem } from './systems/stash';
 import { vehicleSystem } from './systems/vehicle';
 import { warmthSystem } from './systems/warmth';
@@ -97,6 +100,8 @@ export interface Building {
   craft: WeaponId;
   /** Seconds of builder work left to take it apart for salvage, or null when it is not marked. */
   salvage: number | null;
+  /** Where a building being taken down will be rebuilt, when the order was to move it (M13). */
+  move: { x: number; y: number; rotated: boolean } | null;
   /** Storey the building stands on. Only house furniture leaves the ground (M11). */
   storey: number;
   /** Part of a ruin. Taking it apart gives back more of its cost, and the panel says so. */
@@ -153,7 +158,7 @@ export interface House {
 }
 
 /** What a colonist is doing right now. The renderer picks an animation from it. */
-export type Task = 'idle' | 'walk' | 'build' | 'work' | 'sleep' | 'guard' | 'shelter' | 'eat' | 'mingle';
+export type Task = 'idle' | 'walk' | 'build' | 'work' | 'sleep' | 'guard' | 'shelter' | 'eat' | 'mingle' | 'hunt';
 
 export interface Colonist {
   id: number;
@@ -187,6 +192,38 @@ export interface Colonist {
   route: { x: number; y: number; storey?: number }[];
   /** The target and house layout the route was made for. */
   routeKey: string;
+  /** The animal this hunter is after, and the meat carried back to the lodge (M13). */
+  hunt: { animal: number; carry: number } | null;
+}
+
+/** A wild animal that wanders the map and can be hunted (M13). */
+export interface Animal {
+  id: number;
+  kind: AnimalKind;
+  x: number;
+  y: number;
+  px: number;
+  py: number;
+  /** Where it is walking, and seconds it stands still before it picks another spot. */
+  tx: number;
+  ty: number;
+  pause: number;
+  /** The hunter who has marked it, so two hunters do not chase the same animal. */
+  hunter: number | null;
+  /** Seconds of a hunter standing beside it that the hunt has taken so far. */
+  caught: number;
+}
+
+/** A ruined house that can be scavenged once (M13). */
+export interface RuinHouse {
+  id: number;
+  x: number;
+  y: number;
+  w: number;
+  d: number;
+  state: 'fresh' | 'working' | 'looted';
+  /** Builder seconds left while the crew searches it. */
+  left: number;
 }
 
 export interface World {
@@ -214,6 +251,11 @@ export interface World {
   stash: Stash | null;
   /** Rubble tiles the colony has been told to clear, with the builder seconds left on each. */
   clearing: { tile: number; left: number }[];
+  /** Harvested tiles waiting to grow back: the tile, what it was, the day it is due, and the tries left (M13). */
+  regrow: { tile: number; kind: number; due: number; tries: number }[];
+  /** Wild animals, and the ruined houses that can be scavenged (M13). */
+  animals: Animal[];
+  houses: RuinHouse[];
   /** Warmth 0 to 100 per tile, row major like map.tiles. */
   warmth: number[];
   /** Inputs the warmth map was last computed from. Renderers compare it to know when to refresh. */
@@ -356,6 +398,9 @@ export function createWorld(seed: number): World {
     hearthSite: null,
     stash: null,
     clearing: [],
+    regrow: [],
+    animals: [],
+    houses: [],
     warmth: new Array<number>(map.width * map.height).fill(0),
     warmthKey: '',
     stock,
@@ -390,6 +435,7 @@ export function createWorld(seed: number): World {
     addColonist(world, hearth.x + Math.cos(a) * BALANCE.colonist.idleRadius, hearth.y + Math.sin(a) * BALANCE.colonist.idleRadius);
   }
   placeRuins(world, ruins);
+  spawnAnimals(world, WILD.start);
   // The survivors arrived with a hand cart of supplies. It is the first storage (section 7.2).
   const cart = BALANCE.start.cart;
   placeBuilding(world, 'supplyCart', hearth.x + cart.x, hearth.y + cart.y, false, true);
@@ -415,6 +461,7 @@ function placeRuins(world: World, ruins: Ruins): void {
     [b.ruin, b.broken, b.hp] = [true, f.broken, Math.max(1, Math.round(b.hp * f.hpShare))];
   }
   world.stash = { x: ruins.stash.x, y: ruins.stash.y, state: 'hidden', open: BLUEPRINT.openSeconds };
+  world.houses = ruins.houses.map((h) => ({ id: world.nextId++, ...h, state: 'fresh' as const, left: SCAVENGE.seconds }));
   world.buildRev++;
   openSealedRooms(world);
 }
@@ -444,7 +491,7 @@ export function addColonist(world: World, x: number, y: number): Colonist {
   const c: Colonist = {
     id: world.nextId++, name, x, y, px: x, py: y, storey: 0,
     health: 1, hunger: 1, rest: 1, warmth: 1, job: null, bed: null, duty: null, expedition: null, asleep: false,
-    task: 'idle', site: null, weapon: BALANCE.start.weapon, cooldown: 0, route: [], routeKey: '',
+    task: 'idle', site: null, weapon: BALANCE.start.weapon, cooldown: 0, route: [], routeKey: '', hunt: null,
   };
   world.colonists.push(c);
   return c;
@@ -474,6 +521,8 @@ export function stepWorld(world: World): void {
   productionSystem(world, TICK_SECONDS);
   combatSystem(world, TICK_SECONDS);
   stashSystem(world, TICK_SECONDS);
+  regrowSystem(world, TICK_SECONDS);
+  animalsSystem(world, TICK_SECONDS);
   vehicleSystem(world, TICK_SECONDS);
   hopeSystem(world, TICK_SECONDS);
   arrivalsSystem(world, TICK_SECONDS);

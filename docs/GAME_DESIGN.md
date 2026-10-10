@@ -14,9 +14,9 @@ Working title. Version 0.1. This document is the single source of truth for desi
 
 **Platform.** Desktop browser first. Later wrapped for Steam with Tauri or Electron.
 
-**Run length.** Prototype run lasts about 45 minutes. Full game run lasts 4 to 6 hours.
+**Run length.** A run lasts about an hour. Longer campaigns are a later goal.
 
-**Emotional goal.** Inside the walls feels warm, golden, and safe. Outside feels blue, silent, and dangerous. Every decision to leave the light should feel like a real cost.
+**Emotional goal.** The base is rustic, warm, and cozy: lamplight on worn wood, smoke, sparks, and people at a table. The outside is dark, cold, dangerous, and mysterious: black trees in blue fog, silence, and something watching from the dark. Every decision to leave the light should feel like a real cost, and every ruin found out there should feel like a reward.
 
 ---
 
@@ -59,14 +59,16 @@ Time controls are pause, 1x, 2x, and 3x. The game auto pauses on dusk start in t
 
 ## 4. World and Map
 
-- **Grid.** Square tiles of 1 world unit. The map is 160 by 160 tiles. People and furniture are drawn smaller than the tile, so a room holds more and the lot and the map feel roomy.
+- **Grid.** Square tiles of 1 world unit. The map is 240 by 240 tiles. People and furniture are drawn smaller than the tile, so a room holds more and the lot and the map feel roomy.
 - **Generation.** Seed based and deterministic. The same seed always produces the same map.
 - **The paddock.** An open 10 by 10 square of ground sits about 11 tiles from the house, in a random one of the eight directions. It is the old owner's launch field and keeps room for the launch pad on every map (section 11.2).
-- **Layout.** The hearth sits in a central clearing. Around it are ruined houses, streets, trees, rubble, and a few points of interest at increasing distance and danger. The forest starts to thicken about 17 tiles out, so the first gathering spots stay close. The nearest point of interest is 24 tiles away and the farthest is 54.
+- **Layout.** The hearth sits in a central clearing. Around it are ruined houses, streets, trees, rubble, and six points of interest at increasing distance and danger. The forest starts to thicken about 19 tiles out, so the first gathering spots stay close. The nearest point of interest is about 42 tiles away and the farthest about 92, each within a tenth of its design distance.
+- **Ruins at varied distances (M13).** Houses come in three kinds. A few neighbors stand 15 to 27 tiles from the hearth, so the first days have something to search. Hamlets of two to six houses stand at least 28 tiles from each other. Lone houses stand out by themselves, 20 tiles or more from any other. A long walk may find nothing, and a short one may find a hamlet. The sense of isolation stays, and finding a house rewards the walk.
 - **Tile types.** Ground, road, tree, rubble, ruin wall, water, and blocked.
-- **Resource nodes.** Trees yield wood. Rubble yields scrap. Some ruins yield stone. Nodes deplete.
+- **Resource nodes.** Trees yield wood. Rubble yields scrap. Heaps of fallen masonry yield stone. Nodes deplete.
+- **Growing back (M13).** A used up tree, stone heap, or rubble pile grows back 4 to 9 days later as a smaller one, at half or less of the original amount. Growth is checked at dawn. Nothing grows back within 12 tiles of the hearth, on a building, or on the launch pad site. It is slower than harvesting, so a crew that strips an area finds it empty for days, and a colony that cuts only what it needs never runs dry.
 - **Fog of war.** The map outside the starting radius of 18 tiles is hidden. Close to the known land, hidden ground shows as a darker grey haze with faint shapes of trees and ruins. Farther in, it fades to pitch black. At the start only the 2 to 3 closest points of interest are known. Expedition squads reveal the land around them as they travel. Watchtowers reveal a small radius around themselves. A Lookout Post spots far points of interest as unconfirmed rumors (section 10.4). An expedition must reach a rumor to confirm what it is.
-- **Edges.** Monsters come out of the dark from the north, east, south, or west. They spawn on the sides of a square 42 tiles out from the hearth, so the night timing does not depend on the map size. The forecast shows which sides are active.
+- **Edges.** Monsters come out of the dark from the north, east, south, or west. They spawn on the sides of a square 56 tiles out from the hearth, so the night timing does not depend on the map size. The forecast shows which sides are active.
 
 ---
 
@@ -226,13 +228,21 @@ A colony wide value from 0 to 100, starting at 60.
 | Raw | Wood | Woodcutter Camp on trees |
 | Raw | Scrap | Salvage Yard on rubble |
 | Raw | Stone | Quarry on stone ruins |
-| Raw | Raw Food | Forager Hut, Greenhouse, expeditions |
+| Raw | Raw Food | Forager Hut, Hunting Lodge, Hydroponic Farm, scavenged houses, expeditions |
 | Processed | Planks | Sawmill from wood |
 | Processed | Fuel | Charcoal Kiln from wood |
 | Processed | Metal | Smelter from scrap and fuel |
 | Processed | Meals | Kitchen from raw food and fuel |
 | Advanced | Parts | Workshop from planks and metal |
 | Rare | Vehicle items | Expeditions only |
+
+### 7.1a Food (M13)
+Five sources of food, each with its own trade of risk and reward.
+- **Forager Hut.** Cheap and always there. Two workers find 2 raw food every 8 seconds, and they find less each day as the cold deepens, down to half.
+- **Hunting Lodge.** Hunters walk out to deer and wild pigs within 60 tiles of the lodge, bring one down in 2.5 seconds beside it, and carry the meat back. A deer gives 14 raw food and runs fast. A pig gives 22 and is slow. Animals live 24 or more tiles from the hearth, 14 at most on the map, and 2 wander in each dawn. Hunters work by day only and feel the cold on the way, so a lodge pays well but needs a living forest.
+- **Hydroponic Farm.** A 2 by 2 rack of trays in a closed room with a whole roof. It costs planks, metal, and parts. Two workers turn 1 fuel into 7 raw food every 10 seconds, all year, so it is the steady answer to a long winter and it is paid for with the fuel economy.
+- **Scavenging.** Select a floor of a ruined house the colony has seen and press Scavenge. Two colonists search it for 24 seconds and bring back raw food, scrap, and some wood. Sometimes they find meals, fuel, or even parts and metal. Houses far from the hearth hold up to three times more, and they are colder and farther from help. Each house can be searched once.
+- **Expeditions** (section 10) still bring food from the great places.
 
 ### 7.2 Logistics
 - **Prototype.** Global stockpile limited by total storage capacity. Hauling is abstracted.
@@ -278,6 +288,7 @@ Workers work where the work is. Woodcutters stand at the tree they are chopping,
 - Each building has a build time in seconds of work for one builder. Several builders add up.
 - A production building's own workers build it first. Colonists without a job help at the nearest site, up to 3 per site.
 - Builders work by day, swinging whatever tool they have. On screen the building rises inside scaffolding.
+- **Managing a building (M13).** Every building has a short description and a list of facts in the build menu and the selection panel. A site can be cancelled while it is going up, and gives back all of its cost if nothing is built yet and half if work has begun. A finished building can be moved: builders take it down and put it up again at the place the player picks, and it costs nothing but time. Any finished building can be deconstructed by builders for 75 percent of its cost, the Supply Cart included. Health bars show only on buildings that are hurt.
 
 | Build time | Buildings |
 |---|---|
@@ -457,16 +468,18 @@ Orthographic camera at a classic isometric angle. Zoom with scroll. Rotate in 90
 | Blight | #8BFF6A | Monster eyes and wounds |
 
 ### 12.4 Rendering techniques
-- ACES tone mapping and bloom on emissive surfaces.
-- Real point lights are limited to 8, chosen by importance and distance to camera. All other light sources use emissive materials plus additive ground decals that fake light pools.
+The game is built at full visual fidelity. Nothing in this section is a placeholder for later art.
+- ACES tone mapping, bloom on every emissive surface, and a color grade in the last pass. Shadows lean cold and blue, highlights lean warm and gold. A soft vignette, a faint lens fringe at the edges, and fine film grain finish the picture.
+- Real point lights are limited to 8, chosen by importance and distance to camera. The hearth light casts real shadows, so walls, beds, and people throw warm shadows across the room. All other light sources use emissive materials plus additive ground decals that fake light pools.
+- The moon is a soft shadow caster with a 4096 shadow map that follows the camera, so edges stay crisp.
 - InstancedMesh for trees, rubble, walls, snow props, and enemies.
-- Procedural geometry first. Real models can replace it later without changing the simulation.
-- Target look: chunky stylized low poly, like a hand built diorama. Trees are tiered and slightly irregular. Rocks are rounded.
-- Buildings look post apocalyptic: patched up but functional and safe. Corrugated metal, mismatched planks, tarps, rope, sandbags, tires, oil drums, crates, boarded windows with warm light leaking out. Every building has its own silhouette and shows its trade, such as the log pile and tool rack of a woodcutter camp.
+- Every surface is painted: textures drawn from code and mapped from the world, with palette colors tinting them (section 12.4a). Geometry is hand built from rounded blocks, with bevels that catch the light, so objects read as made things and not as boxes.
+- Target look: a hand built diorama lit by firelight. Trees are tiered and irregular. Rocks are rounded. Buildings are post apocalyptic but cared for: patched sheet, mismatched planks, tarps, rope, sandbags, tires, drums, crates, and boarded windows with warm light leaking out. Every building has its own silhouette and shows its trade.
 - The house grows like the shelter in a survival game ad: a roofless ruin, then tarps and sheets, then patched walls, then a fortified lodge with rooms built onto it.
-- Colonists are small chunky low poly people in winter clothes. There are ten designs for women and ten for men. They differ in height, build, skin, hair style and color, beards, hats, coats, and trousers or skirts. They animate their work: chopping with an axe, swinging a pick, prying scrap with a crowbar, gathering into a basket, stirring a pot, sawing, hammering, and tending the kiln. They carry their weapon when not working. Monsters share the chunky build with torn clothes, horns, spines, and Blight eyes.
+- Colonists are small low poly people in winter clothes of woven cloth. There are ten designs for women and ten for men. They differ in height, build, skin, hair, beards, hats, coats, and trousers or skirts. They animate their work: chopping, swinging a pick, prying scrap, gathering, stirring, sawing, hammering, tending the kiln, and hunting. They carry their weapon when not working. Monsters share the build with torn clothes, horns, spines, and Blight eyes.
+- **Warm inside.** Sparks rise from the hearth. Windows glow and flicker. Lamps pool light on the floor. Rooms are lit from inside, so the cutaway view looks like a lit dollhouse.
+- **Cold outside.** The ground is dark blue and speckled with frost. Fog closes in at the edge of the light. At night pale green eyes open between the trees far out, watch, and close. Snow falls only outside the warm circle. Silence and distance do the rest.
 - The moon casts soft shadows from buildings, trees, and characters.
-- Soft vignette and a light film grain.
 
 ### 12.4a Surface detail
 - Building materials darken near the ground, so structures sit in the snow instead of floating on it.

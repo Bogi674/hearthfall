@@ -22,12 +22,12 @@ export interface PoiDef {
 }
 
 const DEFS = {
-  farmhouse: { name: 'Farmhouse', danger: 1, distance: 30, loot: { rawFood: [3, 6], wood: [2, 5] }, rare: 'silkCanopy', survivors: 0.04 },
-  gasStation: { name: 'Gas Station', danger: 2, distance: 40, loot: { fuel: [2, 5], scrap: [2, 5] }, rare: 'pressureValve' },
-  hardwareStore: { name: 'Hardware Store', danger: 2, distance: 45, loot: { metal: [1, 4], parts: [0, 2] }, survivors: 0.04 },
-  clinic: { name: 'Clinic', danger: 3, distance: 52, loot: { rawFood: [2, 5], parts: [0, 2] }, rare: 'silkCanopy', survivors: 0.08 },
-  railDepot: { name: 'Rail Depot', danger: 4, distance: 60, loot: { metal: [2, 6] }, rare: 'engineBlock', survivors: 0.04 },
-  oldAirfield: { name: 'Old Airfield', danger: 5, distance: 68, loot: { scrap: [2, 5], parts: [0, 3] }, rare: 'compassRig' },
+  farmhouse: { name: 'Farmhouse', danger: 1, distance: 42, loot: { rawFood: [3, 6], wood: [2, 5] }, rare: 'silkCanopy', survivors: 0.04 },
+  gasStation: { name: 'Gas Station', danger: 2, distance: 56, loot: { fuel: [2, 5], scrap: [2, 5] }, rare: 'pressureValve' },
+  hardwareStore: { name: 'Hardware Store', danger: 2, distance: 63, loot: { metal: [1, 4], parts: [0, 2] }, survivors: 0.04 },
+  clinic: { name: 'Clinic', danger: 3, distance: 72, loot: { rawFood: [2, 5], parts: [0, 2] }, rare: 'silkCanopy', survivors: 0.08 },
+  railDepot: { name: 'Rail Depot', danger: 4, distance: 82, loot: { metal: [2, 6] }, rare: 'engineBlock', survivors: 0.04 },
+  oldAirfield: { name: 'Old Airfield', danger: 5, distance: 92, loot: { scrap: [2, 5], parts: [0, 3] }, rare: 'compassRig' },
 } satisfies Record<string, PoiDef>;
 
 export type PoiType = keyof typeof DEFS;

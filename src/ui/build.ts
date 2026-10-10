@@ -1,6 +1,7 @@
 // Build menu (section 14): one tab per category, an icon button per building with its cost,
 // and the reason a building cannot be placed yet. The Structure tab holds the house builder tools (M11).
-import { BUILDABLE, BUILDINGS, type BuildingCategory } from '../data/buildings';
+import { BUILDABLE, BUILDINGS, type BuildingCategory, type BuildingType } from '../data/buildings';
+import { infoHtml } from './stats';
 import { EDGES, FLOORS, type EdgeKind, type FloorId } from '../data/house';
 import { RESOURCE_NAMES, type Amounts, type Resource } from '../data/resources';
 import { missing } from '../sim/query';
@@ -15,6 +16,7 @@ export type HouseTool =
   | { kind: 'erase' }
   | { kind: 'mend' }
   | { kind: 'hearth' }
+  | { kind: 'move'; id: number }
   | { kind: 'site' };
 export type BuildCat = BuildingCategory;
 
@@ -22,12 +24,13 @@ export const BUILD_CATS: BuildCat[] = ['Structure', 'Furniture', 'Utility', 'Def
 
 /** The id a tool has in a button, such as floor.boards, edge.wall.1, or room.stone.3. */
 export const toolId = (t: HouseTool): string =>
-  t.kind === 'floor' ? `floor.${t.floor}` : t.kind === 'edge' ? `edge.${t.edge}.${t.level}` : t.kind === 'room' ? `room.${t.floor}.${t.level}` : t.kind;
+  t.kind === 'floor' ? `floor.${t.floor}` : t.kind === 'edge' ? `edge.${t.edge}.${t.level}` : t.kind === 'room' ? `room.${t.floor}.${t.level}` : t.kind === 'move' ? `move.${t.id}` : t.kind;
 export function parseTool(id: string): HouseTool {
   const [kind, a, b] = id.split('.');
   if (kind === 'floor') return { kind, floor: a as FloorId };
   if (kind === 'edge') return { kind, edge: a as EdgeKind, level: Number(b) };
   if (kind === 'room') return { kind, floor: a as FloorId, level: Number(b) };
+  if (kind === 'move') return { kind, id: Number(a) };
   return kind === 'site' ? { kind: 'site' } : kind === 'mend' ? { kind: 'mend' } : kind === 'hearth' ? { kind: 'hearth' } : { kind: 'erase' };
 }
 
@@ -74,7 +77,7 @@ function buildingButton(w: World, t: keyof typeof BUILDINGS, placing: string | n
         ${BUILDING_ICONS[t]}<span><b>${def.name}</b><small>${amounts(def.cost)}</small>${why ? `<small class="${short || padWhy ? 'why' : ''}">${why}</small>` : ''}</span></button>`;
 }
 
-export function buildMenuHtml(w: World, cat: BuildCat, placing: string | null, tool: HouseTool | null, rotated: boolean, fill = false): string {
+export function buildMenuHtml(w: World, cat: BuildCat, placing: string | null, tool: HouseTool | null, rotated: boolean, fill = false, info: BuildingType | null = null): string {
   const rotate = placing ? `<button data-act="rotate" class="rotate ${rotated ? 'on' : ''}" title="Turn the building a quarter turn (R)">Rotate (R)</button>` : '';
   const tabs = BUILD_CATS.map((c) => `<button data-act="cat:${c}" class="${cat === c ? 'on' : ''}">${c}</button>`).join('') + rotate;
   let body: string;
@@ -90,5 +93,6 @@ export function buildMenuHtml(w: World, cat: BuildCat, placing: string | null, t
     });
     body = `<div class="group">${[...ports, ...items].join('')}</div>`;
   }
-  return `<div class="tabs">${tabs}</div>${body}`;
+  // The facts card has a fixed height, so the menu does not jump as the cursor moves over the buttons.
+  return `<div class="tabs">${tabs}</div><div class="facts">${info ? infoHtml(info) : '<p class="hint">Hover a building to see what it does.</p>'}</div>${body}`;
 }
